@@ -40,21 +40,17 @@ class App extends React.Component {
     });
   }
 
-  markTakenPlayers = (rosterData, ownerData) => {
+  markTakenPlayers = (rosterData, managerData) => {
     const rosters = rosterData;
-    const owners = ownerData;
+    const managers = managerData;
     let playerObject = this.state.playerInfo;
     for (let i = 0; i < rosters.length; i++) {
-      const currentOwnerId = rosters[i].owner_id;
-      let ownerDisplayName;
-      for (let n = 0; n < owners.length; n++) {
-        if (owners[n].user_id === currentOwnerId) {
-          ownerDisplayName = owners[n].display_name;
-        }
-      }
+      const currentManagerId = rosters[i].owner_id;
+      const managerDisplayName = this.getManagerDisplayName(managers, currentManagerId);
+      rosters[i].manager_display_name = managerDisplayName;
       rosters[i].players.forEach(player => {
         playerObject[player].is_taken = true;
-        playerObject[player].rostered_by = ownerDisplayName;
+        playerObject[player].rostered_by = managerDisplayName;
       })
     }
     this.setState({
@@ -70,18 +66,23 @@ class App extends React.Component {
         mostSearchedForPlayers.push(player);
       }
     }
-    console.log(mostSearchedForPlayers);
     mostSearchedForPlayers.sort((a, b) => playerInfo[a].search_rank - playerInfo[b].search_rank);
-    console.log(mostSearchedForPlayers);
     this.setState({
       mostSearchedPlayers: mostSearchedForPlayers
     })
   }
 
-
+  getManagerDisplayName = (managers, currentManagerId) => {
+    for (let n = 0; n < managers.length; n++) {
+      if (managers[n].user_id === currentManagerId) {
+        let managerDisplayName = managers[n].display_name;
+        return managerDisplayName;
+      }
+    }
+  }
 
   render() {
-    const { playerInfo, leagueData, isLoading, mostSearchedPlayers } = this.state;
+    const { playerInfo, isLoading, mostSearchedPlayers } = this.state;
     if (isLoading) {
       return <p>Loading...</p>;
     } else {
@@ -89,11 +90,10 @@ class App extends React.Component {
       <div>
         {mostSearchedPlayers.map(id => (
           <div key={id}>
-            <p>Player name: {playerInfo[id].full_name}</p>
+            <p><b>Player name: {playerInfo[id].full_name}</b></p>
             <p>Is rostered: {playerInfo[id].is_taken ? playerInfo[id].is_taken.toString() : "false"} </p>
             <p>Rostered by: {playerInfo[id].rostered_by ? playerInfo[id].rostered_by : "None"}</p>
             <p>Search rank: {playerInfo[id].search_rank.toString()}</p>
-            <br/>
             <br/>
           </div>
         ))}
