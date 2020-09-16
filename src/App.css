@@ -36,3 +36,34 @@
     transform: rotate(360deg);
   }
 }
+
+.single-player-item {
+  /* display: flex;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 14px;
+  color: #888;
+  min-height: 50px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box; */
+  border-color: black;
+  border-style: solid;
+  padding: 10px;
+  border-radius: 23px;
+  margin: 10px;
+  align-items: flex-start;
+  display: flex;
+  flex-direction: row;
+  align-content: space-between;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 40em;
+}
+
+.search-results {
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+}
