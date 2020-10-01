@@ -37,22 +37,39 @@
   }
 }
 
+.main-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-gap: 5px;
+}
+
 .search {
-    display: flex;
-    flex-direction: column;
-    width: 45%;
+    grid-area: 1 / 1 / 1 / 1;
+    width: 100%;
+}
+
+.league-grid {
+    grid-area: 1 / 3;
+    margin: 3px 18px;
+}
+
+.position-filter {
+    width: max-content;
 }
 
 .single-player-item {
     border-color: black;
     border-top-style: solid;
     border-right: solid;
-    padding: 3px;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
-    width: 45%;
+    width: 95%;
     margin-right: 9px;
+}
+
+.player-grid {
+    grid-area: 2 / span 2;
 }
 
 .player-name {
@@ -94,4 +111,9 @@
   width: fit-content;
   display: flex;
   flex-direction: column;
+}
+
+.roster-positions {
+    grid-area: 2 / 3;
+    margin: 3px 18px;
 }
