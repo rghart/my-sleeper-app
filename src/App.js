@@ -3,6 +3,7 @@ import './App.css';
 import playerData from './sleeper_player_data';
 import SearchBar from './SearchBar';
 import SearchFilterButton from './SearchFilterButton';
+import PlayerInfoItem from './PlayerInfoItem';
 
 // Update player data with curl https://api.sleeper.app/v1/players/nfl --output sleeper_player_data.json
 
@@ -18,18 +19,20 @@ class App extends React.Component {
     checkedItems: ["QB", "RB", "WR", "TE", "K", "DEF"],
     showAvailable: true,
     showOnlyMyPlayers: true,
-    leagueID: "521036158513700864"
+    leagueID: "521036158513700864",
+    rosterPositions: [],
   };
 
   componentDidMount() {
     this.getLeagueData();
   }
 
-  getLeagueData = () => {
+  getLeagueData = async () => {
     const leagueID = this.state.leagueID;
     const urls = [
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
-      `https://api.sleeper.app/v1/league/${leagueID}/users`
+      `https://api.sleeper.app/v1/league/${leagueID}/users`,
+      `https://api.sleeper.app/v1/league/${leagueID}`
     ]
     let requests = urls.map(url => fetch(url));
     Promise.all(requests)
@@ -39,10 +42,12 @@ class App extends React.Component {
       }))
   })
     .then(data => {
+        console.log(data);
       this.markTakenPlayers(data[0], data[1]);
       this.setState({
         leagueData: data,
-        isLoading: false
+        isLoading: false,
+        rosterPositions: data[2].roster_positions.filter(pos => pos !== "BN")
       });
       if (this.state.rankingPlayersIdsList) {
           this.filterPlayers();
@@ -55,6 +60,14 @@ class App extends React.Component {
 
   markTakenPlayers = (rosterData, managerData) => {
     let playerObject = this.state.playerInfo;
+    if (this.state.rankingPlayersIdsList) {
+        for (let i = 0; i < Object.keys(playerObject).length + 1; i++) {
+            if (playerObject[i]) {
+                playerObject[i].is_taken = false;
+                playerObject[i].rostered_by = null;
+            }
+        }
+    }
     for (let i = 0; i < rosterData.length; i++) {
       const currentManagerId = rosterData[i].owner_id;
       const currentManagerData = managerData.find(manager => manager.user_id === currentManagerId);
@@ -139,7 +152,7 @@ class App extends React.Component {
             }
             let value = await playerInfo.find(findPlayer);
             if (!value) {
-                console.log(`Couldn't find ${nextSpring[i][0] + " " + nextSpring[i][1] + " " + nextSpring[i][2]}`);
+                console.log(`Couldn't find ${nextSpring[i][0] + " " + nextSpring[i][1] + " " + nextSpring[i][2] + " " + (i + 1)}`);
             }
         }
 
@@ -147,6 +160,7 @@ class App extends React.Component {
             rankingPlayersIdsList: mostSearchedForPlayers
         })
         this.filterPlayers();
+    //    this.buildRoster();
     }
 
     filterPlayers = () => {
@@ -156,41 +170,64 @@ class App extends React.Component {
         })
     }
 
+    addToRoster = (playerInfo) => {
+        let { rosterPositions } = this.state;
+        console.log(playerInfo);
+        if (playerInfo.position === "TE" || playerInfo.position === "RB" || playerInfo.position === "WR") {
+            playerInfo.fantasy_positions.push("FLEX");
+            playerInfo.fantasy_positions.push("SUPER_FLEX");
+        } else if (playerInfo.position === "QB") {
+            playerInfo.fantasy_positions.push("SUPER_FLEX");
+        }
+
+        for (let i = 0; i < playerInfo.fantasy_positions.length; i++) {
+            const includesPosition = rosterPositions.includes(playerInfo.fantasy_positions[i]);
+            if (includesPosition) {
+                const positionIndex = rosterPositions.indexOf(playerInfo.fantasy_positions[i]);
+                rosterPositions.splice(positionIndex, 1, playerInfo.fantasy_positions[i] + " " + playerInfo.full_name + " " + playerInfo.team);
+                break;
+            }
+        }
+         this.setState({
+             rosterPositions: rosterPositions
+         })
+    }
+
   render() {
-    const { playerInfo, isLoading, filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList } = this.state;
+    const { playerInfo, isLoading, filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData } = this.state;
     if (isLoading) {
       return <p>Loading...</p>;
     } else {
       return (
-      <div>
+      <div className="main-container">
         <div className="search">
-            <SearchBar leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}>
+            <div className="position-filter">
               <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
               <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
               <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
               <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
               <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
               <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
-            </SearchBar>
+            </div>
             <textarea value={searchText} onChange={this.updateSearchText} />
             <button onClick={this.updateRankings}>
                 Submit
             </button>
+            </div>
+            <div className="player-grid">
+            {filteredPlayersIdsList.map(id => (
+              <PlayerInfoItem player={playerInfo[id]} addToRoster={this.addToRoster} rankingPlayersIdsList={rankingPlayersIdsList}/>
+            ))}
+            </div>
+        <div className="league-grid">
+            <p><b>{leagueData[2].name}</b></p>
+            <SearchBar leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}/>
         </div>
-        {filteredPlayersIdsList.map(id => (
-          <div key={id} className={`single-player-item ${playerInfo[id].position} ${playerInfo[id].is_taken ? "" : "available"}`}>
-            <div className="player-name">
-                <p><b>Player name: {playerInfo[id].full_name}</b></p>
-                <p className="player-info-item">- {playerInfo[id].team}</p>
-                <p className="player-info-item">({playerInfo[id].position})</p>
-            </div>
-            <div className="player-info">
-                <p className="player-info-item"><b>Is rostered:</b> {playerInfo[id].is_taken ? playerInfo[id].is_taken.toString() : "false"} </p>
-                <p className="player-info-item"><b>Rostered by:</b> {playerInfo[id].rostered_by ? playerInfo[id].rostered_by : "None"}</p>
-                <p className="player-info-item"><b>Weekly rank:</b> {rankingPlayersIdsList.indexOf(id) + 1}</p>
-            </div>
-          </div>
-        ))}
+        <div className="roster-positions">
+            {rosterPositions.map(pos => (
+                <p>{pos}</p>
+            ))}
+        </div>
       </div>
     )};
   }
