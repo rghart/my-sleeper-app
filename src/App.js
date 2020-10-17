@@ -21,6 +21,7 @@ class App extends React.Component {
     showAvailable: true,
     showOnlyMyPlayers: true,
     leagueID: "521036158513700864",
+    allLeagueIDs: [],
     rosterPositions: [],
   };
 
@@ -33,7 +34,8 @@ class App extends React.Component {
     const urls = [
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
       `https://api.sleeper.app/v1/league/${leagueID}/users`,
-      `https://api.sleeper.app/v1/league/${leagueID}`
+      `https://api.sleeper.app/v1/league/${leagueID}`,
+      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2020`
     ]
     let requests = urls.map(url => fetch(url));
     Promise.all(requests)
@@ -45,10 +47,12 @@ class App extends React.Component {
     .then(data => {
         console.log(data);
       this.markTakenPlayers(data[0], data[1]);
+      let leagueIds = data[3];
       this.setState({
         leagueData: data,
         isLoading: false,
-        rosterPositions: data[2].roster_positions.filter(pos => pos !== "BN")
+        rosterPositions: data[2].roster_positions.filter(pos => pos !== "BN"),
+        allLeagueIDs: leagueIds
       });
       if (this.state.rankingPlayersIdsList) {
           this.filterPlayers();
@@ -222,7 +226,7 @@ class App extends React.Component {
             </div>
         <div className="league-grid">
             <p><b>{leagueData[2].name}</b></p>
-            <SearchBar leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}/>
+            <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}/>
         </div>
         <div className="roster-positions">
             {rosterPositions.map(pos => (

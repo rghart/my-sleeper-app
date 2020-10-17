@@ -1,13 +1,17 @@
 import React from 'react';
 
-const SearchBar = ({ children, leagueID, updateLeagueID, getLeagueData }) => {
+const SearchBar = ({ children, allLeagueIDs, leagueID, updateLeagueID, getLeagueData }) => {
   return (
     <div className="search-box">
       <div>
         {children}
       </div>
       <div>
-        <input type="text" value={leagueID} onChange={updateLeagueID} placeholder="Update league ID" />
+          <select value={leagueID} onChange={updateLeagueID}>
+              {allLeagueIDs.map(league => (
+                <option value={league.league_id}>{league.name}</option>
+              ))}
+          </select>
         <button onClick={getLeagueData}>
             Submit
         </button>
