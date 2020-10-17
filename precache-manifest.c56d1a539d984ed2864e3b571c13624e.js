@@ -1,11 +1,11 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "32805087fee3c98f3c7687992ef9e78e",
+    "revision": "625100743fbd8f8dcbf3ccd50cfd01f1",
     "url": "/my-sleeper-app/index.html"
   },
   {
-    "revision": "9e81f03d1c15d1808c17",
-    "url": "/my-sleeper-app/static/css/main.4e1f836f.chunk.css"
+    "revision": "223962ebb2c552f5ec99",
+    "url": "/my-sleeper-app/static/css/main.e37d8758.chunk.css"
   },
   {
     "revision": "b58d8f9d4cb9a2bc14a3",
@@ -16,7 +16,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/my-sleeper-app/static/js/2.e27a9a71.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "9e81f03d1c15d1808c17",
+    "revision": "223962ebb2c552f5ec99",
     "url": "/my-sleeper-app/static/js/main.b22cfba8.chunk.js"
   },
   {
