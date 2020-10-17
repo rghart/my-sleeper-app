@@ -30,6 +30,9 @@ class App extends React.Component {
   }
 
   getLeagueData = async () => {
+      this.setState({
+        isLoading: true,
+      });
     const leagueID = this.state.leagueID;
     const urls = [
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
@@ -113,6 +116,9 @@ class App extends React.Component {
     }
 
     updateRankings = async () => {
+        this.setState({
+          isLoading: true,
+        });
         const playerInfoArray = Object.values(this.state.playerInfo);
         playerInfoArray.sort((a, b) => a.search_rank - b.search_rank);
         const options = {
@@ -162,7 +168,8 @@ class App extends React.Component {
         })
 
         await this.setState({
-            rankingPlayersIdsList: searchResultsArray
+            rankingPlayersIdsList: searchResultsArray,
+            isLoading: false
         })
         this.filterPlayers();
     //    this.buildRoster();
