@@ -4,6 +4,7 @@ import playerData from './sleeper_player_data';
 import SearchBar from './SearchBar';
 import SearchFilterButton from './SearchFilterButton';
 import PlayerInfoItem from './PlayerInfoItem';
+import Fuse from 'fuse.js';
 
 // Update player data with curl https://api.sleeper.app/v1/players/nfl --output sleeper_player_data.json
 
@@ -108,56 +109,56 @@ class App extends React.Component {
     }
 
     updateRankings = async () => {
-        let mostSearchedForPlayers = [];
-        const playerInfoArray = Object.entries(this.state.playerInfo);
-        let playerInfo = [];
-        playerInfoArray.forEach(([key, value]) => {
-            value.key = key;
-            if (value.search_rank < 1000) {
-                playerInfo.push(value);
-            }
-        })
-        playerInfo.sort((a, b) => a.search_rank - b.search_rank);
+        const playerInfoArray = Object.values(this.state.playerInfo);
+        playerInfoArray.sort((a, b) => a.search_rank - b.search_rank);
+        const options = {
+            useExtendedSearch: true,
+            keys: [
+                "search_last_name",
+                "search_first_name",
+                "team",
+            ]
+        }
+        const fuse = new Fuse(playerInfoArray, options);
 
         let rankString = this.state.searchText;
         let addLineBreak = rankString.replace(/(?:\r\n|\r|\n)/g, '<br>')
         let splitLineBreak = addLineBreak.split('<br>');
-        let splitByPeriod = splitLineBreak.map(name => {
-            let newArray = name.split('');
-            newArray.splice(1, 1, " ");
-            return newArray.join("");
-        });
+        let searchResultsArray = [];
 
-        let nextSpring = splitByPeriod.map(s => s.split(" "));
-        for (let i = 0; i < nextSpring.length; i++) {
-            if (nextSpring[i][3]) {
-                nextSpring[i].splice(2, 1);
+        splitLineBreak.forEach(line => {
+            line = line.replace(/[0-9]/g, '');
+            let splitString = line.split('');
+            splitString.splice(1, 1, " ");
+            let nameAndTeam = splitString.join("");
+            let firstLastTeamArrays = nameAndTeam.split(/\t/)[0];
+            firstLastTeamArrays = firstLastTeamArrays.split(" ");
+            if (firstLastTeamArrays[3]) {
+                firstLastTeamArrays.splice(2, 1);
             }
-            if (nextSpring[i][1].split("")[1] === ".") {
-                nextSpring[i][1].split("").splice(0, 2);
-            }
-            if (nextSpring[i][2] === "LA") {
-                nextSpring[i][2] = "LAR"
-            }
-            if (nextSpring[i][2] === "JAC") {
-                nextSpring[i][2] = "JAX"
+            if (firstLastTeamArrays[1].split("")[1] === ".") {
+                firstLastTeamArrays[1].split("").splice(0, 2);
             }
 
-            const findPlayer = (player) => {
-                if (nextSpring[i][0] === player.first_name.split("")[0] && (player.last_name.includes(nextSpring[i][1]) || nextSpring[i][1].includes(player.last_name)) && nextSpring[i][2] === player.team) {
-                    mostSearchedForPlayers.push(player.key);
-                    return true;
+            let results = fuse.search({
+              $and: [
+                  { search_first_name: `^${firstLastTeamArrays[0]}` },
+                  { search_last_name: firstLastTeamArrays[1] },
+                  { team: firstLastTeamArrays[2] }
+              ]
+            });
+            if (results[0]) {
+                searchResultsArray.push(results[0].item.player_id);
+                if (results[0].item.search_rank > 500) {
+                    console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${searchResultsArray.length - 1}`)
                 }
-                return false;
+            } else {
+                console.log(`Couldn't find ${firstLastTeamArrays[0]} ${firstLastTeamArrays[1]} ${firstLastTeamArrays[2]}`)
             }
-            let value = await playerInfo.find(findPlayer);
-            if (!value) {
-                console.log(`Couldn't find ${nextSpring[i][0] + " " + nextSpring[i][1] + " " + nextSpring[i][2] + " " + (i + 1)}`);
-            }
-        }
+        })
 
         await this.setState({
-            rankingPlayersIdsList: mostSearchedForPlayers
+            rankingPlayersIdsList: searchResultsArray
         })
         this.filterPlayers();
     //    this.buildRoster();
