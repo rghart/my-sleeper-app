@@ -1,6 +1,6 @@
 {
   "files": {
-    "main.css": "/my-sleeper-app/static/css/main.d3ea3cba.chunk.css",
+    "main.css": "/my-sleeper-app/static/css/main.4e1f836f.chunk.css",
     "main.js": "/my-sleeper-app/static/js/main.b22cfba8.chunk.js",
     "main.js.map": "/my-sleeper-app/static/js/main.b22cfba8.chunk.js.map",
     "runtime-main.js": "/my-sleeper-app/static/js/runtime-main.0eb5a148.js",
@@ -8,15 +8,15 @@
     "static/js/2.e27a9a71.chunk.js": "/my-sleeper-app/static/js/2.e27a9a71.chunk.js",
     "static/js/2.e27a9a71.chunk.js.map": "/my-sleeper-app/static/js/2.e27a9a71.chunk.js.map",
     "index.html": "/my-sleeper-app/index.html",
-    "precache-manifest.97eb1b8d7305afe554b81965dc3610eb.js": "/my-sleeper-app/precache-manifest.97eb1b8d7305afe554b81965dc3610eb.js",
+    "precache-manifest.163f446cb4d8e9f08f70f999111c0f3f.js": "/my-sleeper-app/precache-manifest.163f446cb4d8e9f08f70f999111c0f3f.js",
     "service-worker.js": "/my-sleeper-app/service-worker.js",
-    "static/css/main.d3ea3cba.chunk.css.map": "/my-sleeper-app/static/css/main.d3ea3cba.chunk.css.map",
+    "static/css/main.4e1f836f.chunk.css.map": "/my-sleeper-app/static/css/main.4e1f836f.chunk.css.map",
     "static/js/2.e27a9a71.chunk.js.LICENSE.txt": "/my-sleeper-app/static/js/2.e27a9a71.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.0eb5a148.js",
     "static/js/2.e27a9a71.chunk.js",
-    "static/css/main.d3ea3cba.chunk.css",
+    "static/css/main.4e1f836f.chunk.css",
     "static/js/main.b22cfba8.chunk.js"
   ]
 }
