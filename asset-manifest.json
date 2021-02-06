@@ -1,22 +1,22 @@
 {
   "files": {
     "main.css": "/my-sleeper-app/static/css/main.e37d8758.chunk.css",
-    "main.js": "/my-sleeper-app/static/js/main.3b41272f.chunk.js",
-    "main.js.map": "/my-sleeper-app/static/js/main.3b41272f.chunk.js.map",
+    "main.js": "/my-sleeper-app/static/js/main.20ba9c53.chunk.js",
+    "main.js.map": "/my-sleeper-app/static/js/main.20ba9c53.chunk.js.map",
     "runtime-main.js": "/my-sleeper-app/static/js/runtime-main.0eb5a148.js",
     "runtime-main.js.map": "/my-sleeper-app/static/js/runtime-main.0eb5a148.js.map",
-    "static/js/2.e27a9a71.chunk.js": "/my-sleeper-app/static/js/2.e27a9a71.chunk.js",
-    "static/js/2.e27a9a71.chunk.js.map": "/my-sleeper-app/static/js/2.e27a9a71.chunk.js.map",
+    "static/js/2.be1efb90.chunk.js": "/my-sleeper-app/static/js/2.be1efb90.chunk.js",
+    "static/js/2.be1efb90.chunk.js.map": "/my-sleeper-app/static/js/2.be1efb90.chunk.js.map",
     "index.html": "/my-sleeper-app/index.html",
-    "precache-manifest.bfe8d6198d261c8e08bc2a4f0e5faaed.js": "/my-sleeper-app/precache-manifest.bfe8d6198d261c8e08bc2a4f0e5faaed.js",
+    "precache-manifest.8ba0cef643deb6980f7f24b21cb502bf.js": "/my-sleeper-app/precache-manifest.8ba0cef643deb6980f7f24b21cb502bf.js",
     "service-worker.js": "/my-sleeper-app/service-worker.js",
     "static/css/main.e37d8758.chunk.css.map": "/my-sleeper-app/static/css/main.e37d8758.chunk.css.map",
-    "static/js/2.e27a9a71.chunk.js.LICENSE.txt": "/my-sleeper-app/static/js/2.e27a9a71.chunk.js.LICENSE.txt"
+    "static/js/2.be1efb90.chunk.js.LICENSE.txt": "/my-sleeper-app/static/js/2.be1efb90.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.0eb5a148.js",
-    "static/js/2.e27a9a71.chunk.js",
+    "static/js/2.be1efb90.chunk.js",
     "static/css/main.e37d8758.chunk.css",
-    "static/js/main.3b41272f.chunk.js"
+    "static/js/main.20ba9c53.chunk.js"
   ]
 }
