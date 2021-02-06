@@ -5,7 +5,9 @@ import SearchFilterButton from './SearchFilterButton';
 import PlayerInfoItem from './PlayerInfoItem';
 import Fuse from 'fuse.js';
 
-// Update player data with curl https://api.sleeper.app/v1/players/nfl --output sleeper_player_data.json
+// No longer need to do this: Update player data with curl https://api.sleeper.app/v1/players/nfl --output sleeper_player_data.json
+// TODO Write function that pulls from sleeper app API and updates firebase DB. Can only be run once per day per sleeper API docs. 
+// Consider only having it run if it's the first time a user has visited the site that day
 
 class App extends React.Component {
   state = {
