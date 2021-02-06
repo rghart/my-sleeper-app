@@ -1,6 +1,5 @@
 import React from 'react';
 import './App.css';
-import playerData from './sleeper_player_data';
 import SearchBar from './SearchBar';
 import SearchFilterButton from './SearchFilterButton';
 import PlayerInfoItem from './PlayerInfoItem';
@@ -10,7 +9,7 @@ import Fuse from 'fuse.js';
 
 class App extends React.Component {
   state = {
-    playerInfo: playerData,
+    playerInfo: {},
     leagueData: [],
     isLoading: true,
     rankingPlayersIdsList: [],
@@ -26,7 +25,21 @@ class App extends React.Component {
   };
 
   componentDidMount() {
-    this.getLeagueData();
+    this.getPlayerData();
+  }
+
+  getPlayerData = async () => {
+    await fetch("https://sleeper-player-db-default-rtdb.firebaseio.com/.json")
+    .then(response => response.json())
+    .then(data => {
+      this.setState({
+        playerInfo: data
+      })
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+    });
+    this.getLeagueData();   
   }
 
   getLeagueData = async () => {
@@ -139,7 +152,9 @@ class App extends React.Component {
         splitLineBreak.forEach(line => {
             line = line.replace(/[0-9]/g, '');
             let splitString = line.split('');
-            splitString.splice(1, 1, " ");
+            if (splitString[1] === ".") {
+              splitString.splice(1, 1, " ");
+            }
             let nameAndTeam = splitString.join("");
             let firstLastTeamArrays = nameAndTeam.split(/\t/)[0];
             firstLastTeamArrays = firstLastTeamArrays.split(" ");
