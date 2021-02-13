@@ -11,7 +11,7 @@ const PlayerInfoItem = ({ player, addToRoster, rankingPlayersIdsList }) => {
         <div className="player-info">
             <p className="player-info-item"><b>Is rostered:</b> {player.is_taken ? player.is_taken.toString() : "false"} </p>
             <p className="player-info-item"><b>Rostered by:</b> {player.rostered_by ? player.rostered_by : "None"}</p>
-            <p className="player-info-item"><b>Weekly rank:</b> {rankingPlayersIdsList.indexOf(player.player_id) + 1}</p>
+            <p className="player-info-item"><b>Weekly rank:</b> {rankingPlayersIdsList.find(obj => obj.player_id === player.player_id).ranking}</p>
             <button onClick={() => addToRoster(player)}>
                 Add
             </button>

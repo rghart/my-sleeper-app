@@ -21,9 +21,10 @@ class App extends React.Component {
     checkedItems: ["QB", "RB", "WR", "TE", "K", "DEF"],
     showAvailable: true,
     showOnlyMyPlayers: true,
-    leagueID: "521036158513700864",
+    leagueID: "662349421429727232",
     allLeagueIDs: [],
     rosterPositions: [],
+    notFoundPlayers: [],
   };
 
   componentDidMount() {
@@ -53,7 +54,7 @@ class App extends React.Component {
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
       `https://api.sleeper.app/v1/league/${leagueID}/users`,
       `https://api.sleeper.app/v1/league/${leagueID}`,
-      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2020`
+      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2021`
     ]
     let requests = urls.map(url => fetch(url));
     Promise.all(requests)
@@ -133,67 +134,144 @@ class App extends React.Component {
     updateRankings = async () => {
         this.setState({
           isLoading: true,
+          notFoundPlayers: [],
         });
         const playerInfoArray = Object.values(this.state.playerInfo);
+        let { notFoundPlayers } = this.state;
         playerInfoArray.sort((a, b) => a.search_rank - b.search_rank);
-        const options = {
+        const playerInfoFuseOptions = {
             useExtendedSearch: true,
+            includeScore: true,
+            threshold: 0.5,
             keys: [
                 "search_last_name",
                 "search_first_name",
                 "team",
+                "position"
             ]
         }
-        const fuse = new Fuse(playerInfoArray, options);
+        const options = {
+          includeScore: true,
+          threshold: 0.3,
+        }
+        const positions = ['QB', 'RB', 'WR', 'TE', 'DEF', 'K'];
+        const teams = ['CAR', 'MIN', 'TEN', 'GB', 'NO', 'NYG', 'KC', 'IND', 'LAC', 'DAL', 'BUF', 'CLE', 'SEA', 'ARI', 'LV', 'ATL', 'LAR', 'LA', 'FA', 'CIN', 'SF', 'JAX', 'JAC', 'WAS', 'CHI', 'PHI', 'BAL', 'TB', 'DEN', 'HOU', 'PIT', 'MIA', 'DET', 'NE', 'NYJ', 'ROOKIE'];
+        const playerInfoFuse = new Fuse(playerInfoArray, playerInfoFuseOptions);
+        const teamsFuse = new Fuse(teams, options);
 
         let rankString = this.state.searchText;
         let addLineBreak = rankString.replace(/(?:\r\n|\r|\n)/g, '<br>')
         let splitLineBreak = addLineBreak.split('<br>');
         let searchResultsArray = [];
+        let ranking = 1;
 
         splitLineBreak.forEach(line => {
-            line = line.replace(/[0-9]/g, '');
-            let splitString = line.split('');
-            if (splitString[1] === ".") {
+            // Removing any numbers from the search string
+            line = line.replace(/[0-9]/g, "");
+            // Splitting the string
+            let splitString = line.split("");
+            // Making sure the first index isn't a period after removing numbers. Just in case we get "1., 2., 3."" etc
+            if (splitString[0] === ".") {
+              splitString.splice(0, 1, "");
+            }
+            // Sometimes ranks just have the first letter of the first name and the last name separated by a period. ex. "T.Brady"
+            // Want to remove this without removing for players that go by initials, ex. "J.K. Dobbins"
+            if (splitString[1] === "." && splitString[3] !== ".") {
               splitString.splice(1, 1, " ");
             }
-            let nameAndTeam = splitString.join("");
-            let firstLastTeamArrays = nameAndTeam.split(/\t/)[0];
-            firstLastTeamArrays = firstLastTeamArrays.split(" ");
-            if (firstLastTeamArrays[3]) {
-                firstLastTeamArrays.splice(2, 1);
+            let nameAndTeam = splitString.join("").trim();
+            // Splitting by spaces and removing whitespace
+            let firstLastTeamArrays = nameAndTeam.split(/\s/).map(item => item.trim());
+            let searchArray;
+            let foundPositionStr;
+            let foundTeamStr;
+            // If there's more than 2 indexes, we want to see if they can help with our search by looking for player position and team initials
+            if (firstLastTeamArrays.length > 2) {
+              const positionIndex = firstLastTeamArrays.findIndex(item => positions.includes(item));
+              if (positionIndex >= 0) {
+                foundPositionStr = firstLastTeamArrays.splice(positionIndex, 1)[0];
+              }
+              foundTeamStr = this.getHighestScore(firstLastTeamArrays, teamsFuse);
+              if (foundTeamStr) {
+                firstLastTeamArrays.splice(firstLastTeamArrays.indexOf(foundTeamStr), 1);
+              }
             }
-            if (firstLastTeamArrays[1].split("")[1] === ".") {
-                firstLastTeamArrays[1].split("").splice(0, 2);
-            }
-
-            let results = fuse.search({
+            searchArray = [firstLastTeamArrays[0], firstLastTeamArrays[1], foundTeamStr, foundPositionStr]
+            let results = playerInfoFuse.search({
               $and: [
-                  { search_first_name: `^${firstLastTeamArrays[0]}` },
-                  { search_last_name: firstLastTeamArrays[1] },
-                  { team: firstLastTeamArrays[2] }
+                  { 
+                    $or: [
+                      { search_first_name: searchArray[0].toLowerCase() },
+                      { search_first_name: `^${searchArray[0].toLowerCase()}` }
+                    ] 
+                  },
+                  { search_last_name: searchArray[1].toLowerCase() },
+                  { team: searchArray[2] },
+                  { position: searchArray[3] }
+              ],
+              // eslint-disable-next-line
+              $and: [
+                { 
+                  $or: [
+                    { search_first_name: searchArray[0].toLowerCase() },
+                    { search_first_name: `^${searchArray[0].toLowerCase()}` }
+                  ] 
+                },
+                { search_last_name: searchArray[1].toLowerCase() },
+                { team: searchArray[2] }
+              ],
+              // eslint-disable-next-line
+              $and: [
+                { 
+                  $or: [
+                    { search_first_name: searchArray[0].toLowerCase() },
+                    { search_first_name: `^${searchArray[0].toLowerCase()}` }
+                  ] 
+                },
+                { search_last_name: searchArray[1].toLowerCase() },
+                { position: searchArray[3] }
+              ],
+              // eslint-disable-next-line
+              $and: [
+                { 
+                  $or: [
+                    { search_first_name: searchArray[0].toLowerCase() },
+                    { search_first_name: `^${searchArray[0].toLowerCase()}` }
+                  ] 
+                },
+                { search_last_name: searchArray[1].toLowerCase() }
               ]
             });
-            if (results[0]) {
-                searchResultsArray.push(results[0].item.player_id);
+            if (results[0] && results[0].score < 0.4) {
+                searchResultsArray.push({player_id: results[0].item.player_id, ranking: ranking});
                 if (results[0].item.search_rank > 500) {
-                    console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${searchResultsArray.length - 1}`)
+                    console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${ranking}`)
                 }
             } else {
-                console.log(`Couldn't find ${firstLastTeamArrays[0]} ${firstLastTeamArrays[1]} ${firstLastTeamArrays[2]}`)
+                notFoundPlayers.push(`Couldn't find ${firstLastTeamArrays[0]} ${firstLastTeamArrays[1]} ${firstLastTeamArrays[2]} Rank: ${ranking}`);
             }
+            ranking += 1;
         })
 
         await this.setState({
-            rankingPlayersIdsList: searchResultsArray,
-            isLoading: false
+          rankingPlayersIdsList: searchResultsArray,
+          isLoading: false,
+          notFoundPlayers: notFoundPlayers,
         })
         this.filterPlayers();
     //    this.buildRoster();
     }
 
+    getHighestScore = (arr, fuseSearch) => {
+        let bestResult = arr
+          .map(item => fuseSearch.search(item))
+          .filter(item => item.length > 0)
+          .sort((a, b) => a[0]?.score - b[0]?.score);
+        return bestResult[0] ? bestResult[0][0].item : null;
+    }
+
     filterPlayers = () => {
-        const newPlayers = this.state.rankingPlayersIdsList.filter(playerID => this.state.checkedItems.includes(this.state.playerInfo[playerID].position) && (this.state.playerInfo[playerID].is_taken !== true || this.state.playerInfo[playerID].rostered_by === 'ryangh'));
+        const newPlayers = this.state.rankingPlayersIdsList.filter(player => this.state.checkedItems.includes(this.state.playerInfo[player.player_id].position) && (this.state.playerInfo[player.player_id].is_taken !== true || this.state.playerInfo[player.player_id].rostered_by === 'ryangh')).map(player => player.player_id);
         this.setState({
             filteredPlayersIdsList: newPlayers
         })
@@ -223,7 +301,7 @@ class App extends React.Component {
     }
 
   render() {
-    const { playerInfo, isLoading, filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData } = this.state;
+    const { playerInfo, isLoading, filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData, notFoundPlayers } = this.state;
     if (isLoading) {
       return <p>Loading...</p>;
     } else {
@@ -244,9 +322,12 @@ class App extends React.Component {
             </button>
             </div>
             <div className="player-grid">
-            {filteredPlayersIdsList.map(id => (
-              <PlayerInfoItem player={playerInfo[id]} addToRoster={this.addToRoster} rankingPlayersIdsList={rankingPlayersIdsList}/>
-            ))}
+              {filteredPlayersIdsList.map(id => (
+                <PlayerInfoItem player={playerInfo[id]} addToRoster={this.addToRoster} rankingPlayersIdsList={rankingPlayersIdsList}/>
+              ))}
+              {notFoundPlayers.map(item => (
+                <p>{item}</p>
+              ))}
             </div>
         <div className="league-grid">
             <p><b>{leagueData[2].name}</b></p>
