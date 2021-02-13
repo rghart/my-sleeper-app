@@ -4,10 +4,10 @@
     "private": true,
     "homepage": "https://rghart.github.io/my-sleeper-app",
     "dependencies": {
-        "@testing-library/jest-dom": "^5.11.4",
-        "@testing-library/react": "^11.1.0",
-        "@testing-library/user-event": "^12.1.8",
-        "fuse.js": "^6.4.1",
+        "@testing-library/jest-dom": "^5.11.9",
+        "@testing-library/react": "^11.2.5",
+        "@testing-library/user-event": "^12.7.0",
+        "fuse.js": "^6.4.6",
         "react": "^16.14.0",
         "react-dom": "^16.14.0",
         "react-scripts": "3.4.3"
