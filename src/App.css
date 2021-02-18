@@ -61,6 +61,7 @@
     border-color: black;
     border-top-style: solid;
     border-right: solid;
+    border-left: solid;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
@@ -116,4 +117,9 @@
 .roster-positions {
     grid-area: 2 / 3;
     margin: 3px 18px;
+}
+
+.latest-update {
+  padding-bottom: 6px;
+  font-size: small;
 }

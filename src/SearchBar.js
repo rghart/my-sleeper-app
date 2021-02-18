@@ -9,7 +9,7 @@ const SearchBar = ({ children, allLeagueIDs, leagueID, updateLeagueID, getLeague
       <div>
           <select value={leagueID} onChange={updateLeagueID}>
               {allLeagueIDs.map(league => (
-                <option value={league.league_id}>{league.name}</option>
+                <option key={league.league_id} value={league.league_id}>{league.name}</option>
               ))}
           </select>
         <button onClick={getLeagueData}>
