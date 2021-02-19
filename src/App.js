@@ -4,6 +4,8 @@ import SearchBar from './SearchBar';
 import SearchFilterButton from './SearchFilterButton';
 import PlayerInfoItem from './PlayerInfoItem';
 import Fuse from 'fuse.js';
+import { auth } from './firebase.js';
+
 class App extends React.Component {
   state = {
     playerInfo: {},
@@ -22,10 +24,29 @@ class App extends React.Component {
     rosterPositions: [],
     notFoundPlayers: [],
     lastUpdate: null,
+    user: null,
+    authToken: null
   };
 
   componentDidMount() {
-    this.getPlayerData();
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        this.setState({
+          user
+        })
+      }
+    })
+    auth.signInAnonymously()
+      .then((result) => {
+        const user = result.user;
+        this.setState({
+          user
+        })
+      })
+      .then(() => {
+        this.getPlayerData();
+      })
+      .catch(err => console.error('Error:', err));
   }
   // TODO clean up and pull out helper functions and search function into separate file(s)
   checkErrors = (response) => {
@@ -51,7 +72,7 @@ class App extends React.Component {
 
   updatePlayerDB = async () => {
     // Attempt update to latest update attempt before calling Sleeper. return if that fails
-    const updateResponse = await this.putRequest("https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json", new Date().getTime());
+    const updateResponse = await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${this.state.authToken}`, new Date().getTime());
     if (updateResponse && updateResponse.ok) {
       const sleeperPlayerData = await fetch(`https://api.sleeper.app/v1/players/nfl`)
         .then(this.checkErrors)
@@ -73,14 +94,14 @@ class App extends React.Component {
             console.error('Error:', error);
           });
 
-      await this.putRequest("https://sleeper-player-db-default-rtdb.firebaseio.com/.json", sleeperPlayerData);
+      await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${this.state.authToken}`, sleeperPlayerData);
     } else {
       console.log("Wasn't able to update latest_update_attempt field")
     }
   }
 
   getLatestUpdateAttempt = async () => {
-    return await fetch("https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json")
+    return await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${this.state.authToken}`)
       .then(response => response.json())
       .then(data => {
         this.setState({
@@ -96,13 +117,22 @@ class App extends React.Component {
   // Need to update latest update time stamp before attempting to call Sleeper's API. 
   // This way if the update fails, or, succeeds and then the subsequent GET (Sleeper API) or PUT (my player DB) fails, we won't attempt to call Sleeper's API within 24 hours 
   getPlayerData = async () => {
+    await auth.currentUser.getIdToken(true)
+      .then((idToken) => {
+        this.setState({
+          authToken: idToken,
+        });
+      })
+      .catch((error) => {
+          // Handle error
+        });
     const day = 24 * 60 * 60 * 1000;
     const currentDate = new Date().getTime();
     const latestUpdateAttempt = await this.getLatestUpdateAttempt();
     if (currentDate - latestUpdateAttempt >= day) {
       await this.updatePlayerDB();
     }
-    await fetch("https://sleeper-player-db-default-rtdb.firebaseio.com/.json")
+    await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${this.state.authToken}`)
       .then(response => response.json())
       .then(data => {
         this.setState({
@@ -215,7 +245,6 @@ class App extends React.Component {
         const playerInfoFuseOptions = {
             useExtendedSearch: true,
             includeScore: true,
-            findAllMatches: true,
             keys: [
                 "search_last_name",
                 "search_first_name",
@@ -268,16 +297,16 @@ class App extends React.Component {
                 firstLastTeamArrays.splice(firstLastTeamArrays.indexOf(foundTeamStr), 1);
               }
             }
-            searchArray = [firstLastTeamArrays[0], firstLastTeamArrays[1], foundTeamStr, foundPositionStr];
+            searchArray = [firstLastTeamArrays[0].replace(/[^a-zA-Z]/g, ""), firstLastTeamArrays[1].replace(/[^a-zA-Z]/g, ""), foundTeamStr, foundPositionStr];
             let results = playerInfoFuse.search({
               $or:[
                 {
                   $and: [
-                    { search_last_name: searchArray[1].replace(/[^a-zA-Z]/g, "") },
+                    { search_last_name: searchArray[1] },
                     { 
                       $or: [
-                        { search_first_name: searchArray[0].replace(/[^a-zA-Z]/g, "") },
-                        { search_first_name: `^${searchArray[0].replace(/[^a-zA-Z]/g, "")}` }
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
                       ] 
                     },
                     { position: `=${searchArray[3]}` },
@@ -287,11 +316,11 @@ class App extends React.Component {
                 // eslint-disable-next-line
                 {
                   $and: [
-                    { search_last_name: searchArray[1].replace(/[^a-zA-Z]/g, "") },
+                    { search_last_name: searchArray[1] },
                     { 
                       $or: [
-                        { search_first_name: searchArray[0].replace(/[^a-zA-Z]/g, "") },
-                        { search_first_name: `^${searchArray[0].replace(/[^a-zA-Z]/g, "")}` }
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
                       ] 
                     },
                     { position: `=${searchArray[3]}` }
@@ -300,11 +329,11 @@ class App extends React.Component {
                 // eslint-disable-next-line
                 {
                   $and: [
-                    { search_last_name: searchArray[1].replace(/[^a-zA-Z]/g, "") },
+                    { search_last_name: searchArray[1] },
                     { 
                       $or: [
-                        { search_first_name: searchArray[0].replace(/[^a-zA-Z]/g, "") },
-                        { search_first_name: `^${searchArray[0].replace(/[^a-zA-Z]/g, "")}` }
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
                       ] 
                     },
                     { team: `=${searchArray[2]}` }
@@ -313,11 +342,11 @@ class App extends React.Component {
                 // eslint-disable-next-line
                 {
                   $and: [
-                    { search_last_name: searchArray[1].replace(/[^a-zA-Z]/g, "") },
+                    { search_last_name: searchArray[1] },
                     { 
                       $or: [
-                        { search_first_name: searchArray[0].replace(/[^a-zA-Z]/g, "") },
-                        { search_first_name: `^${searchArray[0].replace(/[^a-zA-Z]/g, "")}` }
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
                       ] 
                     }
                   ]
