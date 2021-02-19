@@ -4,16 +4,14 @@ import SearchBar from './SearchBar';
 import SearchFilterButton from './SearchFilterButton';
 import PlayerInfoItem from './PlayerInfoItem';
 import Fuse from 'fuse.js';
-
-// No longer need to do this: Update player data with curl https://api.sleeper.app/v1/players/nfl --output sleeper_player_data.json
-// TODO Write function that pulls from sleeper app API and updates firebase DB. Can only be run once per day per sleeper API docs. 
-// Consider only having it run if it's the first time a user has visited the site that day
+import { auth } from './firebase.js';
 
 class App extends React.Component {
   state = {
     playerInfo: {},
     leagueData: [],
     isLoading: true,
+    loadingMessage: "Loading...",
     rankingPlayersIdsList: [],
     filteredPlayersIdsList: [],
     isTyping: false,
@@ -25,23 +23,125 @@ class App extends React.Component {
     allLeagueIDs: [],
     rosterPositions: [],
     notFoundPlayers: [],
+    lastUpdate: null,
+    user: null,
+    authToken: null
   };
 
   componentDidMount() {
-    this.getPlayerData();
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        this.setState({
+          user
+        })
+      }
+    })
+    auth.signInAnonymously()
+      .then((result) => {
+        const user = result.user;
+        this.setState({
+          user
+        })
+      })
+      .then(() => {
+        this.getPlayerData();
+      })
+      .catch(err => console.error('Error:', err));
+  }
+  // TODO clean up and pull out helper functions and search function into separate file(s)
+  checkErrors = (response) => {
+    if (!response.ok) {
+      throw new Error(response.statusText, response.status)
+    }
+    return response;
   }
 
-  getPlayerData = async () => {
-    await fetch("https://sleeper-player-db-default-rtdb.firebaseio.com/.json")
-    .then(response => response.json())
-    .then(data => {
-      this.setState({
-        playerInfo: data
-      })
+  putRequest = async (url, data) => {
+    const response = await fetch(url, { 
+      method: 'PUT', 
+      headers: { 
+        'Content-type': 'application/json'
+      },
+      body: JSON.stringify(data) 
     })
-    .catch((error) => {
-      console.error('Error:', error);
-    });
+      .then(this.checkErrors)
+      .catch(err => console.error('Error:', err));
+
+    return response;
+  }
+
+  updatePlayerDB = async () => {
+    // Attempt update to latest update attempt before calling Sleeper. return if that fails
+    const updateResponse = await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${this.state.authToken}`, new Date().getTime());
+    if (updateResponse && updateResponse.ok) {
+      const sleeperPlayerData = await fetch(`https://api.sleeper.app/v1/players/nfl`)
+        .then(this.checkErrors)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Successfully fetched Sleeper Player data from API")
+          let filteredData = Object.fromEntries(
+            Object.entries(data)
+            .filter(([key, val]) => val.active)
+          )
+          const currentDate = new Date().getTime();
+          filteredData.latest_update_attempt = currentDate;
+          this.setState({
+            lastUpdate: currentDate
+          })
+          return filteredData;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+          });
+
+      await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${this.state.authToken}`, sleeperPlayerData);
+    } else {
+      console.log("Wasn't able to update latest_update_attempt field")
+    }
+  }
+
+  getLatestUpdateAttempt = async () => {
+    return await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${this.state.authToken}`)
+      .then(response => response.json())
+      .then(data => {
+        this.setState({
+          lastUpdate: data
+        })
+        return data;
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+  }
+
+  // Need to update latest update time stamp before attempting to call Sleeper's API. 
+  // This way if the update fails, or, succeeds and then the subsequent GET (Sleeper API) or PUT (my player DB) fails, we won't attempt to call Sleeper's API within 24 hours 
+  getPlayerData = async () => {
+    await auth.currentUser.getIdToken(true)
+      .then((idToken) => {
+        this.setState({
+          authToken: idToken,
+        });
+      })
+      .catch((error) => {
+          // Handle error
+        });
+    const day = 24 * 60 * 60 * 1000;
+    const currentDate = new Date().getTime();
+    const latestUpdateAttempt = await this.getLatestUpdateAttempt();
+    if (currentDate - latestUpdateAttempt >= day) {
+      await this.updatePlayerDB();
+    }
+    await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${this.state.authToken}`)
+      .then(response => response.json())
+      .then(data => {
+        this.setState({
+          playerInfo: data,
+        })
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
     this.getLeagueData();   
   }
 
@@ -58,28 +158,27 @@ class App extends React.Component {
     ]
     let requests = urls.map(url => fetch(url));
     Promise.all(requests)
-    .then(responses => {
-      return Promise.all(responses.map(response => {
-        return response.json();
-      }))
-  })
-    .then(data => {
-        console.log(data);
-      this.markTakenPlayers(data[0], data[1]);
-      let leagueIds = data[3];
-      this.setState({
-        leagueData: data,
-        isLoading: false,
-        rosterPositions: data[2].roster_positions.filter(pos => pos !== "BN"),
-        allLeagueIDs: leagueIds
+      .then(responses => {
+        return Promise.all(responses.map(response => {
+          return response.json();
+        }))
+      })
+      .then(data => {
+        this.markTakenPlayers(data[0], data[1]);
+        let leagueIds = data[3];
+        this.setState({
+          leagueData: data,
+          isLoading: false,
+          rosterPositions: data[2].roster_positions.filter(pos => pos !== "BN"),
+          allLeagueIDs: leagueIds
+        });
+        if (this.state.rankingPlayersIdsList) {
+            this.filterPlayers();
+        }
+      })
+      .catch((error) => {
+        console.error('Error:', error);
       });
-      if (this.state.rankingPlayersIdsList) {
-          this.filterPlayers();
-      }
-    })
-    .catch((error) => {
-      console.error('Error:', error);
-    });
   }
 
   markTakenPlayers = (rosterData, managerData) => {
@@ -95,7 +194,7 @@ class App extends React.Component {
     for (let i = 0; i < rosterData.length; i++) {
       const currentManagerId = rosterData[i].owner_id;
       const currentManagerData = managerData.find(manager => manager.user_id === currentManagerId);
-      rosterData[i].manager_display_name = currentManagerData.display_name;
+      rosterData[i].manager_display_name = currentManagerData ? currentManagerData.display_name : "Unassigned";
       rosterData[i].players.forEach(player => {
         playerObject[player].is_taken = true;
         playerObject[player].rostered_by = rosterData[i].manager_display_name;
@@ -131,18 +230,21 @@ class App extends React.Component {
       this.filterPlayers();
     }
 
-    updateRankings = async () => {
+    startLoad = () => {
         this.setState({
           isLoading: true,
-          notFoundPlayers: [],
-        });
-        const playerInfoArray = Object.values(this.state.playerInfo);
-        let { notFoundPlayers } = this.state;
+        }, () => {
+            return this.updateRankings();
+          });
+    }
+
+    updateRankings = async () => {
+        let { playerInfo, searchText } = this.state;
+        const playerInfoArray = Object.values(playerInfo);
         playerInfoArray.sort((a, b) => a.search_rank - b.search_rank);
         const playerInfoFuseOptions = {
             useExtendedSearch: true,
             includeScore: true,
-            threshold: 0.5,
             keys: [
                 "search_last_name",
                 "search_first_name",
@@ -151,19 +253,18 @@ class App extends React.Component {
             ]
         }
         const options = {
-          includeScore: true,
-          threshold: 0.3,
+          includeScore: true
         }
         const positions = ['QB', 'RB', 'WR', 'TE', 'DEF', 'K'];
         const teams = ['CAR', 'MIN', 'TEN', 'GB', 'NO', 'NYG', 'KC', 'IND', 'LAC', 'DAL', 'BUF', 'CLE', 'SEA', 'ARI', 'LV', 'ATL', 'LAR', 'LA', 'FA', 'CIN', 'SF', 'JAX', 'JAC', 'WAS', 'CHI', 'PHI', 'BAL', 'TB', 'DEN', 'HOU', 'PIT', 'MIA', 'DET', 'NE', 'NYJ', 'ROOKIE'];
         const playerInfoFuse = new Fuse(playerInfoArray, playerInfoFuseOptions);
         const teamsFuse = new Fuse(teams, options);
 
-        let rankString = this.state.searchText;
-        let addLineBreak = rankString.replace(/(?:\r\n|\r|\n)/g, '<br>')
+        let addLineBreak = searchText.replace(/(?:\r\n|\r|\n)/g, '<br>')
         let splitLineBreak = addLineBreak.split('<br>');
         let searchResultsArray = [];
         let ranking = 1;
+        let notFoundPlayers = [];
 
         splitLineBreak.forEach(line => {
             // Removing any numbers from the search string
@@ -187,7 +288,7 @@ class App extends React.Component {
             let foundTeamStr;
             // If there's more than 2 indexes, we want to see if they can help with our search by looking for player position and team initials
             if (firstLastTeamArrays.length > 2) {
-              const positionIndex = firstLastTeamArrays.findIndex(item => positions.includes(item));
+              const positionIndex = firstLastTeamArrays.findIndex(item => positions.includes(item.replace(/[^a-zA-Z]/g, "")));
               if (positionIndex >= 0) {
                 foundPositionStr = firstLastTeamArrays.splice(positionIndex, 1)[0];
               }
@@ -196,59 +297,69 @@ class App extends React.Component {
                 firstLastTeamArrays.splice(firstLastTeamArrays.indexOf(foundTeamStr), 1);
               }
             }
-            searchArray = [firstLastTeamArrays[0], firstLastTeamArrays[1], foundTeamStr, foundPositionStr]
+            searchArray = [firstLastTeamArrays[0].replace(/[^a-zA-Z]/g, ""), firstLastTeamArrays[1].replace(/[^a-zA-Z]/g, ""), foundTeamStr, foundPositionStr];
             let results = playerInfoFuse.search({
-              $and: [
-                  { 
-                    $or: [
-                      { search_first_name: searchArray[0].toLowerCase() },
-                      { search_first_name: `^${searchArray[0].toLowerCase()}` }
-                    ] 
-                  },
-                  { search_last_name: searchArray[1].toLowerCase() },
-                  { team: searchArray[2] },
-                  { position: searchArray[3] }
-              ],
-              // eslint-disable-next-line
-              $and: [
-                { 
-                  $or: [
-                    { search_first_name: searchArray[0].toLowerCase() },
-                    { search_first_name: `^${searchArray[0].toLowerCase()}` }
-                  ] 
+              $or:[
+                {
+                  $and: [
+                    { search_last_name: searchArray[1] },
+                    { 
+                      $or: [
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
+                      ] 
+                    },
+                    { position: `=${searchArray[3]}` },
+                    { team: `=${searchArray[2]}` }
+                  ],
                 },
-                { search_last_name: searchArray[1].toLowerCase() },
-                { team: searchArray[2] }
-              ],
-              // eslint-disable-next-line
-              $and: [
-                { 
-                  $or: [
-                    { search_first_name: searchArray[0].toLowerCase() },
-                    { search_first_name: `^${searchArray[0].toLowerCase()}` }
-                  ] 
+                // eslint-disable-next-line
+                {
+                  $and: [
+                    { search_last_name: searchArray[1] },
+                    { 
+                      $or: [
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
+                      ] 
+                    },
+                    { position: `=${searchArray[3]}` }
+                  ],
                 },
-                { search_last_name: searchArray[1].toLowerCase() },
-                { position: searchArray[3] }
-              ],
-              // eslint-disable-next-line
-              $and: [
-                { 
-                  $or: [
-                    { search_first_name: searchArray[0].toLowerCase() },
-                    { search_first_name: `^${searchArray[0].toLowerCase()}` }
-                  ] 
+                // eslint-disable-next-line
+                {
+                  $and: [
+                    { search_last_name: searchArray[1] },
+                    { 
+                      $or: [
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
+                      ] 
+                    },
+                    { team: `=${searchArray[2]}` }
+                  ],
                 },
-                { search_last_name: searchArray[1].toLowerCase() }
+                // eslint-disable-next-line
+                {
+                  $and: [
+                    { search_last_name: searchArray[1] },
+                    { 
+                      $or: [
+                        { search_first_name: searchArray[0] },
+                        { search_first_name: `^${searchArray[0]}` }
+                      ] 
+                    }
+                  ]
+                }
               ]
             });
-            if (results[0] && results[0].score < 0.4) {
+            if (results[0]) {
                 searchResultsArray.push({player_id: results[0].item.player_id, ranking: ranking});
-                if (results[0].item.search_rank > 500) {
+                if (results[0].item.search_rank > 1000) {
                     console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${ranking}`)
                 }
             } else {
-                notFoundPlayers.push(`Couldn't find ${firstLastTeamArrays[0]} ${firstLastTeamArrays[1]} ${firstLastTeamArrays[2]} Rank: ${ranking}`);
+                notFoundPlayers.push(`Couldn't find ${firstLastTeamArrays[0]} ${firstLastTeamArrays[1]} ${foundTeamStr}  ${foundPositionStr} Rank: ${ranking}`);
             }
             ranking += 1;
         })
@@ -257,14 +368,14 @@ class App extends React.Component {
           rankingPlayersIdsList: searchResultsArray,
           isLoading: false,
           notFoundPlayers: notFoundPlayers,
+          searchText: ""
         })
         this.filterPlayers();
-    //    this.buildRoster();
     }
 
     getHighestScore = (arr, fuseSearch) => {
         let bestResult = arr
-          .map(item => fuseSearch.search(item))
+          .map(item => fuseSearch.search(item.replace(/[^a-zA-Z]/g, "")))
           .filter(item => item.length > 0)
           .sort((a, b) => a[0]?.score - b[0]?.score);
         return bestResult[0] ? bestResult[0][0].item : null;
@@ -279,7 +390,6 @@ class App extends React.Component {
 
     addToRoster = (playerInfo) => {
         let { rosterPositions } = this.state;
-        console.log(playerInfo);
         if (playerInfo.position === "TE" || playerInfo.position === "RB" || playerInfo.position === "WR") {
             playerInfo.fantasy_positions.push("FLEX");
             playerInfo.fantasy_positions.push("SUPER_FLEX");
@@ -301,42 +411,45 @@ class App extends React.Component {
     }
 
   render() {
-    const { playerInfo, isLoading, filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData, notFoundPlayers } = this.state;
+    const { playerInfo, isLoading, lastUpdate,loadingMessage,filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData, notFoundPlayers } = this.state;
     if (isLoading) {
-      return <p>Loading...</p>;
+      return <p>{ loadingMessage }</p>;
     } else {
       return (
-      <div className="main-container">
-        <div className="search">
-            <div className="position-filter">
-              <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
-              <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
-              <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
-              <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
-              <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
-              <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
-            </div>
-            <textarea value={searchText} onChange={this.updateSearchText} />
-            <button onClick={this.updateRankings}>
-                Submit
-            </button>
-            </div>
-            <div className="player-grid">
-              {filteredPlayersIdsList.map(id => (
-                <PlayerInfoItem player={playerInfo[id]} addToRoster={this.addToRoster} rankingPlayersIdsList={rankingPlayersIdsList}/>
+      <div>
+        <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
+        <div className="main-container">
+          <div className="search">
+              <div className="position-filter">
+                <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
+                <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
+                <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
+                <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
+                <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
+                <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
+              </div>
+              <textarea value={searchText} onChange={this.updateSearchText} />
+              <button onClick={this.startLoad}>
+                  Submit
+              </button>
+              </div>
+              <div className="player-grid">
+                {filteredPlayersIdsList.map(id => (
+                  <PlayerInfoItem key={playerInfo[id].player_id} player={playerInfo[id]} addToRoster={this.addToRoster} rankingPlayersIdsList={rankingPlayersIdsList}/>
+                ))}
+                {notFoundPlayers.map((item, index) => (
+                  <p key={item + new Date().getTime() + index}>{item}</p>
+                ))}
+              </div>
+          <div className="league-grid">
+              <p><b>{leagueData[2].name}</b></p>
+              <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}/>
+          </div>
+          <div className="roster-positions">
+              {rosterPositions.map((pos, index) => (
+                  <p key={pos + new Date().getTime() + index}>{pos}</p>
               ))}
-              {notFoundPlayers.map(item => (
-                <p>{item}</p>
-              ))}
-            </div>
-        <div className="league-grid">
-            <p><b>{leagueData[2].name}</b></p>
-            <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}/>
-        </div>
-        <div className="roster-positions">
-            {rosterPositions.map(pos => (
-                <p>{pos}</p>
-            ))}
+          </div>
         </div>
       </div>
     )};
