@@ -8,6 +8,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #18202f;
   color: #FFF;
+  font-family: 'Lato', Arial, Helvetica, sans-serif;
 }
 
 code {
