@@ -38,19 +38,37 @@
 }
 
 .main-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    grid-gap: 5px;
+    display: flex;
+    flex-direction: row;
+    background-color: #18202f;
+}
+
+.panel {
+  padding: 5px 15px 15px 15px;
+  background-color: #283245;
+  border-radius: 10px;
+  height: 100%;
+  margin: 8px 18px 3px 3px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1;
+  
+}
+
+.search-panel {
+
 }
 
 .search {
-    grid-area: 1 / 1 / 1 / 1;
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.league-panel {
 }
 
 .league-grid {
-    grid-area: 1 / 3;
-    margin: 3px 18px;
+    
 }
 
 .position-filter {
@@ -58,19 +76,17 @@
 }
 
 .single-player-item {
-    border-color: black;
-    border-top-style: solid;
-    border-right: solid;
-    border-left: solid;
+    border: 2px solid #4b576b;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
-    width: 95%;
-    margin-right: 9px;
+    padding: 5px 5px 5px 5px;
+    border-radius: 10px;
+    margin-top: 3px;
 }
 
 .player-grid {
-    grid-area: 2 / span 2;
+
 }
 
 .player-name {
@@ -80,11 +96,9 @@
 .player-info {
     display: flex;
     flex-direction: row;
-    margin: 1px 0px 3px;
 }
 
 .player-info-item {
-    margin-right: 9px;
     font-size: small;
 }
 
@@ -109,17 +123,48 @@
 }
 
 .search-results {
-  width: fit-content;
-  display: flex;
-  flex-direction: column;
+
 }
 
 .roster-positions {
-    grid-area: 2 / 3;
-    margin: 3px 18px;
+
 }
 
 .latest-update {
-  padding-bottom: 6px;
+  margin: 0px 0px 6px 3px;
   font-size: small;
+}
+
+.title {
+  margin: 0px 0px 6px 3px;
+}
+
+.button {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #a3bbd3;
+    font-size: medium;
+    height: 30px;
+    border-radius: 5px;
+    width: 80%;
+    text-align: center;
+    margin-top: 8px;
+    margin-bottom: 15px;
+}
+
+.button:hover {
+  color: #00d8a7;
+  transform: scale(1.02);
+  border-color: #00d8a7;
+}
+
+.input {
+  margin-top: 8px;
+  background: transparent;
+  caret-color: #ddd;
+  color: #fff;
+  border: 2px solid #4b576b;
+  border-radius: 10px;
+  height: 100px;
+  width: 85%;
 }
