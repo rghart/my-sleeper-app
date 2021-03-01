@@ -65,6 +65,8 @@
 }
 
 .league-panel {
+    display: flex;
+    flex-direction: column;
 }
 
 .league-grid {
@@ -77,16 +79,17 @@
 
 .single-player-item {
     border: 2px solid #4b576b;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     padding: 5px 5px 5px 5px;
     border-radius: 10px;
     margin-top: 3px;
+
 }
 
 .player-grid {
-
+    overflow: scroll;
+    max-height: 600px;
 }
 
 .player-name {
@@ -122,12 +125,25 @@
     opacity: .45;
 }
 
-.search-results {
-
+.dropdown {
+  background: transparent;
+  caret-color: #ddd;
+  color: #fff;
+  border: 2px solid #4b576b;
+  border-radius: 10px;
+  margin-top: 8px;
+  width: 85%;
+  height: 25px;
 }
 
 .roster-positions {
+    display: flex;
+    flex-direction: column;
+}
 
+.search-box {
+  display: flex;
+  flex-direction: column;
 }
 
 .latest-update {
@@ -143,16 +159,34 @@
     background: transparent;
     color: #fff;
     border: 1px solid #a3bbd3;
-    font-size: medium;
-    height: 30px;
     border-radius: 5px;
-    width: 80%;
-    text-align: center;
-    margin-top: 8px;
-    margin-bottom: 15px;
 }
 
-.button:hover {
+.search-button {
+  width: 80%;
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 15px;
+  font-size: medium;
+  height: 30px;
+}
+
+.player-add-button {
+  align-self:center;
+  justify-self: flex-end;
+  text-align: center;
+  width: 25%;
+  color: #18202f;
+  border-color: #18202f;
+}
+
+.player-add-button:hover {
+  transform: scale(1.02);
+  color: #4b576b;
+  border-color: #4b576b;
+}
+
+.search-button:hover {
   color: #00d8a7;
   transform: scale(1.02);
   border-color: #00d8a7;
@@ -167,4 +201,11 @@
   border-radius: 10px;
   height: 100px;
   width: 85%;
+}
+
+.lineup-position {
+  width: fit-content;
+  padding: 5px 5px 5px 5px;
+  border-radius: 10px;
+  margin-top: 3px;
 }

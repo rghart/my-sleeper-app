@@ -401,7 +401,8 @@ class App extends React.Component {
             const includesPosition = rosterPositions.includes(playerInfo.fantasy_positions[i]);
             if (includesPosition) {
                 const positionIndex = rosterPositions.indexOf(playerInfo.fantasy_positions[i]);
-                rosterPositions.splice(positionIndex, 1, playerInfo.fantasy_positions[i] + " " + playerInfo.full_name + " " + playerInfo.team);
+                let position = ["SUPER_FLEX", "FLEX"].includes(playerInfo.fantasy_positions[i]) ? `${playerInfo.fantasy_positions[i]} / ${playerInfo.position}` : playerInfo.fantasy_positions[i];
+                rosterPositions.splice(positionIndex, 1, `${position} ${playerInfo.full_name} ${playerInfo.team ? playerInfo.team : ""}`);
                 break;
             }
         }
@@ -431,7 +432,7 @@ class App extends React.Component {
                           <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
                       </div>
                       <textarea className="input" value={searchText} onChange={this.updateSearchText} />
-                      <button className="button" onClick={this.startLoad}>
+                      <button className="button search-button" onClick={this.startLoad}>
                           Submit
                       </button>
                   </div>
@@ -456,7 +457,7 @@ class App extends React.Component {
                   </div>
                   <div className="roster-positions">
                       {rosterPositions.map((pos, index) => (
-                          <p key={pos + new Date().getTime() + index}>{pos}</p>
+                          <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
                       ))}
                   </div>
               </div>
