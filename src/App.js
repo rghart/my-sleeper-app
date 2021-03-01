@@ -417,40 +417,50 @@ class App extends React.Component {
     } else {
       return (
       <div>
-        <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
-        <div className="main-container">
-          <div className="search">
-              <div className="position-filter">
-                <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
-                <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
-                <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
-                <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
-                <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
-                <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
+          <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
+          <h1 className="title">Sleeper Team Assistant</h1>
+          <div className="main-container">
+              <div className="panel search-panel">
+                  <div className="search">
+                      <div className="position-filter">
+                          <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
+                          <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
+                          <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
+                          <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
+                          <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
+                          <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
+                      </div>
+                      <textarea className="input" value={searchText} onChange={this.updateSearchText} />
+                      <button className="button" onClick={this.startLoad}>
+                          Submit
+                      </button>
+                  </div>
+                  <div className="player-grid">
+                      {filteredPlayersIdsList.map(id => (
+                          <PlayerInfoItem 
+                              key={playerInfo[id].player_id} 
+                              player={playerInfo[id]} 
+                              addToRoster={this.addToRoster} 
+                              rankingPlayersIdsList={rankingPlayersIdsList}
+                          />
+                      ))}
+                      {notFoundPlayers.map((item, index) => (
+                        <p key={item + new Date().getTime() + index}>{item}</p>
+                      ))}
+                  </div>
               </div>
-              <textarea value={searchText} onChange={this.updateSearchText} />
-              <button onClick={this.startLoad}>
-                  Submit
-              </button>
+              <div className="panel league-panel">
+                  <div className="league-grid">
+                      <p><b>{leagueData[2].name}</b></p>
+                      <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}/>
+                  </div>
+                  <div className="roster-positions">
+                      {rosterPositions.map((pos, index) => (
+                          <p key={pos + new Date().getTime() + index}>{pos}</p>
+                      ))}
+                  </div>
               </div>
-              <div className="player-grid">
-                {filteredPlayersIdsList.map(id => (
-                  <PlayerInfoItem key={playerInfo[id].player_id} player={playerInfo[id]} addToRoster={this.addToRoster} rankingPlayersIdsList={rankingPlayersIdsList}/>
-                ))}
-                {notFoundPlayers.map((item, index) => (
-                  <p key={item + new Date().getTime() + index}>{item}</p>
-                ))}
-              </div>
-          <div className="league-grid">
-              <p><b>{leagueData[2].name}</b></p>
-              <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={this.getLeagueData}/>
           </div>
-          <div className="roster-positions">
-              {rosterPositions.map((pos, index) => (
-                  <p key={pos + new Date().getTime() + index}>{pos}</p>
-              ))}
-          </div>
-        </div>
       </div>
     )};
   }
