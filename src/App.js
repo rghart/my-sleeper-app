@@ -26,7 +26,8 @@ class App extends React.Component {
     notFoundPlayers: [],
     lastUpdate: null,
     user: null,
-    authToken: null
+    authToken: null,
+    showTaken: false
   };
 
   componentDidMount() {
@@ -384,7 +385,7 @@ class App extends React.Component {
     }
 
     filterPlayers = () => {
-        const newPlayers = this.state.rankingPlayersIdsList.filter(player => this.state.checkedItems.includes(this.state.playerInfo[player.player_id].position) && (this.state.playerInfo[player.player_id].is_taken !== true || this.state.playerInfo[player.player_id].rostered_by === 'ryangh')).map(player => player.player_id);
+        const newPlayers = this.state.rankingPlayersIdsList.filter(player => this.state.checkedItems.includes(this.state.playerInfo[player.player_id].position) && ( this.state.showTaken ? this.state.playerInfo[player.player_id].is_taken : !this.state.playerInfo[player.player_id].is_taken || this.state.playerInfo[player.player_id].rostered_by === 'ryangh')).map(player => player.player_id);
         this.setState({
             filteredPlayersIdsList: newPlayers
         })
@@ -414,7 +415,7 @@ class App extends React.Component {
     }
 
   render() {
-    const { playerInfo, isLoading, lastUpdate,loadingMessage,filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData, notFoundPlayers } = this.state;
+    const { playerInfo, isLoading, lastUpdate,loadingMessage, showTaken, filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData, notFoundPlayers } = this.state;
     if (isLoading && loadingMessage === "Initial load...") {
       return <div className="loader"></div>;
     } else {
@@ -436,6 +437,9 @@ class App extends React.Component {
                               <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
                               <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
                               <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
+                          </div>
+                          <div className="position-filter">
+                              <SearchFilterButton name={"Show rostered players"} handleChange={() => this.setState({showTaken: !showTaken}, this.filterPlayers)} labelName={"Show rostered players?"} checked={showTaken} />
                           </div>
                           <textarea className="input" value={searchText} onChange={this.updateSearchText} />
                           <button className="button search-button" onClick={() => this.startLoad("Loading search panel...")}>
