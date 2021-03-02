@@ -48,7 +48,7 @@
   background-color: #283245;
   border-radius: 10px;
   height: 100%;
-  margin: 8px 18px 3px 3px;
+  margin: 8px 10px 3px 3px;
   display: flex;
   flex-direction: column;
   flex: 1 1;
@@ -84,7 +84,6 @@
     padding: 5px 5px 5px 5px;
     border-radius: 10px;
     margin-top: 3px;
-
 }
 
 .player-grid {
@@ -175,7 +174,7 @@
   align-self:center;
   justify-self: flex-end;
   text-align: center;
-  width: 25%;
+  width: 45px;
   color: #18202f;
   border-color: #18202f;
 }
