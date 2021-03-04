@@ -1,9 +1,9 @@
 import React from 'react';
 import './App.css';
 import './loader.css';
-import SearchBar from './SearchBar';
-import SearchFilterButton from './SearchFilterButton';
-import PlayerInfoItem from './PlayerInfoItem';
+import SearchBar from './Components/SearchBar';
+import SearchFilterButton from './Components/SearchFilterButton';
+import PlayerInfoItem from './Components/PlayerInfoItem';
 import Fuse from 'fuse.js';
 import { auth } from './firebase.js';
 
@@ -259,7 +259,8 @@ class App extends React.Component {
         }
         const positions = ['QB', 'RB', 'WR', 'TE', 'DEF', 'K'];
         const teams = ['CAR', 'MIN', 'TEN', 'GB', 'NO', 'NYG', 'KC', 'IND', 'LAC', 'DAL', 'BUF', 'CLE', 'SEA', 'ARI', 'LV', 'ATL', 'LAR', 'LA', 'FA', 'CIN', 'SF', 'JAX', 'JAC', 'WAS', 'CHI', 'PHI', 'BAL', 'TB', 'DEN', 'HOU', 'PIT', 'MIA', 'DET', 'NE', 'NYJ', 'ROOKIE'];
-        const playerInfoFuse = new Fuse(playerInfoArray, playerInfoFuseOptions);
+        const playerInfoIndex = Fuse.createIndex(playerInfoFuseOptions.keys, playerInfoArray)
+        const playerInfoFuse = new Fuse(playerInfoArray, playerInfoFuseOptions, playerInfoIndex);
         const teamsFuse = new Fuse(teams, options);
 
         let addLineBreak = searchText.replace(/(?:\r\n|\r|\n)/g, '<br>')
@@ -356,7 +357,7 @@ class App extends React.Component {
               ]
             });
             if (results[0]) {
-                searchResultsArray.push({player_id: results[0].item.player_id, ranking: ranking});
+                searchResultsArray.push({match_results: results, ranking: ranking});
                 if (results[0].item.search_rank > 1000) {
                     console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${ranking}`)
                 }
@@ -384,11 +385,16 @@ class App extends React.Component {
         return bestResult[0] ? bestResult[0][0].item : null;
     }
 
-    filterPlayers = () => {
-        const newPlayers = this.state.rankingPlayersIdsList.filter(player => this.state.checkedItems.includes(this.state.playerInfo[player.player_id].position) && ( this.state.showTaken ? this.state.playerInfo[player.player_id].is_taken : !this.state.playerInfo[player.player_id].is_taken || this.state.playerInfo[player.player_id].rostered_by === 'ryangh')).map(player => player.player_id);
+    filterPlayers = (rankingPlayers) => {
+        let playerList = rankingPlayers ? rankingPlayers : this.state.rankingPlayersIdsList;
+        const newPlayers = playerList.filter(results => this.state.checkedItems.includes(this.state.playerInfo[results.match_results[0].item.player_id].position) && ( this.state.showTaken ? this.state.playerInfo[results.match_results[0].item.player_id] : !this.state.playerInfo[results.match_results[0].item.player_id].is_taken || this.state.playerInfo[results.match_results[0].item.player_id].rostered_by === 'ryangh')).map(results => results);
         this.setState({
             filteredPlayersIdsList: newPlayers
         })
+    }
+
+    updatePlayerId = async (newRankingPlayersIdsList) => {
+        this.filterPlayers(newRankingPlayersIdsList);
     }
 
     addToRoster = (playerInfo) => {
@@ -415,74 +421,88 @@ class App extends React.Component {
     }
 
   render() {
-    const { playerInfo, isLoading, lastUpdate,loadingMessage, showTaken, filteredPlayersIdsList, searchText, checkedItems, rankingPlayersIdsList, rosterPositions, leagueData, notFoundPlayers } = this.state;
-    if (isLoading && loadingMessage === "Initial load...") {
-      return <div className="loader"></div>;
-    } else {
-      return (
-      <div>
-          <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
-          <h1 className="title">Sleeper Team Assistant</h1>
-          <div className="main-container">
-          <div className="panel search-panel">
-              { 
-                loadingMessage === "Loading search panel..." 
-                ? <div className="panel-loader"></div> 
-                : <>
-                     <div className="search">
-                          <div className="position-filter">
-                              <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
-                              <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
-                              <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
-                              <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
-                              <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
-                              <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
-                          </div>
-                          <div className="position-filter">
-                              <SearchFilterButton name={"Show rostered players"} handleChange={() => this.setState({showTaken: !showTaken}, this.filterPlayers)} labelName={"Show rostered players?"} checked={showTaken} />
-                          </div>
-                          <textarea className="input" value={searchText} onChange={this.updateSearchText} />
-                          <button className="button search-button" onClick={() => this.startLoad("Loading search panel...")}>
-                              Submit
-                          </button>
-                      </div>
-                      <div className="player-grid">
-                          {filteredPlayersIdsList.map(id => (
-                              <PlayerInfoItem 
-                                  key={playerInfo[id].player_id} 
-                                  player={playerInfo[id]} 
-                                  addToRoster={this.addToRoster} 
-                                  rankingPlayersIdsList={rankingPlayersIdsList}
-                              />
-                          ))}
-                          {notFoundPlayers.map((item, index) => (
-                            <p key={item + new Date().getTime() + index}>{item}</p>
-                          ))}
-                      </div>
-                    </>
-                  }
-              </div> 
-              <div className="panel league-panel">
-              { 
-                loadingMessage === "Loading league panel..." 
-                ? <div className="panel-loader"></div> 
-                : <>
-                  <div className="league-grid">
-                      <p><b>{leagueData[2].name}</b></p>
-                      <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={() => this.getLeagueData("Loading league panel...")}/>
-                  </div>
-                  <div className="roster-positions">
-                      {rosterPositions.map((pos, index) => (
-                          <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
-                      ))}
-                  </div>
-                  </>
-              } 
-              </div>
-          </div>
-      </div>
-    )};
-  }
+      const { 
+          playerInfo, 
+          isLoading, 
+          lastUpdate,
+          loadingMessage, 
+          showTaken, 
+          filteredPlayersIdsList, 
+          searchText, 
+          checkedItems, 
+          rankingPlayersIdsList, 
+          rosterPositions, 
+          leagueData, 
+          notFoundPlayers 
+      } = this.state;
+      if (isLoading && loadingMessage === "Initial load...") {
+        return <div className="loader"></div>;
+      } else {
+          return (
+            <div>
+                <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
+                <h1 className="title">Sleeper Team Assistant</h1>
+                <div className="main-container">
+                <div className="panel search-panel">
+                    { 
+                      loadingMessage === "Loading search panel..." 
+                      ? <div className="panel-loader"></div> 
+                      : <>
+                          <div className="search">
+                                <div className="position-filter">
+                                    <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
+                                    <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
+                                    <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
+                                    <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
+                                    <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
+                                    <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
+                                </div>
+                                <div className="position-filter">
+                                    <SearchFilterButton name={"Show rostered players"} handleChange={() => this.setState({showTaken: !showTaken}, this.filterPlayers)} labelName={"Show rostered players?"} checked={showTaken} />
+                                </div>
+                                <textarea className="input" value={searchText} onChange={this.updateSearchText} />
+                                <button className="button search-button" onClick={() => this.startLoad("Loading search panel...")}>
+                                    Submit
+                                </button>
+                            </div>
+                            <div className="player-grid">
+                                {filteredPlayersIdsList.map(results => (
+                                    <PlayerInfoItem 
+                                        key={`${results.match_results[0].refIndex}${results.ranking}`} 
+                                        player={playerInfo[results.match_results[0].item.player_id]} 
+                                        addToRoster={this.addToRoster} 
+                                        updatePlayerId={this.updatePlayerId}
+                                        rankingPlayersIdsList={rankingPlayersIdsList}
+                                    />
+                                ))}
+                                {notFoundPlayers.map((item, index) => (
+                                  <p key={item + new Date().getTime() + index}>{item}</p>
+                                ))}
+                            </div>
+                          </>
+                        }
+                    </div> 
+                    <div className="panel league-panel">
+                    { 
+                      loadingMessage === "Loading league panel..." 
+                      ? <div className="panel-loader"></div> 
+                      : <>
+                        <div className="league-grid">
+                            <p><b>{leagueData[2].name}</b></p>
+                            <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={() => this.getLeagueData("Loading league panel...")}/>
+                        </div>
+                        <div className="roster-positions">
+                            {rosterPositions.map((pos, index) => (
+                                <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
+                            ))}
+                        </div>
+                        </>
+                    } 
+                    </div>
+                </div>
+            </div>
+        )};
+    }
 }
 
 export default App;

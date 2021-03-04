@@ -185,6 +185,10 @@
   border-color: #4b576b;
 }
 
+.clickable-player-name:hover {
+    cursor: pointer;
+}
+
 .search-button:hover {
   color: #00d8a7;
   transform: scale(1.02);
