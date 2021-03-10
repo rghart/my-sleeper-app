@@ -4,6 +4,7 @@ import './loader.css';
 import SearchBar from './Components/SearchBar';
 import SearchFilterButton from './Components/SearchFilterButton';
 import PlayerInfoItem from './Components/PlayerInfoItem';
+import DraftPanel from './Panels/DraftPanel';
 import Fuse from 'fuse.js';
 import { auth } from './firebase.js';
 
@@ -11,6 +12,7 @@ class App extends React.Component {
   state = {
     playerInfo: {},
     leagueData: [],
+    tradedDraftPicks: [],
     isLoading: true,
     loadingMessage: "Initial load...",
     rankingPlayersIdsList: [],
@@ -21,13 +23,13 @@ class App extends React.Component {
     showAvailable: true,
     showOnlyMyPlayers: true,
     leagueID: "662349421429727232",
-    allLeagueIDs: [],
     rosterPositions: [],
     notFoundPlayers: [],
     lastUpdate: null,
     user: null,
     authToken: null,
-    showTaken: false
+    showTaken: false,
+    liveDraft: [],
   };
 
   componentDidMount() {
@@ -156,7 +158,8 @@ class App extends React.Component {
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
       `https://api.sleeper.app/v1/league/${leagueID}/users`,
       `https://api.sleeper.app/v1/league/${leagueID}`,
-      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2021`
+      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2021`,
+      `https://api.sleeper.app/v1/league/${leagueID}/drafts`,
     ]
     let requests = urls.map(url => fetch(url));
     Promise.all(requests)
@@ -166,22 +169,62 @@ class App extends React.Component {
         }))
       })
       .then(data => {
-        this.markTakenPlayers(data[0], data[1]);
-        let leagueIds = data[3];
+        const leagueData = {};
+        [
+            leagueData.rosterData, 
+            leagueData.managerData, 
+            leagueData.currentLeague, 
+            leagueData.leagueIds, 
+            leagueData.currentLeagueDrafts,
+        ] = data;
+        console.log(leagueData.rosterData)
+        this.markTakenPlayers(leagueData.rosterData, leagueData.managerData);
         this.setState({
-          leagueData: data,
+          leagueData: leagueData,
           isLoading: false,
-          loadingMessage: "",
-          rosterPositions: data[2].roster_positions.filter(pos => pos !== "BN"),
-          allLeagueIDs: leagueIds
+          loadingMessage: "Loading league panel...",
+          rosterPositions: leagueData.currentLeague.roster_positions.filter(pos => pos !== "BN"),
         });
         if (this.state.rankingPlayersIdsList) {
             this.filterPlayers();
         }
+        this.getTradedDraftPicks();
       })
       .catch((error) => {
         console.error('Error:', error);
       });
+  }
+
+  getTradedDraftPicks = async () => {
+      const draftId = this.state.leagueData.currentLeagueDrafts[0].draft_id;
+      const tradedPicks = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/traded_picks`)
+        .then(response => response.json())
+        .then(data => data)
+        .catch((error) => {
+          console.error('Error:', error);
+      })
+      console.log(tradedPicks);
+      this.setState({
+        tradedDraftPicks: tradedPicks
+      })
+      this.getSpecificDraft();
+  }
+
+  getSpecificDraft = async () => {
+    let { leagueData } = this.state;
+    const draftId = leagueData.currentLeagueDrafts[0].draft_id;
+    const draftData = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`)
+      .then(response => response.json())
+      .then(data => data)
+      .catch((error) => {
+        console.error('Error:', error);
+    })
+    console.log(draftData)
+    leagueData.currentDraft = draftData;
+    this.setState({
+      leagueData
+    })
+    this.buildDraft();
   }
 
   markTakenPlayers = (rosterData, managerData) => {
@@ -420,6 +463,97 @@ class App extends React.Component {
          })
     }
 
+    buildDraft = () => {
+        const { leagueData, tradedDraftPicks } = this.state;
+        const { currentDraft } = leagueData;
+        const { settings } = currentDraft;
+        let draftType = "";
+        switch (settings.player_type) {
+            case 0:
+                draftType = "All players";
+                break;
+            case 1:
+                draftType = "Rookie";
+                break;
+            case 2:
+                draftType = "Veterans";
+                break;
+            default:
+                draftType = "All players"
+                break;
+        }
+        const createPickOrder = (round) => {
+            let pickOrder = [];
+            for (const [key, value] of Object.entries(currentDraft.draft_order)) {
+                let obj = {
+                  pick_number: value,
+                  user_id: key,
+                  roster_id: currentDraft.slot_to_roster_id[value],
+                  is_traded: false,
+                  owner_id: currentDraft.slot_to_roster_id[value],
+                  pick_round: round,
+                  pick_spot_string: `${round}.${value}`,
+                  player_id: null
+                }
+                pickOrder.push(obj)
+            };
+            return pickOrder.sort((a, b) => a.pick_number - b.pick_number);
+        }
+
+        let draftRounds = [];
+        for (let i = 0; i < settings.rounds; i++) {
+            let round = {};
+            round.round = settings.rounds - i;       
+            round.picks = createPickOrder(round.round);
+            draftRounds.unshift(round);
+        }
+        tradedDraftPicks.forEach(tradedPick => {
+            let draftRoundIndex = draftRounds[tradedPick.round - 1].picks.findIndex(pick => pick.roster_id === tradedPick.roster_id);
+            Object.assign(draftRounds[tradedPick.round - 1].picks[draftRoundIndex], {
+                owner_id: tradedPick.owner_id, 
+                is_traded: true
+            })
+        })
+        console.log(draftRounds)
+        leagueData.currentDraft.built_draft = draftRounds;
+        leagueData.currentDraft.player_pool = draftType;
+        this.setState({
+            leagueData,
+            loadingMessage: ""
+        })
+
+        
+
+        // Working on how to structure draft
+        // [
+        //   {
+        //     round: 1,
+        //     picks: [
+        //       {
+        //         pick: "1.1",
+        //         is_traded: false,
+        //         owner_id: 9, //current owner
+        //         roster_id: 9 // original owner
+        //       }
+        //       {
+        //         pick: "1.2",
+        //         is_traded: true,
+        //         owner_id: 1,
+        //         roster_id: 8
+        //       }
+        //     ]
+        //   },
+        //   {},
+        //   {},
+        // ]
+    }
+
+    updatePlayerInfo = (newPlayerInfo) => {
+        this.setState({
+          playerInfo: newPlayerInfo
+        }, this.filterPlayers)
+    }
+
   render() {
       const { 
           playerInfo, 
@@ -433,7 +567,8 @@ class App extends React.Component {
           rankingPlayersIdsList, 
           rosterPositions, 
           leagueData, 
-          notFoundPlayers 
+          notFoundPlayers,
+          leagueID, 
       } = this.state;
       if (isLoading && loadingMessage === "Initial load...") {
         return <div className="loader"></div>;
@@ -487,15 +622,16 @@ class App extends React.Component {
                       loadingMessage === "Loading league panel..." 
                       ? <div className="panel-loader"></div> 
                       : <>
-                        <div className="league-grid">
-                            <p><b>{leagueData[2].name}</b></p>
-                            <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={() => this.getLeagueData("Loading league panel...")}/>
-                        </div>
-                        <div className="roster-positions">
-                            {rosterPositions.map((pos, index) => (
-                                <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
-                            ))}
-                        </div>
+                            <div className="league-grid">
+                                <p><b>{leagueData.currentLeague.name}</b></p>
+                                <SearchBar allLeagueIDs={leagueData.leagueIds} leagueID={leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={() => this.getLeagueData("Loading league panel...")}/>
+                            </div>
+                            <div className="roster-positions">
+                                {rosterPositions.map((pos, index) => (
+                                    <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
+                                ))}
+                            </div>
+                            <DraftPanel leagueData={leagueData} playerInfo={playerInfo} updatePlayerInfo={this.updatePlayerInfo}/>
                         </>
                     } 
                     </div>

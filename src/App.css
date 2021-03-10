@@ -212,3 +212,7 @@
   border-radius: 10px;
   margin-top: 3px;
 }
+
+.draft-pick-rows {
+  display: flex;
+}
