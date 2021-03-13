@@ -179,6 +179,7 @@ class App extends React.Component {
             leagueData.currentLeagueDrafts,
         ] = data;
         console.log(leagueData.rosterData)
+        console.log(leagueData.managerData)
         this.markTakenPlayers(leagueData.rosterData, leagueData.managerData);
         this.setState({
           leagueData: leagueData,
@@ -251,6 +252,7 @@ class App extends React.Component {
       const currentManagerId = rosterData[i].owner_id;
       const currentManagerData = managerData.find(manager => manager.user_id === currentManagerId);
       rosterData[i].manager_display_name = currentManagerData ? currentManagerData.display_name : "Unassigned";
+      rosterData[i].avatar = currentManagerData ? currentManagerData.avatar : null;
       rosterData[i].players.forEach(player => {
         playerObject[player].is_taken = true;
         playerObject[player].rostered_by = rosterData[i].manager_display_name;

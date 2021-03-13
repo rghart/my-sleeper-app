@@ -74,6 +74,7 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
                                         {pick.pick_spot_string}
                                     </p>
                                     <div className="player-info-item draft-pick-rows">
+                                    <img className="avatar" src={`https://sleepercdn.com/avatars/thumbs/${rosterData.find(roster => roster.roster_id === pick.owner_id).avatar}`} alt="Users avatar"/>
                                         <p className="draft-pick">
                                             {rosterData.find(roster => roster.roster_id === pick.owner_id).manager_display_name}
                                             { (pick.is_traded && pick.roster_id !== pick.owner_id) ? ` via ${rosterData.find(roster => roster.roster_id === pick.roster_id).manager_display_name}` : null }
