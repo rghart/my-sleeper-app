@@ -30,6 +30,7 @@ class App extends React.Component {
     authToken: null,
     showTaken: false,
     liveDraft: [],
+    leaguePanel: "draft",
   };
 
   componentDidMount() {
@@ -183,7 +184,16 @@ class App extends React.Component {
           leagueData: leagueData,
           isLoading: false,
           loadingMessage: "Loading league panel...",
-          rosterPositions: leagueData.currentLeague.roster_positions.filter(pos => pos !== "BN"),
+          rosterPositions: leagueData.currentLeague.roster_positions.filter(pos => pos !== "BN").map(pos => 
+              { 
+                  if (pos === "SUPER_FLEX") {
+                      return "SFLX" 
+                  } else if (pos === "FLEX") { 
+                      return "FLX" 
+                  } else { 
+                    return pos 
+                  } 
+              }),
         });
         if (this.state.rankingPlayersIdsList) {
             this.filterPlayers();
@@ -262,7 +272,7 @@ class App extends React.Component {
         const leagueID = e.target.value;
         this.setState({
           leagueID
-        });
+        }, () => this.getLeagueData("Loading league panel..."));
     }
 
     handleChange = (e) => {
@@ -443,17 +453,17 @@ class App extends React.Component {
     addToRoster = (playerInfo) => {
         let { rosterPositions } = this.state;
         if (playerInfo.position === "TE" || playerInfo.position === "RB" || playerInfo.position === "WR") {
-            playerInfo.fantasy_positions.push("FLEX");
-            playerInfo.fantasy_positions.push("SUPER_FLEX");
+            playerInfo.fantasy_positions.push("FLX");
+            playerInfo.fantasy_positions.push("SFLX");
         } else if (playerInfo.position === "QB") {
-            playerInfo.fantasy_positions.push("SUPER_FLEX");
+            playerInfo.fantasy_positions.push("SFLX");
         }
 
         for (let i = 0; i < playerInfo.fantasy_positions.length; i++) {
             const includesPosition = rosterPositions.includes(playerInfo.fantasy_positions[i]);
             if (includesPosition) {
                 const positionIndex = rosterPositions.indexOf(playerInfo.fantasy_positions[i]);
-                let position = ["SUPER_FLEX", "FLEX"].includes(playerInfo.fantasy_positions[i]) ? `${playerInfo.fantasy_positions[i]} / ${playerInfo.position}` : playerInfo.fantasy_positions[i];
+                let position = ["SFLX", "FLX"].includes(playerInfo.fantasy_positions[i]) ? `${playerInfo.fantasy_positions[i]} / ${playerInfo.position}` : playerInfo.fantasy_positions[i];
                 rosterPositions.splice(positionIndex, 1, `${position} ${playerInfo.full_name} ${playerInfo.team ? playerInfo.team : ""}`);
                 break;
             }
@@ -469,9 +479,6 @@ class App extends React.Component {
         const { settings } = currentDraft;
         let draftType = "";
         switch (settings.player_type) {
-            case 0:
-                draftType = "All players";
-                break;
             case 1:
                 draftType = "Rookie";
                 break;
@@ -554,6 +561,12 @@ class App extends React.Component {
         }, this.filterPlayers)
     }
 
+    updateLeaguePanel = (panelType) => {
+        this.setState({
+            leaguePanel: panelType
+        })
+    }
+
   render() {
       const { 
           playerInfo, 
@@ -568,7 +581,8 @@ class App extends React.Component {
           rosterPositions, 
           leagueData, 
           notFoundPlayers,
-          leagueID, 
+          leagueID,
+          leaguePanel,
       } = this.state;
       if (isLoading && loadingMessage === "Initial load...") {
         return <div className="loader"></div>;
@@ -618,22 +632,47 @@ class App extends React.Component {
                         }
                     </div> 
                     <div className="panel league-panel">
-                    { 
-                      loadingMessage === "Loading league panel..." 
-                      ? <div className="panel-loader"></div> 
-                      : <>
-                            <div className="league-grid">
-                                <p><b>{leagueData.currentLeague.name}</b></p>
-                                <SearchBar allLeagueIDs={leagueData.leagueIds} leagueID={leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={() => this.getLeagueData("Loading league panel...")}/>
-                            </div>
-                            <div className="roster-positions">
-                                {rosterPositions.map((pos, index) => (
-                                    <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
-                                ))}
-                            </div>
-                            <DraftPanel leagueData={leagueData} playerInfo={playerInfo} updatePlayerInfo={this.updatePlayerInfo}/>
-                        </>
-                    } 
+                        { 
+                          loadingMessage === "Loading league panel..." 
+                          ? <div className="panel-loader"></div> 
+                          : <>
+
+                                <div className="league-grid">
+                                    <p>
+                                        <b>{leagueData.currentLeague.name}</b>
+                                    </p>
+                                    <SearchBar 
+                                        allLeagueIDs={leagueData.leagueIds} 
+                                        leagueID={leagueID} 
+                                        updateLeagueID={this.updateLeagueID}
+                                    />
+                                    <div className="custom-horizontal-select">
+                                        <div className={`custom-horizontal-select-item ${leaguePanel === "weekly" ? "selected" : null}`} onClick={() => this.updateLeaguePanel("weekly")}>
+                                            <div className="meta">
+                                                <div className="name">Weekly</div>
+                                                <div className="description">Lineup setter</div>
+                                            </div>
+                                        </div>
+                                        <div className={`custom-horizontal-select-item ${leaguePanel === "draft" ? "selected" : null}`}  onClick={() => this.updateLeaguePanel("draft")}>
+                                            <div className="meta">
+                                                <div className="name">Draft</div>
+                                                <div className="description">Sync</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                { leaguePanel === "weekly" && (
+                                    <div className="roster-positions">
+                                        {rosterPositions.map((pos, index) => (
+                                            <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
+                                        ))}
+                                    </div>
+                                )}
+                                { leaguePanel === "draft" && (
+                                    <DraftPanel leagueData={leagueData} playerInfo={playerInfo} updatePlayerInfo={this.updatePlayerInfo}/>
+                                )}
+                            </>
+                        } 
                     </div>
                 </div>
             </div>

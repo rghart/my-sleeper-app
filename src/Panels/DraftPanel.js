@@ -57,30 +57,43 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
     }
 
     return (
-        <div className="panel">
-        <p>Status: {currentDraft.status}</p>
-        <button onClick={getLiveDraft}>Update draft</button>
-        {liveDraft.built_draft.map(round =>(
-            <div key={round.round} className="">
-                <h2>{round.round}</h2>
-                <div>
-                {round.picks.map(pick => (
-                    <div key={pick.pick_spot_string} className="player-info-item draft-pick-rows">
-                        <p>
-                            {pick.pick_spot_string}
-                        </p>
-                        <p>
-                            {rosterData.find(roster => roster.roster_id === pick.owner_id).manager_display_name}
-                            { (pick.is_traded && pick.roster_id !== pick.owner_id) ? ` via ${rosterData.find(roster => roster.roster_id === pick.roster_id).manager_display_name}` : null }
-                        </p>
-                        <p>
-                            {pick.player_id ? playerInfo[pick.player_id].full_name : null}
-                        </p>
+        <div>
+            <div className="league-grid">
+                <p><b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b></p>
+                <p>Status: {currentDraft.status}</p>
+                <button className="button search-button" onClick={getLiveDraft}>Sync draft</button>
+            </div>
+            <div className="player-grid">
+                {liveDraft.built_draft.map(round =>(
+                    <div key={round.round} className="draft-round-box">    
+                        <div className={"draft-picks-box"}>
+                            <h4 className="round-number">Round {round.round}</h4>
+                            {round.picks.map(pick => (
+                                <div key={pick.pick_spot_string} className="draft-pick">
+                                    <p className="pick-string">
+                                        {pick.pick_spot_string}
+                                    </p>
+                                    <div className="player-info-item draft-pick-rows">
+                                        <p className="draft-pick">
+                                            {rosterData.find(roster => roster.roster_id === pick.owner_id).manager_display_name}
+                                            { (pick.is_traded && pick.roster_id !== pick.owner_id) ? ` via ${rosterData.find(roster => roster.roster_id === pick.roster_id).manager_display_name}` : null }
+                                        </p>
+                                        {
+                                            pick.player_id && (
+                                                <div className={`${playerInfo[pick.player_id] ? playerInfo[pick.player_id].position : null} draft-pick-details`}>
+                                                    <p>{playerInfo[pick.player_id].full_name}</p> 
+                                                    <p>{playerInfo[pick.player_id].team}</p>
+                                                    <p>{playerInfo[pick.player_id].position}</p>
+                                                </div>
+                                            )
+                                        }
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ))}
-                </div>
             </div>
-          ))}
         </div>
     );
 }
