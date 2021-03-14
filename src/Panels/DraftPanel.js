@@ -1,9 +1,10 @@
-import React, {useState} from 'react';
+import React, { useState, useEffect } from 'react';
+import DraftRound from './DraftRound';
 
 const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
     const { currentDraft, rosterData } = leagueData;
-    // May need to pass this state and function in as a prop if it needs to interact with outer state. Just testing for now.
     const [liveDraft, setLiveDraft] = useState(currentDraft);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const getLiveDraft = async () => {
         let newPlayerInfo = playerInfo;
@@ -56,42 +57,34 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
         return newLiveDraft;
     }
 
+    useEffect(() => {
+        let timer;
+        if (isSyncing) {
+            const callback = async () => {
+                await getLiveDraft();
+                timer = setTimeout(callback, 3000);
+            }
+            callback();
+        } else {
+            clearTimeout(timer);
+        }
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line
+    }, [isSyncing])
+
     return (
         <div>
             <div className="league-grid">
                 <p><b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b></p>
                 <p>Status: {currentDraft.status}</p>
-                <button className="button search-button" onClick={getLiveDraft}>Sync draft</button>
+                <button className={`button search-button ${isSyncing ? 'syncing' : null}`} onClick={() => setIsSyncing(!isSyncing)}>
+                    { !isSyncing ? "Sync draft" : "Stop sync"}
+                </button>
             </div>
             <div className="player-grid">
                 {liveDraft.built_draft.map(round =>(
                     <div key={round.round} className="draft-round-box">    
-                        <div className={"draft-picks-box"}>
-                            <h4 className="round-number">Round {round.round}</h4>
-                            {round.picks.map(pick => (
-                                <div key={pick.pick_spot_string} className="draft-pick">
-                                    <p className="pick-string">
-                                        {pick.pick_spot_string}
-                                    </p>
-                                    <div className="player-info-item draft-pick-rows">
-                                    <img className="avatar" src={`https://sleepercdn.com/avatars/thumbs/${rosterData.find(roster => roster.roster_id === pick.owner_id).avatar}`} alt="Users avatar"/>
-                                        <p className="draft-pick">
-                                            {rosterData.find(roster => roster.roster_id === pick.owner_id).manager_display_name}
-                                            { (pick.is_traded && pick.roster_id !== pick.owner_id) ? ` via ${rosterData.find(roster => roster.roster_id === pick.roster_id).manager_display_name}` : null }
-                                        </p>
-                                        {
-                                            pick.player_id && (
-                                                <div className={`${playerInfo[pick.player_id] ? playerInfo[pick.player_id].position : null} draft-pick-details`}>
-                                                    <p>{playerInfo[pick.player_id].full_name}</p> 
-                                                    <p>{playerInfo[pick.player_id].team}</p>
-                                                    <p>{playerInfo[pick.player_id].position}</p>
-                                                </div>
-                                            )
-                                        }
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <DraftRound round={round} playerInfo={playerInfo} rosterData={rosterData} />
                     </div>
                 ))}
             </div>

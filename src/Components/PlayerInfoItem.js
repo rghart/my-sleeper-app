@@ -35,7 +35,7 @@ const PlayerInfoItem = ({ player, addToRoster, rankingPlayersIdsList, updatePlay
                     { 
                         !editingPlayer && 
                         <>
-                            <p className="clickable-player-name" onClick={() => setEditingPlayer(true)}><b>{player.full_name}</b></p>
+                            <p className="clickable-item" onClick={() => setEditingPlayer(true)}><b>{player.full_name}</b></p>
                             <p className="player-info-item">- {player.team}</p>
                             <p className="player-info-item">({player.position})</p>
                         </>
