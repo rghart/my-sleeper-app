@@ -4,6 +4,7 @@ import './loader.css';
 import SearchBar from './Components/SearchBar';
 import SearchFilterButton from './Components/SearchFilterButton';
 import PlayerInfoItem from './Components/PlayerInfoItem';
+import DraftPanel from './Panels/DraftPanel';
 import Fuse from 'fuse.js';
 import { auth } from './firebase.js';
 
@@ -11,6 +12,7 @@ class App extends React.Component {
   state = {
     playerInfo: {},
     leagueData: [],
+    tradedDraftPicks: [],
     isLoading: true,
     loadingMessage: "Initial load...",
     rankingPlayersIdsList: [],
@@ -21,13 +23,14 @@ class App extends React.Component {
     showAvailable: true,
     showOnlyMyPlayers: true,
     leagueID: "662349421429727232",
-    allLeagueIDs: [],
     rosterPositions: [],
     notFoundPlayers: [],
     lastUpdate: null,
     user: null,
     authToken: null,
-    showTaken: false
+    showTaken: false,
+    liveDraft: [],
+    leaguePanel: "draft",
   };
 
   componentDidMount() {
@@ -156,7 +159,8 @@ class App extends React.Component {
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
       `https://api.sleeper.app/v1/league/${leagueID}/users`,
       `https://api.sleeper.app/v1/league/${leagueID}`,
-      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2021`
+      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2021`,
+      `https://api.sleeper.app/v1/league/${leagueID}/drafts`,
     ]
     let requests = urls.map(url => fetch(url));
     Promise.all(requests)
@@ -166,22 +170,78 @@ class App extends React.Component {
         }))
       })
       .then(data => {
-        this.markTakenPlayers(data[0], data[1]);
-        let leagueIds = data[3];
+        const leagueData = {};
+        [
+            leagueData.rosterData, 
+            leagueData.managerData, 
+            leagueData.currentLeague, 
+            leagueData.leagueIds, 
+            leagueData.currentLeagueDrafts,
+        ] = data;
+        console.log(leagueData.rosterData)
+        console.log(leagueData.managerData)
+        this.markTakenPlayers(leagueData.rosterData, leagueData.managerData);
         this.setState({
-          leagueData: data,
+          leagueData: leagueData,
           isLoading: false,
-          loadingMessage: "",
-          rosterPositions: data[2].roster_positions.filter(pos => pos !== "BN"),
-          allLeagueIDs: leagueIds
+          loadingMessage: "Loading league panel...",
+          rosterPositions: leagueData.currentLeague.roster_positions.filter(pos => pos !== "BN").map(pos => 
+              { 
+                  if (pos === "SUPER_FLEX") {
+                      return "SFLX" 
+                  } else if (pos === "FLEX") { 
+                      return "FLX" 
+                  } else { 
+                    return pos 
+                  } 
+              }),
         });
         if (this.state.rankingPlayersIdsList) {
             this.filterPlayers();
         }
+        this.getTradedDraftPicks();
       })
       .catch((error) => {
         console.error('Error:', error);
       });
+  }
+
+  getTradedDraftPicks = async () => {
+      const draftId = this.state.leagueData.currentLeagueDrafts[0].draft_id;
+      const tradedPicks = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/traded_picks`)
+        .then(response => response.json())
+        .then(data => data)
+        .catch((error) => {
+          console.error('Error:', error);
+      })
+      console.log(tradedPicks);
+      this.setState({
+        tradedDraftPicks: tradedPicks
+      })
+      this.getSpecificDraft();
+  }
+
+  getSpecificDraft = async () => {
+    let { leagueData } = this.state;
+    const draftId = leagueData.currentLeagueDrafts[0].draft_id;
+    const draftData = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`)
+      .then(response => response.json())
+      .then(data => data)
+      .catch((error) => {
+        console.error('Error:', error);
+    })
+    console.log(draftData)
+    leagueData.currentDraft = draftData;
+    this.setState({
+      leagueData
+    })
+    if (draftData.draft_order) {
+        this.buildDraft();
+    } else {
+        this.setState({
+            loadingMessage: ""
+        })
+    }
   }
 
   markTakenPlayers = (rosterData, managerData) => {
@@ -198,6 +258,7 @@ class App extends React.Component {
       const currentManagerId = rosterData[i].owner_id;
       const currentManagerData = managerData.find(manager => manager.user_id === currentManagerId);
       rosterData[i].manager_display_name = currentManagerData ? currentManagerData.display_name : "Unassigned";
+      rosterData[i].avatar = currentManagerData ? currentManagerData.avatar : null;
       rosterData[i].players.forEach(player => {
         playerObject[player].is_taken = true;
         playerObject[player].rostered_by = rosterData[i].manager_display_name;
@@ -219,7 +280,7 @@ class App extends React.Component {
         const leagueID = e.target.value;
         this.setState({
           leagueID
-        });
+        }, () => this.getLeagueData("Loading league panel..."));
     }
 
     handleChange = (e) => {
@@ -400,17 +461,17 @@ class App extends React.Component {
     addToRoster = (playerInfo) => {
         let { rosterPositions } = this.state;
         if (playerInfo.position === "TE" || playerInfo.position === "RB" || playerInfo.position === "WR") {
-            playerInfo.fantasy_positions.push("FLEX");
-            playerInfo.fantasy_positions.push("SUPER_FLEX");
+            playerInfo.fantasy_positions.push("FLX");
+            playerInfo.fantasy_positions.push("SFLX");
         } else if (playerInfo.position === "QB") {
-            playerInfo.fantasy_positions.push("SUPER_FLEX");
+            playerInfo.fantasy_positions.push("SFLX");
         }
 
         for (let i = 0; i < playerInfo.fantasy_positions.length; i++) {
             const includesPosition = rosterPositions.includes(playerInfo.fantasy_positions[i]);
             if (includesPosition) {
                 const positionIndex = rosterPositions.indexOf(playerInfo.fantasy_positions[i]);
-                let position = ["SUPER_FLEX", "FLEX"].includes(playerInfo.fantasy_positions[i]) ? `${playerInfo.fantasy_positions[i]} / ${playerInfo.position}` : playerInfo.fantasy_positions[i];
+                let position = ["SFLX", "FLX"].includes(playerInfo.fantasy_positions[i]) ? `${playerInfo.fantasy_positions[i]} / ${playerInfo.position}` : playerInfo.fantasy_positions[i];
                 rosterPositions.splice(positionIndex, 1, `${position} ${playerInfo.full_name} ${playerInfo.team ? playerInfo.team : ""}`);
                 break;
             }
@@ -418,6 +479,100 @@ class App extends React.Component {
          this.setState({
              rosterPositions: rosterPositions
          })
+    }
+
+    buildDraft = () => {
+        const { leagueData, tradedDraftPicks } = this.state;
+        const { currentDraft } = leagueData;
+        const { settings } = currentDraft;
+        let draftType = "";
+        switch (settings.player_type) {
+            case 1:
+                draftType = "Rookie";
+                break;
+            case 2:
+                draftType = "Veterans";
+                break;
+            default:
+                draftType = "All players"
+                break;
+        }
+        const createPickOrder = (round) => {
+            let pickOrder = [];
+            for (const [key, value] of Object.entries(currentDraft.draft_order)) {
+                let obj = {
+                  pick_number: value,
+                  user_id: key,
+                  roster_id: currentDraft.slot_to_roster_id[value],
+                  is_traded: false,
+                  owner_id: currentDraft.slot_to_roster_id[value],
+                  pick_round: round,
+                  pick_spot_string: `${round}.${value}`,
+                  player_id: null
+                }
+                pickOrder.push(obj)
+            };
+            return pickOrder.sort((a, b) => a.pick_number - b.pick_number);
+        }
+
+        let draftRounds = [];
+        for (let i = 0; i < settings.rounds; i++) {
+            let round = {};
+            round.round = settings.rounds - i;       
+            round.picks = createPickOrder(round.round);
+            draftRounds.unshift(round);
+        }
+        tradedDraftPicks.forEach(tradedPick => {
+            let draftRoundIndex = draftRounds[tradedPick.round - 1].picks.findIndex(pick => pick.roster_id === tradedPick.roster_id);
+            Object.assign(draftRounds[tradedPick.round - 1].picks[draftRoundIndex], {
+                owner_id: tradedPick.owner_id, 
+                is_traded: true
+            })
+        })
+        console.log(draftRounds)
+        leagueData.currentDraft.built_draft = draftRounds;
+        leagueData.currentDraft.player_pool = draftType;
+        this.setState({
+            leagueData,
+            loadingMessage: ""
+        })
+
+        
+
+        // Working on how to structure draft
+        // [
+        //   {
+        //     round: 1,
+        //     picks: [
+        //       {
+        //         pick: "1.1",
+        //         is_traded: false,
+        //         owner_id: 9, //current owner
+        //         roster_id: 9 // original owner
+        //       }
+        //       {
+        //         pick: "1.2",
+        //         is_traded: true,
+        //         owner_id: 1,
+        //         roster_id: 8
+        //       }
+        //     ]
+        //   },
+        //   {},
+        //   {},
+        // ]
+    }
+
+    updatePlayerInfo = (newPlayerInfo) => {
+        this.setState({
+          playerInfo: newPlayerInfo
+        }, this.filterPlayers)
+    }
+
+    updateLeaguePanel = (panelType) => {
+        this.setState({
+            leaguePanel: panelType
+        })
     }
 
   render() {
@@ -433,7 +588,9 @@ class App extends React.Component {
           rankingPlayersIdsList, 
           rosterPositions, 
           leagueData, 
-          notFoundPlayers 
+          notFoundPlayers,
+          leagueID,
+          leaguePanel,
       } = this.state;
       if (isLoading && loadingMessage === "Initial load...") {
         return <div className="loader"></div>;
@@ -483,21 +640,47 @@ class App extends React.Component {
                         }
                     </div> 
                     <div className="panel league-panel">
-                    { 
-                      loadingMessage === "Loading league panel..." 
-                      ? <div className="panel-loader"></div> 
-                      : <>
-                        <div className="league-grid">
-                            <p><b>{leagueData[2].name}</b></p>
-                            <SearchBar allLeagueIDs={this.state.allLeagueIDs} leagueID={this.state.leagueID} updateLeagueID={this.updateLeagueID} getLeagueData={() => this.getLeagueData("Loading league panel...")}/>
-                        </div>
-                        <div className="roster-positions">
-                            {rosterPositions.map((pos, index) => (
-                                <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
-                            ))}
-                        </div>
-                        </>
-                    } 
+                        { 
+                          loadingMessage === "Loading league panel..." 
+                          ? <div className="panel-loader"></div> 
+                          : <>
+
+                                <div className="league-grid">
+                                    <p>
+                                        <b>{leagueData.currentLeague.name}</b>
+                                    </p>
+                                    <SearchBar 
+                                        allLeagueIDs={leagueData.leagueIds} 
+                                        leagueID={leagueID} 
+                                        updateLeagueID={this.updateLeagueID}
+                                    />
+                                    <div className="custom-horizontal-select">
+                                        <div className={`custom-horizontal-select-item ${leaguePanel === "weekly" ? "selected" : null}`} onClick={() => this.updateLeaguePanel("weekly")}>
+                                            <div className="meta">
+                                                <div className="name">Weekly</div>
+                                                <div className="description">Lineup setter</div>
+                                            </div>
+                                        </div>
+                                        <div className={`custom-horizontal-select-item ${leaguePanel === "draft" ? "selected" : null}`}  onClick={() => this.updateLeaguePanel("draft")}>
+                                            <div className="meta">
+                                                <div className="name">Draft</div>
+                                                <div className="description">Sync</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                { leaguePanel === "weekly" && (
+                                    <div className="roster-positions">
+                                        {rosterPositions.map((pos, index) => (
+                                            <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
+                                        ))}
+                                    </div>
+                                )}
+                                { leaguePanel === "draft" && (
+                                    <DraftPanel leagueData={leagueData} playerInfo={playerInfo} updatePlayerInfo={this.updatePlayerInfo}/>
+                                )}
+                            </>
+                        } 
                     </div>
                 </div>
             </div>
