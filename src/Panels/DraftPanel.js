@@ -8,7 +8,9 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
 
     const getLiveDraft = async () => {
         let newPlayerInfo = playerInfo;
-        const liveDraftData = await fetch('https://api.sleeper.app/v1/draft/674338685663117312/picks')
+        // For mock drafts, replace "${currentDraft.draft_id}" with the draft ID of the mock draft. 
+        // Number of rounds and pick spots must be the same as selected league, or else it will break. <-- Should find a way to throw error instead
+        const liveDraftData = await fetch(`https://api.sleeper.app/v1/draft/${currentDraft.draft_id}/picks`)
           .then(response => response.json())
           .then(data => data)
           .catch((error) => {
