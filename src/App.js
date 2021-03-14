@@ -235,7 +235,13 @@ class App extends React.Component {
     this.setState({
       leagueData
     })
-    this.buildDraft();
+    if (draftData.draft_order) {
+        this.buildDraft();
+    } else {
+        this.setState({
+            loadingMessage: ""
+        })
+    }
   }
 
   markTakenPlayers = (rosterData, managerData) => {

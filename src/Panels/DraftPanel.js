@@ -84,7 +84,7 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
                 </button>
             </div>
             <div className="player-grid">
-                {liveDraft.built_draft.map(round =>(
+                { liveDraft.built_draft && liveDraft.built_draft.map(round =>(
                     <div key={round.round} className="draft-round-box">    
                         <DraftRound round={round} playerInfo={playerInfo} rosterData={rosterData} />
                     </div>
