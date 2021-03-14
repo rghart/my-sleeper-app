@@ -417,8 +417,9 @@ class App extends React.Component {
                 }
               ]
             });
-            if (results[0]) {
-                searchResultsArray.push({match_results: results, ranking: ranking});
+            const fResults = results.filter(result => positions.includes(result.item.position));
+            if (fResults[0]) {
+                searchResultsArray.push({match_results: fResults, ranking: ranking});
                 if (results[0].item.search_rank > 1000) {
                     console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${ranking}`)
                 }
