@@ -45,6 +45,7 @@ const PlayerInfoItem = ({ player, addToRoster, rankingPlayersIdsList, updatePlay
                     <p className="player-info-item"><b>Is rostered:</b> {player.is_taken ? player.is_taken.toString() : "false"} </p>
                     <p className="player-info-item"><b>Rostered by:</b> {player.rostered_by ? player.rostered_by : "None"}</p>
                     <p className="player-info-item"><b>Rank:</b> {rankPlayerId.ranking}</p>
+                    <div className="avatar-player" aria-label="nfl Player" style={{width: 32 + "px", height: 32 + "px", flex: "0 0 32 px", background: `url(https://sleepercdn.com/content/nfl/players/thumb/${player.player_id}.jpg) center center / cover rgb(239, 239, 239)`, borderRadius: 33 + "%", marginTop: -3 + "%", backgroundColor: "transparent"}}></div>
                 </div>
             </div>
             {
