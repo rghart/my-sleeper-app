@@ -5,12 +5,13 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
     const { currentDraft, rosterData } = leagueData;
     const [liveDraft, setLiveDraft] = useState(currentDraft);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [currentDraftId, setCurrentDraftId] = useState(currentDraft.draft_id);
 
     const getLiveDraft = async () => {
         let newPlayerInfo = playerInfo;
         // For mock drafts, replace "${currentDraft.draft_id}" with the draft ID of the mock draft. 
         // Number of rounds and pick spots must be the same as selected league, or else it will break. <-- Should find a way to throw error instead
-        const liveDraftData = await fetch(`https://api.sleeper.app/v1/draft/${currentDraft.draft_id}/picks`)
+        const liveDraftData = await fetch(`https://api.sleeper.app/v1/draft/${currentDraftId}/picks`)
           .then(response => response.json())
           .then(data => data)
           .catch((error) => {
@@ -77,6 +78,9 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
     return (
         <div>
             <div className="league-grid">
+                <p><b>Draft ID</b></p>
+                <input type="text" className="input-small" value={currentDraftId} onChange={(e) => setCurrentDraftId(e.target.value)} />
+                <button className="button" onClick={getLiveDraft}>Update</button>
                 <p><b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b></p>
                 <p>Status: {currentDraft.status}</p>
                 <button className={`button search-button ${isSyncing ? 'syncing' : null}`} onClick={() => setIsSyncing(!isSyncing)}>

@@ -214,6 +214,17 @@
     width: 85%;
 }
 
+.input-small {
+    margin-top: 1px;
+    margin-bottom: 16px;
+    background: transparent;
+    caret-color: #ddd;
+    color: #fff;
+    border: 2px solid #4b576b;
+    border-radius: 10px;
+    width: min-content;
+}
+
 .radio-label {
     margin-right: 3px;
 }
