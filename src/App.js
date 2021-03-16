@@ -20,15 +20,13 @@ class App extends React.Component {
     isTyping: false,
     searchText: "",
     checkedItems: ["QB", "RB", "WR", "TE", "K", "DEF"],
-    showAvailable: true,
-    showOnlyMyPlayers: true,
     leagueID: "662349421429727232",
     rosterPositions: [],
     notFoundPlayers: [],
     lastUpdate: null,
-    user: null,
-    authToken: null,
     showTaken: false,
+    showMyPlayers: true,
+    showRookiesOnly: false,
     liveDraft: [],
     leaguePanel: "draft",
   };
@@ -36,18 +34,10 @@ class App extends React.Component {
   componentDidMount() {
     auth.onAuthStateChanged((user) => {
       if (user) {
-        this.setState({
-          user
-        })
+
       }
     })
     auth.signInAnonymously()
-      .then((result) => {
-        const user = result.user;
-        this.setState({
-          user
-        })
-      })
       .then(() => {
         this.getPlayerData();
       })
@@ -77,7 +67,7 @@ class App extends React.Component {
 
   updatePlayerDB = async () => {
     // Attempt update to latest update attempt before calling Sleeper. return if that fails
-    const updateResponse = await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${this.state.authToken}`, new Date().getTime());
+    const updateResponse = await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`, new Date().getTime());
     if (updateResponse && updateResponse.ok) {
       const sleeperPlayerData = await fetch(`https://api.sleeper.app/v1/players/nfl`)
         .then(this.checkErrors)
@@ -99,14 +89,14 @@ class App extends React.Component {
             console.error('Error:', error);
           });
 
-      await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${this.state.authToken}`, sleeperPlayerData);
+      await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${await auth.currentUser.getIdToken(true)}`, sleeperPlayerData);
     } else {
       console.log("Wasn't able to update latest_update_attempt field")
     }
   }
 
   getLatestUpdateAttempt = async () => {
-    return await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${this.state.authToken}`)
+    return await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`)
       .then(response => response.json())
       .then(data => {
         this.setState({
@@ -122,22 +112,13 @@ class App extends React.Component {
   // Need to update latest update time stamp before attempting to call Sleeper's API. 
   // This way if the update fails, or, succeeds and then the subsequent GET (Sleeper API) or PUT (my player DB) fails, we won't attempt to call Sleeper's API within 24 hours 
   getPlayerData = async () => {
-    await auth.currentUser.getIdToken(true)
-      .then((idToken) => {
-        this.setState({
-          authToken: idToken,
-        });
-      })
-      .catch((error) => {
-          // Handle error
-        });
     const day = 24 * 60 * 60 * 1000;
     const currentDate = new Date().getTime();
     const latestUpdateAttempt = await this.getLatestUpdateAttempt();
     if (currentDate - latestUpdateAttempt >= day) {
       await this.updatePlayerDB();
     }
-    await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${this.state.authToken}`)
+    await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${await auth.currentUser.getIdToken(true)}`)
       .then(response => response.json())
       .then(data => {
         this.setState({
@@ -448,14 +429,29 @@ class App extends React.Component {
     }
 
     filterPlayers = (rankingPlayers) => {
+        const { showTaken, showMyPlayers, showRookiesOnly, playerInfo } = this.state;
         let playerList = rankingPlayers ? rankingPlayers : this.state.rankingPlayersIdsList;
-        const newPlayers = playerList.filter(results => this.state.checkedItems.includes(this.state.playerInfo[results.match_results[0].item.player_id].position) && ( this.state.showTaken ? this.state.playerInfo[results.match_results[0].item.player_id] : !this.state.playerInfo[results.match_results[0].item.player_id].is_taken || this.state.playerInfo[results.match_results[0].item.player_id].rostered_by === 'ryangh')).map(results => results);
+        
+        if (!showTaken && showMyPlayers) {
+            playerList = playerList.filter(results => !playerInfo[results.match_results[0].item.player_id].is_taken || playerInfo[results.match_results[0].item.player_id].rostered_by === 'ryangh')
+        } else if (!showTaken) {
+            playerList = playerList.filter(results => !playerInfo[results.match_results[0].item.player_id].is_taken)
+        } else if (showTaken && !showMyPlayers) {
+            playerList = playerList.filter(results =>  playerInfo[results.match_results[0].item.player_id].rostered_by !== 'ryangh')
+        }  else if (!showMyPlayers) {
+            playerList = playerList.filter(results =>  playerInfo[results.match_results[0].item.player_id].rostered_by !== 'ryangh' || playerInfo[results.match_results[0].item.player_id].rostered_by)
+        }
+
+        if (showRookiesOnly) {
+            playerList = playerList.filter(results => playerInfo[results.match_results[0].item.player_id].years_exp < 1)
+        }
+        
         this.setState({
-            filteredPlayersIdsList: newPlayers
+            filteredPlayersIdsList: playerList.filter(results => this.state.checkedItems.includes(this.state.playerInfo[results.match_results[0].item.player_id].position))
         })
     }
 
-    updatePlayerId = async (newRankingPlayersIdsList) => {
+    updatePlayerId = (newRankingPlayersIdsList) => {
         this.filterPlayers(newRankingPlayersIdsList);
     }
 
@@ -582,7 +578,9 @@ class App extends React.Component {
           isLoading, 
           lastUpdate,
           loadingMessage, 
-          showTaken, 
+          showTaken,
+          showMyPlayers,
+          showRookiesOnly,
           filteredPlayersIdsList, 
           searchText, 
           checkedItems, 
@@ -601,43 +599,47 @@ class App extends React.Component {
                 <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
                 <h1 className="title">Sleeper Team Assistant</h1>
                 <div className="main-container">
-                <div className="panel search-panel">
-                    { 
-                      loadingMessage === "Loading search panel..." 
-                      ? <div className="panel-loader"></div> 
-                      : <>
-                          <div className="search">
-                                <div className="position-filter">
-                                    <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
-                                    <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
-                                    <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
-                                    <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
-                                    <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
-                                    <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
+                    <div className="panel search-panel">
+                        { 
+                            loadingMessage === "Loading search panel..." ? 
+                            <div className="panel-loader"></div> : 
+                            <>
+                                <div className="search">
+                                    <div className="position-filter">
+                                        <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
+                                        <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
+                                        <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
+                                        <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
+                                        <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
+                                        <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
+                                    </div>
+                                    <div className="position-filter">
+                                        <SearchFilterButton name={"Rostered players"} handleChange={() => this.setState({showTaken: !showTaken}, this.filterPlayers)} labelName={"Rostered players"} checked={showTaken} />
+                                        <SearchFilterButton name={"My players"} handleChange={() => this.setState({showMyPlayers: !showMyPlayers}, this.filterPlayers)} labelName={"My players"} checked={showMyPlayers} />
+                                    </div>
+                                    <div className="position-filter">
+                                        <SearchFilterButton name={"Only rookies"} handleChange={() => this.setState({showRookiesOnly: !showRookiesOnly}, this.filterPlayers)} labelName={"Only rookies"} checked={showRookiesOnly} />
+                                    </div>
+                                    <textarea className="input" value={searchText} onChange={this.updateSearchText} />
+                                    <button className="button search-button" onClick={() => this.startLoad("Loading search panel...")}>
+                                        Submit
+                                    </button>
                                 </div>
-                                <div className="position-filter">
-                                    <SearchFilterButton name={"Show rostered players"} handleChange={() => this.setState({showTaken: !showTaken}, this.filterPlayers)} labelName={"Show rostered players?"} checked={showTaken} />
+                                <div className="player-grid">
+                                    {filteredPlayersIdsList.map(results => (
+                                        <PlayerInfoItem 
+                                            key={`${results.match_results[0].refIndex}${results.ranking}`} 
+                                            player={playerInfo[results.match_results[0].item.player_id]} 
+                                            addToRoster={this.addToRoster} 
+                                            updatePlayerId={this.updatePlayerId}
+                                            rankingPlayersIdsList={rankingPlayersIdsList}
+                                        />
+                                    ))}
+                                    {notFoundPlayers.map((item, index) => (
+                                      <p key={item + new Date().getTime() + index}>{item}</p>
+                                    ))}
                                 </div>
-                                <textarea className="input" value={searchText} onChange={this.updateSearchText} />
-                                <button className="button search-button" onClick={() => this.startLoad("Loading search panel...")}>
-                                    Submit
-                                </button>
-                            </div>
-                            <div className="player-grid">
-                                {filteredPlayersIdsList.map(results => (
-                                    <PlayerInfoItem 
-                                        key={`${results.match_results[0].refIndex}${results.ranking}`} 
-                                        player={playerInfo[results.match_results[0].item.player_id]} 
-                                        addToRoster={this.addToRoster} 
-                                        updatePlayerId={this.updatePlayerId}
-                                        rankingPlayersIdsList={rankingPlayersIdsList}
-                                    />
-                                ))}
-                                {notFoundPlayers.map((item, index) => (
-                                  <p key={item + new Date().getTime() + index}>{item}</p>
-                                ))}
-                            </div>
-                          </>
+                            </>
                         }
                     </div> 
                     <div className="panel league-panel">
