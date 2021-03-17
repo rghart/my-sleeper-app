@@ -1,10 +1,9 @@
 import React from 'react';
 import './App.css';
 import './loader.css';
-import SearchBar from './Components/SearchBar';
-import SearchFilterButton from './Components/SearchFilterButton';
 import PlayerInfoItem from './Components/PlayerInfoItem';
-import DraftPanel from './Panels/DraftPanel';
+import LeaguePanel from './Panels/LeaguePanel';
+import RanksPanel from './Panels/RanksPanel';
 import Fuse from 'fuse.js';
 import { auth } from './firebase.js';
 
@@ -18,7 +17,6 @@ class App extends React.Component {
     rankingPlayersIdsList: [],
     filteredPlayersIdsList: [],
     isTyping: false,
-    searchText: "",
     checkedItems: ["QB", "RB", "WR", "TE", "K", "DEF"],
     leagueID: "662349421429727232",
     rosterPositions: [],
@@ -28,7 +26,6 @@ class App extends React.Component {
     showMyPlayers: true,
     showRookiesOnly: false,
     liveDraft: [],
-    leaguePanel: "draft",
   };
 
   componentDidMount() {
@@ -97,6 +94,7 @@ class App extends React.Component {
 
   getLatestUpdateAttempt = async () => {
     return await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`)
+      .then(this.checkErrors)
       .then(response => response.json())
       .then(data => {
         this.setState({
@@ -109,8 +107,6 @@ class App extends React.Component {
       });
   }
 
-  // Need to update latest update time stamp before attempting to call Sleeper's API. 
-  // This way if the update fails, or, succeeds and then the subsequent GET (Sleeper API) or PUT (my player DB) fails, we won't attempt to call Sleeper's API within 24 hours 
   getPlayerData = async () => {
     const day = 24 * 60 * 60 * 1000;
     const currentDate = new Date().getTime();
@@ -143,13 +139,11 @@ class App extends React.Component {
       `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2021`,
       `https://api.sleeper.app/v1/league/${leagueID}/drafts`,
     ]
-    let requests = urls.map(url => fetch(url));
+    let requests = urls.map(async url => {
+        const response = await fetch(url);
+        return response.json();
+    });
     Promise.all(requests)
-      .then(responses => {
-        return Promise.all(responses.map(response => {
-          return response.json();
-        }))
-      })
       .then(data => {
         const leagueData = {};
         [
@@ -159,8 +153,6 @@ class App extends React.Component {
             leagueData.leagueIds, 
             leagueData.currentLeagueDrafts,
         ] = data;
-        console.log(leagueData.rosterData)
-        console.log(leagueData.managerData)
         this.markTakenPlayers(leagueData.rosterData, leagueData.managerData);
         this.setState({
           leagueData: leagueData,
@@ -195,7 +187,6 @@ class App extends React.Component {
         .catch((error) => {
           console.error('Error:', error);
       })
-      console.log(tradedPicks);
       this.setState({
         tradedDraftPicks: tradedPicks
       })
@@ -211,7 +202,6 @@ class App extends React.Component {
       .catch((error) => {
         console.error('Error:', error);
     })
-    console.log(draftData)
     leagueData.currentDraft = draftData;
     this.setState({
       leagueData
@@ -250,13 +240,6 @@ class App extends React.Component {
     })
   }
 
-  updateSearchText = (e) => {
-      const searchText = e.target.value;
-      this.setState({
-        searchText
-      });
-    }
-
     updateLeagueID = (e) => {
         const leagueID = e.target.value;
         this.setState({
@@ -275,15 +258,15 @@ class App extends React.Component {
       this.filterPlayers();
     }
 
-    startLoad = (loadMessage) => {
+    startLoad = (loadMessage, searchText) => {
         this.setState({
           loadingMessage: loadMessage
-        }, () =>  setTimeout(this.updateRankings),
+        }, () =>  setTimeout(() => this.updateRankings(searchText)),
         0)
     }
 
-    updateRankings = async () => {
-        let { playerInfo, searchText } = this.state;
+    updateRankings = async (searchText) => {
+        let { playerInfo } = this.state;
         const playerInfoArray = Object.values(playerInfo);
         playerInfoArray.sort((a, b) => a.search_rank - b.search_rank);
         const playerInfoFuseOptions = {
@@ -526,50 +509,18 @@ class App extends React.Component {
                 is_traded: true
             })
         })
-        console.log(draftRounds)
         leagueData.currentDraft.built_draft = draftRounds;
         leagueData.currentDraft.player_pool = draftType;
         this.setState({
             leagueData,
             loadingMessage: ""
         })
-
-        
-
-        // Working on how to structure draft
-        // [
-        //   {
-        //     round: 1,
-        //     picks: [
-        //       {
-        //         pick: "1.1",
-        //         is_traded: false,
-        //         owner_id: 9, //current owner
-        //         roster_id: 9 // original owner
-        //       }
-        //       {
-        //         pick: "1.2",
-        //         is_traded: true,
-        //         owner_id: 1,
-        //         roster_id: 8
-        //       }
-        //     ]
-        //   },
-        //   {},
-        //   {},
-        // ]
     }
 
-    updatePlayerInfo = (newPlayerInfo) => {
+    setParentStateAndFilter = (stateToUpdate, newState) => {
         this.setState({
-          playerInfo: newPlayerInfo
+          [stateToUpdate]: newState
         }, this.filterPlayers)
-    }
-
-    updateLeaguePanel = (panelType) => {
-        this.setState({
-            leaguePanel: panelType
-        })
     }
 
   render() {
@@ -581,15 +532,13 @@ class App extends React.Component {
           showTaken,
           showMyPlayers,
           showRookiesOnly,
-          filteredPlayersIdsList, 
-          searchText, 
+          filteredPlayersIdsList,
           checkedItems, 
           rankingPlayersIdsList, 
           rosterPositions, 
           leagueData, 
           notFoundPlayers,
           leagueID,
-          leaguePanel,
       } = this.state;
       if (isLoading && loadingMessage === "Initial load...") {
         return <div className="loader"></div>;
@@ -599,92 +548,38 @@ class App extends React.Component {
                 <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
                 <h1 className="title">Sleeper Team Assistant</h1>
                 <div className="main-container">
-                    <div className="panel search-panel">
-                        { 
-                            loadingMessage === "Loading search panel..." ? 
-                            <div className="panel-loader"></div> : 
-                            <>
-                                <div className="search">
-                                    <div className="position-filter">
-                                        <SearchFilterButton name={"QB"} handleChange={this.handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
-                                        <SearchFilterButton name={"RB"} handleChange={this.handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
-                                        <SearchFilterButton name={"WR"} handleChange={this.handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
-                                        <SearchFilterButton name={"TE"} handleChange={this.handleChange} labelName={"TE"} checked={checkedItems.includes("TE")} />
-                                        <SearchFilterButton name={"K"} handleChange={this.handleChange} labelName={"K"} checked={checkedItems.includes("K")} />
-                                        <SearchFilterButton name={"DEF"} handleChange={this.handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
-                                    </div>
-                                    <div className="position-filter">
-                                        <SearchFilterButton name={"Rostered players"} handleChange={() => this.setState({showTaken: !showTaken}, this.filterPlayers)} labelName={"Rostered players"} checked={showTaken} />
-                                        <SearchFilterButton name={"My players"} handleChange={() => this.setState({showMyPlayers: !showMyPlayers}, this.filterPlayers)} labelName={"My players"} checked={showMyPlayers} />
-                                    </div>
-                                    <div className="position-filter">
-                                        <SearchFilterButton name={"Only rookies"} handleChange={() => this.setState({showRookiesOnly: !showRookiesOnly}, this.filterPlayers)} labelName={"Only rookies"} checked={showRookiesOnly} />
-                                    </div>
-                                    <textarea className="input" value={searchText} onChange={this.updateSearchText} />
-                                    <button className="button search-button" onClick={() => this.startLoad("Loading search panel...")}>
-                                        Submit
-                                    </button>
-                                </div>
-                                <div className="player-grid">
-                                    {filteredPlayersIdsList.map(results => (
-                                        <PlayerInfoItem 
-                                            key={`${results.match_results[0].refIndex}${results.ranking}`} 
-                                            player={playerInfo[results.match_results[0].item.player_id]} 
-                                            addToRoster={this.addToRoster} 
-                                            updatePlayerId={this.updatePlayerId}
-                                            rankingPlayersIdsList={rankingPlayersIdsList}
-                                        />
-                                    ))}
-                                    {notFoundPlayers.map((item, index) => (
-                                      <p key={item + new Date().getTime() + index}>{item}</p>
-                                    ))}
-                                </div>
-                            </>
-                        }
-                    </div> 
-                    <div className="panel league-panel">
-                        { 
-                          loadingMessage === "Loading league panel..." 
-                          ? <div className="panel-loader"></div> 
-                          : <>
-
-                                <div className="league-grid">
-                                    <p>
-                                        <b>{leagueData.currentLeague.name}</b>
-                                    </p>
-                                    <SearchBar 
-                                        allLeagueIDs={leagueData.leagueIds} 
-                                        leagueID={leagueID} 
-                                        updateLeagueID={this.updateLeagueID}
-                                    />
-                                    <div className="custom-horizontal-select">
-                                        <div className={`custom-horizontal-select-item ${leaguePanel === "weekly" ? "selected" : null}`} onClick={() => this.updateLeaguePanel("weekly")}>
-                                            <div className="meta">
-                                                <div className="name">Weekly</div>
-                                                <div className="description">Lineup setter</div>
-                                            </div>
-                                        </div>
-                                        <div className={`custom-horizontal-select-item ${leaguePanel === "draft" ? "selected" : null}`}  onClick={() => this.updateLeaguePanel("draft")}>
-                                            <div className="meta">
-                                                <div className="name">Draft</div>
-                                                <div className="description">Sync</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                { leaguePanel === "weekly" && (
-                                    <div className="roster-positions">
-                                        {rosterPositions.map((pos, index) => (
-                                            <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
-                                        ))}
-                                    </div>
-                                )}
-                                { leaguePanel === "draft" && (
-                                    <DraftPanel leagueData={leagueData} playerInfo={playerInfo} updatePlayerInfo={this.updatePlayerInfo}/>
-                                )}
-                            </>
-                        } 
-                    </div>
+                    <RanksPanel 
+                        loadingMessage={loadingMessage}
+                        handleChange={this.handleChange}
+                        checkedItems={checkedItems}
+                        setParentStateAndFilter={this.setParentStateAndFilter}
+                        showMyPlayers={showMyPlayers}
+                        showRookiesOnly={showRookiesOnly}
+                        showTaken={showTaken}
+                        startLoad={this.startLoad}
+                    >
+                        {filteredPlayersIdsList.map(results => (
+                            <PlayerInfoItem 
+                                key={`${results.match_results[0].refIndex}${results.ranking}`} 
+                                player={playerInfo[results.match_results[0].item.player_id]} 
+                                addToRoster={this.addToRoster} 
+                                updatePlayerId={this.updatePlayerId}
+                                rankingPlayersIdsList={rankingPlayersIdsList}
+                            />
+                        ))}
+                        {notFoundPlayers.map((item, index) => (
+                          <p key={item + new Date().getTime() + index}>{item}</p>
+                        ))}
+                    </RanksPanel>
+                    <LeaguePanel 
+                        leagueData={leagueData} 
+                        leagueID={leagueID} 
+                        updateLeagueID={this.updateLeagueID} 
+                        rosterPositions={rosterPositions}
+                        playerInfo={playerInfo}
+                        setParentStateAndFilter={this.setParentStateAndFilter}
+                        loadingMessage={loadingMessage}
+                    />
                 </div>
             </div>
         )};
