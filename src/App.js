@@ -17,7 +17,7 @@ class App extends React.Component {
     rankingPlayersIdsList: [],
     filteredPlayersIdsList: [],
     isTyping: false,
-    checkedItems: ["QB", "RB", "WR", "TE", "K", "DEF"],
+    checkedItems: ["QB", "RB", "WR", "TE",],
     leagueID: "662349421429727232",
     rosterPositions: [],
     notFoundPlayers: [],

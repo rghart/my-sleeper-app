@@ -40,8 +40,8 @@ const RanksPanel = ({
                         <div className="position-filter">
                             <SearchFilterButton name={"Only rookies"} handleChange={() => setParentStateAndFilter("showRookiesOnly", !showRookiesOnly)} labelName={"Only rookies"} checked={showRookiesOnly} />
                         </div>
-                        <textarea className="input" value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-                        <button className="button search-button" onClick={startSearch}>
+                        <textarea className="input" placeholder="Copy + Paste rankings here..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+                        <button className={`${searchText.length < 6 ? "disabled" : "search-button"} button`} disabled={searchText.length < 6 ? true : false} onClick={startSearch}>
                             Submit
                         </button>
                     </div>
