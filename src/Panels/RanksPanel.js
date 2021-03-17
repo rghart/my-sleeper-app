@@ -25,7 +25,7 @@ const RanksPanel = ({
                 <div className="panel-loader"></div> : 
                 <>
                     <div className="search">
-                        <div className="position-filter">
+                        <div className="position-filter" style={{flexWrap: "wrap"}}>
                             <SearchFilterButton name={"QB"} handleChange={handleChange} labelName={"QB"} checked={checkedItems.includes("QB")} />
                             <SearchFilterButton name={"RB"} handleChange={handleChange} labelName={"RB"} checked={checkedItems.includes("RB")} />
                             <SearchFilterButton name={"WR"} handleChange={handleChange} labelName={"WR"} checked={checkedItems.includes("WR")} />
