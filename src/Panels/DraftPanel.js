@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DraftRound from './DraftRound';
 
-const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
+const DraftPanel = ({ leagueData, playerInfo, setParentStateAndFilter }) => {
     const { currentDraft, rosterData } = leagueData;
     const [liveDraft, setLiveDraft] = useState(currentDraft);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -9,8 +9,6 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
 
     const getLiveDraft = async () => {
         let newPlayerInfo = playerInfo;
-        // For mock drafts, replace "${currentDraft.draft_id}" with the draft ID of the mock draft. 
-        // Number of rounds and pick spots must be the same as selected league, or else it will break. <-- Should find a way to throw error instead
         const liveDraftData = await fetch(`https://api.sleeper.app/v1/draft/${currentDraftId}/picks`)
           .then(response => response.json())
           .then(data => data)
@@ -30,7 +28,7 @@ const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
             newPlayerInfo[livePick.player_id].rostered_by = rosterData.find(roster => pick.owner_id === roster.roster_id).manager_display_name;
             newLiveDraft.built_draft[round].picks[draftSlot] = pick;
         })
-        updatePlayerInfo({...newPlayerInfo});
+        setParentStateAndFilter("playerInfo", {...newPlayerInfo});
         newLiveDraft = await getTradedDraftPicks(newLiveDraft);
         setLiveDraft({...newLiveDraft});
     }
