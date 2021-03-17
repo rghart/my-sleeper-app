@@ -178,6 +178,17 @@
   height: 30px;
 }
 
+.disabled {
+    width: 80%;
+    text-align: center;
+    margin-top: 8px;
+    margin-bottom: 15px;
+    font-size: medium;
+    height: 30px;
+    border: 2px solid #4b576b;
+    color: #4b576b;
+}
+
 .player-add-button {
   align-self:center;
   justify-self: flex-end;
@@ -227,7 +238,21 @@
 }
 
 .radio-label {
-    margin-right: 3px;
+    border: 1px solid #a3bbd3;
+    border-radius: 22px;
+    padding: 6px;
+    cursor: pointer;
+    margin: 6px;
+    min-width: 28px;
+    text-align: center;
+}
+
+.radioPad {
+    display: none;
+}
+
+.checked {
+    background-color: #00ceb8;
 }
 
 .lineup-position {

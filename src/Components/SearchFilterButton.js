@@ -2,7 +2,7 @@ import React from 'react';
 
 const SearchFilterButton = ({ checked, handleChange, labelName, name }) => {
     return (
-        <label className={`radio-label`}>
+        <label className={`radio-label ${checked ? "checked" : null}`}>
             {labelName}
             <input
               className="radioPad"
