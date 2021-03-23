@@ -71,7 +71,7 @@ class App extends React.Component {
         .then(response => response.json())
         .then(data => {
           console.log("Successfully fetched Sleeper Player data from API");
-          let filteredData;
+          let filteredData = {};
           filteredData.active_players = Object.fromEntries(
             Object.entries(data)
             .filter(([key, val]) => val.active)
