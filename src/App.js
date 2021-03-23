@@ -70,8 +70,9 @@ class App extends React.Component {
         .then(this.checkErrors)
         .then(response => response.json())
         .then(data => {
-          console.log("Successfully fetched Sleeper Player data from API")
-          let filteredData = Object.fromEntries(
+          console.log("Successfully fetched Sleeper Player data from API");
+          let filteredData;
+          filteredData.active_players = Object.fromEntries(
             Object.entries(data)
             .filter(([key, val]) => val.active)
           )
@@ -85,8 +86,8 @@ class App extends React.Component {
         .catch((error) => {
             console.error('Error:', error);
           });
-
-      await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${await auth.currentUser.getIdToken(true)}`, sleeperPlayerData);
+        this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`, sleeperPlayerData.latest_update_attempt);
+        await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/active_players.json?auth=${await auth.currentUser.getIdToken(true)}`, sleeperPlayerData.active_players);
     } else {
       console.log("Wasn't able to update latest_update_attempt field")
     }
@@ -114,7 +115,7 @@ class App extends React.Component {
     if (currentDate - latestUpdateAttempt >= day) {
       await this.updatePlayerDB();
     }
-    await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/.json?auth=${await auth.currentUser.getIdToken(true)}`)
+    await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/active_players.json?auth=${await auth.currentUser.getIdToken(true)}`)
       .then(response => response.json())
       .then(data => {
         this.setState({
@@ -127,10 +128,7 @@ class App extends React.Component {
     this.getLeagueData();   
   }
 
-  getLeagueData = async (loadMessage) => {
-      this.setState({
-          loadingMessage: loadMessage ? loadMessage : "Initial load..."
-      });
+  getLeagueData = async () => {
     const leagueID = this.state.leagueID;
     const urls = [
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
@@ -240,11 +238,11 @@ class App extends React.Component {
     })
   }
 
-    updateLeagueID = (e) => {
-        const leagueID = e.target.value;
+    updateParentState = (state, value, callback, loadingMessage) => {
         this.setState({
-          leagueID
-        }, () => this.getLeagueData("Loading league panel..."));
+          [state]: value,
+          loadingMessage
+        }, this[callback])
     }
 
     handleChange = (e) => {
@@ -265,7 +263,7 @@ class App extends React.Component {
         0)
     }
 
-    updateRankings = async (searchText) => {
+    updateRankings = (searchText) => {
         let { playerInfo } = this.state;
         const playerInfoArray = Object.values(playerInfo);
         playerInfoArray.sort((a, b) => a.search_rank - b.search_rank);
@@ -393,14 +391,13 @@ class App extends React.Component {
             ranking += 1;
         })
 
-        await this.setState({
+        this.setState({
           rankingPlayersIdsList: searchResultsArray,
           isLoading: false,
           loadingMessage: "",
           notFoundPlayers: notFoundPlayers,
           searchText: ""
-        })
-        this.filterPlayers();
+        }, this.filterPlayers)
     }
 
     getHighestScore = (arr, fuseSearch) => {
@@ -471,7 +468,7 @@ class App extends React.Component {
                 draftType = "Rookie";
                 break;
             case 2:
-                draftType = "Veterans";
+                draftType = "Veteran";
                 break;
             default:
                 draftType = "All players"
@@ -517,12 +514,6 @@ class App extends React.Component {
         })
     }
 
-    setParentStateAndFilter = (stateToUpdate, newState) => {
-        this.setState({
-          [stateToUpdate]: newState
-        }, this.filterPlayers)
-    }
-
   render() {
       const { 
           playerInfo, 
@@ -552,7 +543,7 @@ class App extends React.Component {
                         loadingMessage={loadingMessage}
                         handleChange={this.handleChange}
                         checkedItems={checkedItems}
-                        setParentStateAndFilter={this.setParentStateAndFilter}
+                        updateFilter={this.updateParentState}
                         showMyPlayers={showMyPlayers}
                         showRookiesOnly={showRookiesOnly}
                         showTaken={showTaken}
@@ -574,10 +565,9 @@ class App extends React.Component {
                     <LeaguePanel 
                         leagueData={leagueData} 
                         leagueID={leagueID} 
-                        updateLeagueID={this.updateLeagueID} 
+                        updateParentState={this.updateParentState} 
                         rosterPositions={rosterPositions}
                         playerInfo={playerInfo}
-                        setParentStateAndFilter={this.setParentStateAndFilter}
                         loadingMessage={loadingMessage}
                     />
                 </div>

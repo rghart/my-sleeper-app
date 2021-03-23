@@ -5,12 +5,12 @@ const RanksPanel = ({
     loadingMessage, 
     handleChange, 
     checkedItems, 
-    setParentStateAndFilter, 
+    updateFilter, 
     showMyPlayers, 
     showTaken, 
     showRookiesOnly,
     startLoad,
-    children,
+    children: playerItem,
 }) => {
     const [searchText, setSearchText] = useState("");
     const startSearch = () => {
@@ -34,11 +34,11 @@ const RanksPanel = ({
                             <SearchFilterButton name={"DEF"} handleChange={handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
                         </div>
                         <div className="position-filter">
-                            <SearchFilterButton name={"Rostered players"} handleChange={() => setParentStateAndFilter("showTaken", !showTaken)} labelName={"Rostered players"} checked={showTaken} />
-                            <SearchFilterButton name={"My players"} handleChange={() => setParentStateAndFilter("showMyPlayers", !showMyPlayers)} labelName={"My players"} checked={showMyPlayers} />
+                            <SearchFilterButton name={"Rostered players"} handleChange={() => updateFilter("showTaken", !showTaken, "filterPlayers")} labelName={"Rostered players"} checked={showTaken} />
+                            <SearchFilterButton name={"My players"} handleChange={() => updateFilter("showMyPlayers", !showMyPlayers, "filterPlayers")} labelName={"My players"} checked={showMyPlayers} />
                         </div>
                         <div className="position-filter">
-                            <SearchFilterButton name={"Only rookies"} handleChange={() => setParentStateAndFilter("showRookiesOnly", !showRookiesOnly)} labelName={"Only rookies"} checked={showRookiesOnly} />
+                            <SearchFilterButton name={"Only rookies"} handleChange={() => updateFilter("showRookiesOnly", !showRookiesOnly, "filterPlayers")} labelName={"Only rookies"} checked={showRookiesOnly} />
                         </div>
                         <textarea className="input" placeholder="Copy + Paste rankings here..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
                         <button className={`${searchText.length < 6 ? "disabled" : "search-button"} button`} disabled={searchText.length < 6 ? true : false} onClick={startSearch}>
@@ -46,7 +46,7 @@ const RanksPanel = ({
                         </button>
                     </div>
                     <div className="player-grid">
-                        { children }
+                        { playerItem }
                     </div>
                 </>
             }
