@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import DraftPanel from './DraftPanel';
 import SearchBar from '../Components/SearchBar';
 
-const LeaguePanel = ({ leagueData, playerInfo, setParentStateAndFilter, rosterPositions, leagueID, updateLeagueID, loadingMessage }) => {
+const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPositions, leagueID, loadingMessage }) => {
     const [leaguePanel, setLeaguePanel] = useState("draft")
 
     return (
@@ -18,7 +18,7 @@ const LeaguePanel = ({ leagueData, playerInfo, setParentStateAndFilter, rosterPo
                     <SearchBar 
                         allLeagueIDs={leagueData.leagueIds} 
                         leagueID={leagueID} 
-                        updateLeagueID={updateLeagueID}
+                        updateLeagueID={updateParentState}
                     />
                     <div className="custom-horizontal-select">
                         <div className={`custom-horizontal-select-item ${leaguePanel === "weekly" ? "selected" : null}`} onClick={() => setLeaguePanel("weekly")}>
@@ -43,7 +43,7 @@ const LeaguePanel = ({ leagueData, playerInfo, setParentStateAndFilter, rosterPo
                     </div>
                 )}
                 { leaguePanel === "draft" && (
-                    <DraftPanel leagueData={leagueData} playerInfo={playerInfo} setParentStateAndFilter={setParentStateAndFilter}/>
+                    <DraftPanel leagueData={leagueData} playerInfo={playerInfo} updateParentState={updateParentState}/>
                 )}
             </>
         } 

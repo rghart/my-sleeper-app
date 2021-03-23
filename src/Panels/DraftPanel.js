@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DraftRound from './DraftRound';
 
-const DraftPanel = ({ leagueData, playerInfo, setParentStateAndFilter }) => {
+const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
     const { currentDraft, rosterData } = leagueData;
     const [liveDraft, setLiveDraft] = useState(currentDraft);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -28,7 +28,7 @@ const DraftPanel = ({ leagueData, playerInfo, setParentStateAndFilter }) => {
             newPlayerInfo[livePick.player_id].rostered_by = rosterData.find(roster => pick.owner_id === roster.roster_id).manager_display_name;
             newLiveDraft.built_draft[round].picks[draftSlot] = pick;
         })
-        setParentStateAndFilter("playerInfo", {...newPlayerInfo});
+        updatePlayerInfo("playerInfo", {...newPlayerInfo}, "filterPlayers", "");
         newLiveDraft = await getTradedDraftPicks(newLiveDraft);
         setLiveDraft({...newLiveDraft});
     }
