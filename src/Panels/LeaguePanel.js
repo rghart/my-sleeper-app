@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import DraftPanel from './DraftPanel';
-import SearchBar from '../Components/SearchBar';
+import Dropdown from '../Components/Dropdown';
 
 const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPositions, leagueID, loadingMessage }) => {
-    const [leaguePanel, setLeaguePanel] = useState("draft")
+    const [leaguePanel, setLeaguePanel] = useState("draft");
+    const updateLeagueID = (value) => {
+        updateParentState("leagueID", value, "getLeagueData", "Loading league panel...")
+    }
 
     return (
         <div className="panel league-panel">
@@ -15,11 +18,11 @@ const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPosition
                     <p>
                         <b>{leagueData.currentLeague.name}</b>
                     </p>
-                    <SearchBar 
-                        allLeagueIDs={leagueData.leagueIds} 
-                        leagueID={leagueID} 
-                        updateLeagueID={updateParentState}
-                    />
+                    <Dropdown leagueID={leagueID} updateLeagueID={updateLeagueID}>
+                        {leagueData.leagueIds.map(league => (
+                            <option key={league.league_id} value={league.league_id}>{league.name}</option>
+                        ))}
+                    </Dropdown>
                     <div className="custom-horizontal-select">
                         <div className={`custom-horizontal-select-item ${leaguePanel === "weekly" ? "selected" : null}`} onClick={() => setLeaguePanel("weekly")}>
                             <div className="meta">
