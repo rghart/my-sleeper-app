@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DraftRound from './DraftRound';
 
-const DraftPanel = ({ leagueData, playerInfo, updatePlayerInfo }) => {
+const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInfo }) => {
     const { currentDraft, rosterData } = leagueData;
     const [liveDraft, setLiveDraft] = useState(currentDraft);
     const [isSyncing, setIsSyncing] = useState(false);

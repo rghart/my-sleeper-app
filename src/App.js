@@ -5,7 +5,8 @@ import PlayerInfoItem from './Components/PlayerInfoItem';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import Fuse from 'fuse.js';
-import { auth } from './firebase.js';
+import firebase, { auth } from './firebase.js';
+var provider = new firebase.auth.GoogleAuthProvider();
 
 class App extends React.Component {
   state = {
@@ -26,19 +27,30 @@ class App extends React.Component {
     showMyPlayers: true,
     showRookiesOnly: false,
     liveDraft: [],
+    signedIn: false,
+    signedInEmail: null,
   };
 
   componentDidMount() {
     auth.onAuthStateChanged((user) => {
       if (user) {
-
+        const { playerInfo } = this.state;
+        const { currentUser } = auth;
+        this.setState({
+            signedIn: !currentUser.isAnonymous,
+            signedInEmail: currentUser.email ? currentUser.email : null,
+        })
+        if (playerInfo && Object.keys(playerInfo).length === 0) {
+          this.getPlayerData();
+        } else {
+            this.getLeagueData();
+        }
+      } else {
+        auth.signInAnonymously()
+          .catch(err => console.error('Error:', err));
       }
     })
-    auth.signInAnonymously()
-      .then(() => {
-        this.getPlayerData();
-      })
-      .catch(err => console.error('Error:', err));
+    
   }
   // TODO clean up and pull out helper functions and search function into separate file(s)
   checkErrors = (response) => {
@@ -128,7 +140,7 @@ class App extends React.Component {
     this.getLeagueData();   
   }
 
-  getLeagueData = async () => {
+  getLeagueData = () => {
     const leagueID = this.state.leagueID;
     const urls = [
       `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
@@ -514,6 +526,22 @@ class App extends React.Component {
         })
     }
 
+    googleSignIn = () => {
+        firebase.auth()
+          .signInWithPopup(provider)
+          .catch((error) => {
+              console.log(error);
+          });
+    }
+
+    signOut = () => {
+        firebase.auth().signOut().then(() => {
+          console.log("Sign-out successful.");
+        }).catch((error) => {
+          // An error happened.
+        });
+    }
+
   render() {
       const { 
           playerInfo, 
@@ -530,13 +558,24 @@ class App extends React.Component {
           leagueData, 
           notFoundPlayers,
           leagueID,
+          signedIn,
+          signedInEmail,
       } = this.state;
       if (isLoading && loadingMessage === "Initial load...") {
         return <div className="loader"></div>;
       } else {
           return (
             <div>
-                <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
+                <div style={{display: "flex", flexDirection: "row", justifyContent: "space-between", padding: `${0}px ${3}px`}}> 
+                    <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
+                    { signedIn ?
+                        <div style={{display: "flex", flexDirection: "row", alignItems: "baseline"}}>
+                            <p className="latest-update"><i>{signedInEmail}</i></p>
+                            <button className="button sign-in-button" onClick={this.signOut}>Sign out</button>
+                        </div> :
+                        <button className="button sign-in-button" onClick={this.googleSignIn}>Sign in</button>
+                    }
+                </div>
                 <h1 className="title">Sleeper Team Assistant</h1>
                 <div className="main-container">
                     <RanksPanel 
