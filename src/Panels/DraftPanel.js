@@ -78,7 +78,7 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
             <div className="league-grid">
                 <p><b>Draft ID</b></p>
                 <input type="text" className="input-small" value={currentDraftId} onChange={(e) => setCurrentDraftId(e.target.value)} />
-                <button className="button" onClick={getLiveDraft}>Update</button>
+                <button className="button sign-in-button" onClick={getLiveDraft}>Update</button>
                 <p><b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b></p>
                 <p>Status: {currentDraft.status}</p>
                 <button className={`button search-button ${isSyncing ? 'syncing' : null}`} onClick={() => setIsSyncing(!isSyncing)}>

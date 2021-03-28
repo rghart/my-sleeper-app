@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 
-const PlayerInfoItem = ({ player, addToRoster, rankingPlayersIdsList, updatePlayerId }) => {
+const PlayerInfoItem = ({ player, playerInfo, addToRoster, rankingPlayersIdsList, updatePlayerId }) => {
     
     const [editingPlayer, setEditingPlayer] = useState(false);
-    const rankPlayerId = rankingPlayersIdsList.find(obj => obj.match_results[0].item.player_id === player.player_id);
+    const rankPlayerId = rankingPlayersIdsList.find(obj => obj.match_results[0] === player.player_id);
     const updatePlayerInfo = (e) => {
         const newPlayerId = e.target.value;
-        const newPlayerIdIndex = rankPlayerId.match_results.findIndex(result => result.item.player_id === newPlayerId);
+        const newPlayerIdIndex = rankPlayerId.match_results.findIndex(result => result === newPlayerId);
         const newPlayerIdResult = rankPlayerId.match_results.splice(newPlayerIdIndex, 1)[0];
         rankPlayerId.match_results.unshift(newPlayerIdResult);
         const currentIdIndex = rankingPlayersIdsList.findIndex(obj => obj.ranking === rankPlayerId.ranking);
@@ -24,7 +24,7 @@ const PlayerInfoItem = ({ player, addToRoster, rankingPlayersIdsList, updatePlay
                         <> 
                             <select className="dropdown" value={player.player_id} onChange={updatePlayerInfo}>
                                 {rankPlayerId.match_results.map(result => (   
-                                    <option key={result.refIndex} value={result.item.player_id}>{`${result.item.full_name} - ${result.item.team ? result.item.team : "FA"} (${result.item.position})`}</option>
+                                    <option key={result} value={result}>{`${playerInfo[result].full_name} - ${playerInfo[result].team ? playerInfo[result].team : "FA"} (${playerInfo[result].position})`}</option>
                                 ))}
                             </select>
                             <button className="button player-add-button" onClick={() => setEditingPlayer(false)}>

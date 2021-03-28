@@ -74,6 +74,19 @@ class App extends React.Component {
     return response;
   }
 
+  deleteRequest = async (url) => {
+    const response = await fetch(url, { 
+      method: 'DELETE', 
+      headers: { 
+        'Content-type': 'application/json'
+      }
+    })
+      .then(this.checkErrors)
+      .catch(err => console.error('Error:', err));
+
+    return response;
+  }
+
   updatePlayerDB = async () => {
     // Attempt update to latest update attempt before calling Sleeper. return if that fails
     const updateResponse = await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`, new Date().getTime());
@@ -391,8 +404,11 @@ class App extends React.Component {
                 }
               ]
             });
-            const fResults = results.filter(result => positions.includes(result.item.position));
+            let fResults = results.filter(result => positions.includes(result.item.position)).map(result => result.item.player_id);
             if (fResults[0]) {
+                if (fResults.length > 5) {
+                    fResults = fResults.filter(result => fResults.indexOf(result) <= 4);
+                }
                 searchResultsArray.push({match_results: fResults, ranking: ranking});
                 if (results[0].item.search_rank > 1000) {
                     console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${ranking}`)
@@ -421,25 +437,25 @@ class App extends React.Component {
     }
 
     filterPlayers = (rankingPlayers) => {
-        const { showTaken, showMyPlayers, showRookiesOnly, playerInfo } = this.state;
-        let playerList = rankingPlayers ? rankingPlayers : this.state.rankingPlayersIdsList;
+        const { showTaken, showMyPlayers, showRookiesOnly, playerInfo, rankingPlayersIdsList } = this.state;
+        let playerList = rankingPlayers ? rankingPlayers : rankingPlayersIdsList;
         
         if (!showTaken && showMyPlayers) {
-            playerList = playerList.filter(results => !playerInfo[results.match_results[0].item.player_id].is_taken || playerInfo[results.match_results[0].item.player_id].rostered_by === 'ryangh')
+            playerList = playerList.filter(results => !playerInfo[results.match_results[0]].is_taken || playerInfo[results.match_results[0]].rostered_by === 'ryangh')
         } else if (!showTaken) {
-            playerList = playerList.filter(results => !playerInfo[results.match_results[0].item.player_id].is_taken)
+            playerList = playerList.filter(results => !playerInfo[results.match_results[0]].is_taken)
         } else if (showTaken && !showMyPlayers) {
-            playerList = playerList.filter(results =>  playerInfo[results.match_results[0].item.player_id].rostered_by !== 'ryangh')
+            playerList = playerList.filter(results =>  playerInfo[results.match_results[0]].rostered_by !== 'ryangh')
         }  else if (!showMyPlayers) {
-            playerList = playerList.filter(results =>  playerInfo[results.match_results[0].item.player_id].rostered_by !== 'ryangh' || playerInfo[results.match_results[0].item.player_id].rostered_by)
+            playerList = playerList.filter(results =>  playerInfo[results.match_results[0]].rostered_by !== 'ryangh' || playerInfo[results.match_results[0]].rostered_by)
         }
 
         if (showRookiesOnly) {
-            playerList = playerList.filter(results => playerInfo[results.match_results[0].item.player_id].years_exp < 1)
+            playerList = playerList.filter(results => playerInfo[results.match_results[0]].years_exp < 1)
         }
         
         this.setState({
-            filteredPlayersIdsList: playerList.filter(results => this.state.checkedItems.includes(this.state.playerInfo[results.match_results[0].item.player_id].position))
+            filteredPlayersIdsList: playerList.filter(results => this.state.checkedItems.includes(playerInfo[results.match_results[0]].position))
         })
     }
 
@@ -536,6 +552,10 @@ class App extends React.Component {
 
     signOut = () => {
         firebase.auth().signOut().then(() => {
+          this.setState({
+              filteredPlayersIdsList: [],
+              rankingPlayersIdsList: []
+          })
           console.log("Sign-out successful.");
         }).catch((error) => {
           // An error happened.
@@ -580,6 +600,7 @@ class App extends React.Component {
                 <div className="main-container">
                     <RanksPanel 
                         loadingMessage={loadingMessage}
+                        signedIn={signedIn}
                         handleChange={this.handleChange}
                         checkedItems={checkedItems}
                         updateFilter={this.updateParentState}
@@ -587,11 +608,16 @@ class App extends React.Component {
                         showRookiesOnly={showRookiesOnly}
                         showTaken={showTaken}
                         startLoad={this.startLoad}
+                        putRequest={this.putRequest}
+                        deleteRequest={this.deleteRequest}
+                        checkErrors={this.checkErrors}
+                        rankingPlayersIdsList={rankingPlayersIdsList}
                     >
                         {filteredPlayersIdsList.map(results => (
                             <PlayerInfoItem 
-                                key={`${results.match_results[0].refIndex}${results.ranking}`} 
-                                player={playerInfo[results.match_results[0].item.player_id]} 
+                                key={`${results.match_results[0]}${results.ranking}`} 
+                                player={playerInfo[results.match_results[0]]}
+                                playerInfo={playerInfo}
                                 addToRoster={this.addToRoster} 
                                 updatePlayerId={this.updatePlayerId}
                                 rankingPlayersIdsList={rankingPlayersIdsList}

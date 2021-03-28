@@ -18,7 +18,7 @@ const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPosition
                     <p>
                         <b>{leagueData.currentLeague.name}</b>
                     </p>
-                    <Dropdown leagueID={leagueID} updateLeagueID={updateLeagueID}>
+                    <Dropdown currentValue={leagueID} updateCurrentValue={updateLeagueID}>
                         {leagueData.leagueIds.map(league => (
                             <option key={league.league_id} value={league.league_id}>{league.name}</option>
                         ))}

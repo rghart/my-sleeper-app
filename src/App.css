@@ -55,10 +55,6 @@
   
 }
 
-.search-panel {
-
-}
-
 .search {
     display: flex;
     flex-direction: column;
@@ -170,15 +166,14 @@
     min-width: max-content;
 }
 
-.disabled {
-    width: 80%;
-    text-align: center;
-    margin-top: 8px;
-    margin-bottom: 15px;
-    font-size: medium;
-    height: 30px;
+.disabled-sign-in {
     border: 2px solid #4b576b;
     color: #4b576b;
+}
+
+.disabled-sign-in:hover {
+  border: 2px solid #4b576b;
+  color: #4b576b;
 }
 
 .player-add-button {
@@ -207,6 +202,27 @@
   margin-bottom: 15px;
   font-size: medium;
   height: 30px;
+}
+
+.disabled-search-button {
+  border: 2px solid #4b576b;
+  color: #4b576b;
+  width: 80%;
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 15px;
+  font-size: medium;
+  height: 30px;
+}
+
+.delete-button {
+  color: #fff;
+  background-color: #ff2a6d;
+  border-color: #ff2a6d;
+}
+
+.delete-button:hover {
+  transform: scale(1.05);
 }
 
 .search-button:hover {
