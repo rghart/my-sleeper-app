@@ -1,12 +1,10 @@
 import React from 'react';
 
-const Dropdown = ({ leagueID, updateLeagueID, children: leagueSelections }) => {
+const Dropdown = ({ currentValue, updateCurrentValue, children: dropdownSelections }) => {
   return (
-    <div className="search-box">
-        <select className="dropdown" value={leagueID} onChange={(e) => updateLeagueID(e.target.value)}>
-            { leagueSelections }
-        </select>
-    </div>
+      <select className="dropdown" value={currentValue} onChange={(e) => updateCurrentValue(e.target.value)}>
+          { dropdownSelections }
+      </select>
   );
 }
 
