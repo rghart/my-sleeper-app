@@ -21,7 +21,8 @@ const DraftRound = ({ round, playerInfo, rosterData }) => {
                             {
                                 pick.player_id && (
                                     <div className={`${playerInfo[pick.player_id] ? playerInfo[pick.player_id].position : null} draft-pick-details`}>
-                                        <p>{playerInfo[pick.player_id].full_name}</p> 
+                                        <span className="full-text">{playerInfo[pick.player_id].full_name}</span>
+                                        <span className="abbr-text">{`${playerInfo[pick.player_id].first_name.split('')[0]}.${playerInfo[pick.player_id].last_name}`}</span>
                                         <p>{playerInfo[pick.player_id].team}</p>
                                         <p>{playerInfo[pick.player_id].position}</p>
                                     </div>

@@ -4,8 +4,10 @@ import './loader.css';
 import PlayerInfoItem from './Components/PlayerInfoItem';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
-import Fuse from 'fuse.js';
 import firebase, { auth } from './firebase.js';
+import createRankings from './helpers.js';
+import URLS from './urls.js';
+const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = URLS;
 var provider = new firebase.auth.GoogleAuthProvider();
 
 class App extends React.Component {
@@ -60,66 +62,54 @@ class App extends React.Component {
     return response;
   }
 
-  putRequest = async (url, data) => {
+  fetchRequest = async (url, type, data, custHeaders) => {
     const response = await fetch(url, { 
-      method: 'PUT', 
-      headers: { 
+      method: type, 
+      headers: custHeaders ? custHeaders : { 
         'Content-type': 'application/json'
       },
-      body: JSON.stringify(data) 
+      body: data ? JSON.stringify(data) : null
     })
       .then(this.checkErrors)
       .catch(err => console.error('Error:', err));
-
-    return response;
-  }
-
-  deleteRequest = async (url) => {
-    const response = await fetch(url, { 
-      method: 'DELETE', 
-      headers: { 
-        'Content-type': 'application/json'
-      }
-    })
-      .then(this.checkErrors)
-      .catch(err => console.error('Error:', err));
-
+    console.log(response.statusText);
     return response;
   }
 
   updatePlayerDB = async () => {
     // Attempt update to latest update attempt before calling Sleeper. return if that fails
-    const updateResponse = await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`, new Date().getTime());
+    const updateResponse = await this.fetchRequest(LATEST_UPDATE_ATTEMPT + await auth.currentUser.getIdToken(true), 'PUT', new Date().getTime());
     if (updateResponse && updateResponse.ok) {
       const sleeperPlayerData = await fetch(`https://api.sleeper.app/v1/players/nfl`)
-        .then(this.checkErrors)
-        .then(response => response.json())
-        .then(data => {
-          console.log("Successfully fetched Sleeper Player data from API");
-          let filteredData = {};
-          filteredData.active_players = Object.fromEntries(
-            Object.entries(data)
-            .filter(([key, val]) => val.active)
-          )
-          const currentDate = new Date().getTime();
-          filteredData.latest_update_attempt = currentDate;
-          this.setState({
-            lastUpdate: currentDate
+          .then(this.checkErrors)
+          .then(response => response.json())
+          .then(data => {
+            console.log("Successfully fetched Sleeper Player data from API");
+            let filteredData = {};
+            filteredData.active_players = Object.fromEntries(
+              Object.entries(data)
+              .filter(([key, val]) => val.active)
+            )
+            const currentDate = new Date().getTime();
+            filteredData.latest_update_attempt = currentDate;
+            this.setState({
+              lastUpdate: currentDate
+            })
+            return filteredData;
           })
-          return filteredData;
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-          });
-        this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`, sleeperPlayerData.latest_update_attempt);
-        await this.putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/active_players.json?auth=${await auth.currentUser.getIdToken(true)}`, sleeperPlayerData.active_players);
+          .catch((error) => {
+              console.error('Error:', error);
+            });
+        const { latest_update_attempt: latestUpdateAttempt, active_players: activePlayers } = sleeperPlayerData;
+        this.fetchRequest(LATEST_UPDATE_ATTEMPT + await auth.currentUser.getIdToken(true), 'PUT', latestUpdateAttempt);
+        await this.fetchRequest(ACTIVE_PLAYERS + await auth.currentUser.getIdToken(true), 'PUT', activePlayers);
     } else {
       console.log("Wasn't able to update latest_update_attempt field")
     }
   }
 
   getLatestUpdateAttempt = async () => {
-    return await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/latest_update_attempt.json?auth=${await auth.currentUser.getIdToken(true)}`)
+    return await fetch(LATEST_UPDATE_ATTEMPT + await auth.currentUser.getIdToken(true))
       .then(this.checkErrors)
       .then(response => response.json())
       .then(data => {
@@ -140,7 +130,7 @@ class App extends React.Component {
     if (currentDate - latestUpdateAttempt >= day) {
       await this.updatePlayerDB();
     }
-    await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/active_players.json?auth=${await auth.currentUser.getIdToken(true)}`)
+    await fetch(ACTIVE_PLAYERS + await auth.currentUser.getIdToken(true))
       .then(response => response.json())
       .then(data => {
         this.setState({
@@ -289,135 +279,8 @@ class App extends React.Component {
     }
 
     updateRankings = (searchText) => {
-        let { playerInfo } = this.state;
-        const playerInfoArray = Object.values(playerInfo);
-        playerInfoArray.sort((a, b) => a.search_rank - b.search_rank);
-        const playerInfoFuseOptions = {
-            useExtendedSearch: true,
-            includeScore: true,
-            keys: [
-                "search_last_name",
-                "search_first_name",
-                "team",
-                "position"
-            ]
-        }
-        const options = {
-          includeScore: true
-        }
-        const positions = ['QB', 'RB', 'WR', 'TE', 'DEF', 'K'];
-        const teams = ['CAR', 'MIN', 'TEN', 'GB', 'NO', 'NYG', 'KC', 'IND', 'LAC', 'DAL', 'BUF', 'CLE', 'SEA', 'ARI', 'LV', 'ATL', 'LAR', 'LA', 'FA', 'CIN', 'SF', 'JAX', 'JAC', 'WAS', 'CHI', 'PHI', 'BAL', 'TB', 'DEN', 'HOU', 'PIT', 'MIA', 'DET', 'NE', 'NYJ', 'ROOKIE'];
-        const playerInfoIndex = Fuse.createIndex(playerInfoFuseOptions.keys, playerInfoArray)
-        const playerInfoFuse = new Fuse(playerInfoArray, playerInfoFuseOptions, playerInfoIndex);
-        const teamsFuse = new Fuse(teams, options);
-
-        let addLineBreak = searchText.replace(/(?:\r\n|\r|\n)/g, '<br>')
-        let splitLineBreak = addLineBreak.split('<br>');
-        let searchResultsArray = [];
-        let ranking = 1;
-        let notFoundPlayers = [];
-
-        splitLineBreak.forEach(line => {
-            // Removing any numbers from the search string
-            line = line.replace(/[0-9]/g, "");
-            // Splitting the string
-            let splitString = line.split("");
-            // Making sure the first index isn't a period after removing numbers. Just in case we get "1., 2., 3."" etc
-            if (splitString[0] === ".") {
-              splitString.splice(0, 1, "");
-            }
-            // Sometimes ranks just have the first letter of the first name and the last name separated by a period. ex. "T.Brady"
-            // Want to remove this without removing for players that go by initials, ex. "J.K. Dobbins"
-            if (splitString[1] === "." && splitString[3] !== ".") {
-              splitString.splice(1, 1, " ");
-            }
-            let nameAndTeam = splitString.join("").trim();
-            // Splitting by spaces and removing whitespace
-            let firstLastTeamArrays = nameAndTeam.split(/\s/).map(item => item.trim());
-            let searchArray;
-            let foundPositionStr;
-            let foundTeamStr;
-            // If there's more than 2 indexes, we want to see if they can help with our search by looking for player position and team initials
-            if (firstLastTeamArrays.length > 2) {
-              const positionIndex = firstLastTeamArrays.findIndex(item => positions.includes(item.replace(/[^a-zA-Z]/g, "")));
-              if (positionIndex >= 0) {
-                foundPositionStr = firstLastTeamArrays.splice(positionIndex, 1)[0];
-              }
-              foundTeamStr = this.getHighestScore(firstLastTeamArrays, teamsFuse);
-              if (foundTeamStr) {
-                firstLastTeamArrays.splice(firstLastTeamArrays.indexOf(foundTeamStr), 1);
-              }
-            }
-            searchArray = [firstLastTeamArrays[0].replace(/[^a-zA-Z]/g, ""), firstLastTeamArrays[1].replace(/[^a-zA-Z]/g, ""), foundTeamStr, foundPositionStr];
-            let results = playerInfoFuse.search({
-              $or:[
-                {
-                  $and: [
-                    { search_last_name: searchArray[1] },
-                    { 
-                      $or: [
-                        { search_first_name: searchArray[0] },
-                        { search_first_name: `^${searchArray[0]}` }
-                      ] 
-                    },
-                    { position: `=${searchArray[3]}` },
-                    { team: `=${searchArray[2]}` }
-                  ],
-                },
-                // eslint-disable-next-line
-                {
-                  $and: [
-                    { search_last_name: searchArray[1] },
-                    { 
-                      $or: [
-                        { search_first_name: searchArray[0] },
-                        { search_first_name: `^${searchArray[0]}` }
-                      ] 
-                    },
-                    { position: `=${searchArray[3]}` }
-                  ],
-                },
-                // eslint-disable-next-line
-                {
-                  $and: [
-                    { search_last_name: searchArray[1] },
-                    { 
-                      $or: [
-                        { search_first_name: searchArray[0] },
-                        { search_first_name: `^${searchArray[0]}` }
-                      ] 
-                    },
-                    { team: `=${searchArray[2]}` }
-                  ],
-                },
-                // eslint-disable-next-line
-                {
-                  $and: [
-                    { search_last_name: searchArray[1] },
-                    { 
-                      $or: [
-                        { search_first_name: searchArray[0] },
-                        { search_first_name: `^${searchArray[0]}` }
-                      ] 
-                    }
-                  ]
-                }
-              ]
-            });
-            let fResults = results.filter(result => positions.includes(result.item.position)).map(result => result.item.player_id);
-            if (fResults[0]) {
-                if (fResults.length > 5) {
-                    fResults = fResults.filter(result => fResults.indexOf(result) <= 4);
-                }
-                searchResultsArray.push({match_results: fResults, ranking: ranking});
-                if (results[0].item.search_rank > 1000) {
-                    console.log(`${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${ranking}`)
-                }
-            } else {
-                notFoundPlayers.push(`Couldn't find ${firstLastTeamArrays[0]} ${firstLastTeamArrays[1]} ${foundTeamStr}  ${foundPositionStr} Rank: ${ranking}`);
-            }
-            ranking += 1;
-        })
+        const { playerInfo } = this.state;
+        const [searchResultsArray, notFoundPlayers] = createRankings(searchText, playerInfo);
 
         this.setState({
           rankingPlayersIdsList: searchResultsArray,
@@ -426,14 +289,6 @@ class App extends React.Component {
           notFoundPlayers: notFoundPlayers,
           searchText: ""
         }, this.filterPlayers)
-    }
-
-    getHighestScore = (arr, fuseSearch) => {
-        let bestResult = arr
-          .map(item => fuseSearch.search(item.replace(/[^a-zA-Z]/g, "")))
-          .filter(item => item.length > 0)
-          .sort((a, b) => a[0]?.score - b[0]?.score);
-        return bestResult[0] ? bestResult[0][0].item : null;
     }
 
     filterPlayers = (rankingPlayers) => {
@@ -608,8 +463,7 @@ class App extends React.Component {
                         showRookiesOnly={showRookiesOnly}
                         showTaken={showTaken}
                         startLoad={this.startLoad}
-                        putRequest={this.putRequest}
-                        deleteRequest={this.deleteRequest}
+                        fetchRequest={this.fetchRequest}
                         checkErrors={this.checkErrors}
                         rankingPlayersIdsList={rankingPlayersIdsList}
                     >

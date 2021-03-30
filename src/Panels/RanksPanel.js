@@ -3,6 +3,8 @@ import SearchFilterButton from '../Components/SearchFilterButton';
 import OnFocusButton from '../Components/OnFocusButton';
 import Dropdown from '../Components/Dropdown';
 import { auth } from '../firebase.js';
+import URLS from '../urls.js';
+const { USERS, TYPE_PARAMS } = URLS;
 
 const RanksPanel = ({ 
     loadingMessage,
@@ -14,8 +16,7 @@ const RanksPanel = ({
     showTaken, 
     showRookiesOnly,
     startLoad,
-    putRequest,
-    deleteRequest,
+    fetchRequest,
     checkErrors,
     rankingPlayersIdsList,
     children: playerItem,
@@ -51,16 +52,18 @@ const RanksPanel = ({
                 'rank_list': rankingPlayersIdsList
             }
 
-            const updateResponse = await putRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/users/${auth.currentUser.uid}/${newRankListNameEscaped}.json?auth=${await auth.currentUser.getIdToken(true)}`, rankListData);
+            const updateResponse = await fetchRequest(USERS + auth.currentUser.uid + '/' + newRankListNameEscaped + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'PUT', rankListData);
             if (updateResponse && updateResponse.ok) {
                 setIsNewRankList(false);
                 allListsVals.push(newRankListNameEscaped);
                 setAllListsVals(allListsVals);
                 setCurrentListVal(newRankListNameEscaped);
                 allRankLists[newRankListNameEscaped] = {};
-                allRankLists[newRankListNameEscaped].rank_list = rankingPlayersIdsList;
-                allRankLists[newRankListNameEscaped].pretty_name = newRankListName;
-                allRankLists[newRankListNameEscaped].route_name = newRankListNameEscaped;
+                Object.assign(allRankLists[newRankListNameEscaped], {
+                    rank_list: rankingPlayersIdsList,
+                    pretty_name: newRankListName,
+                    route_name: newRankListNameEscaped,
+                });
                 setAllRankLists(allRankLists);
                 setNewRankListName('');
                 console.log(updateResponse.status);
@@ -74,7 +77,7 @@ const RanksPanel = ({
 
     const deleteRankList = async () => {
         // Neee to escape backslashes 
-        const updateResponse = await deleteRequest(`https://sleeper-player-db-default-rtdb.firebaseio.com/users/${auth.currentUser.uid}/${currentListVal}.json?auth=${await auth.currentUser.getIdToken(true)}`);
+        const updateResponse = await fetchRequest(USERS + auth.currentUser.uid + '/' + currentListVal + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'DELETE');
         if (updateResponse && updateResponse.ok) {
             setIsNewRankList(false);
             const deleteIndex = allListsVals.indexOf(currentListVal);
@@ -106,7 +109,7 @@ const RanksPanel = ({
     useEffect(() => {
         const defaultSelectorObj = {[defaultSelector]: {'pretty_name': '-- Select saved ranks list', 'route_name': defaultSelector}}
         const getSavedRankLists = async () => {
-            const getSavedRankListsResult = await fetch(`https://sleeper-player-db-default-rtdb.firebaseio.com/users/${auth.currentUser.uid}.json?auth=${await auth.currentUser.getIdToken(true)}`)
+            const getSavedRankListsResult = await fetch(USERS + auth.currentUser.uid + TYPE_PARAMS + await auth.currentUser.getIdToken(true))
               .then(checkErrors)
               .then(response => response.json())
               .then(data => {

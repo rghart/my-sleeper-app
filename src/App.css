@@ -309,6 +309,13 @@
   width: 20px;
 }
 
+.abbr-text { display: none; }
+
+@media all and (orientation: portrait) {
+    .abbr-text { display: inline-block; }
+    .full-text { display: none; }
+}
+
 .draft-pick-details {
     display: flex;
     flex: 5 1;
