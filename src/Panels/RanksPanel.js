@@ -51,8 +51,8 @@ const RanksPanel = ({
                 'route_name': newRankListNameEscaped,
                 'rank_list': rankingPlayersIdsList
             }
-
-            const updateResponse = await fetchRequest(USERS + auth.currentUser.uid + '/' + newRankListNameEscaped + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'PUT', rankListData);
+            const USER_PATH = `${auth.currentUser.uid}/${newRankListNameEscaped}`;
+            const updateResponse = await fetchRequest(USERS + USER_PATH + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'PUT', rankListData);
             if (updateResponse && updateResponse.ok) {
                 setIsNewRankList(false);
                 allListsVals.push(newRankListNameEscaped);
@@ -76,8 +76,9 @@ const RanksPanel = ({
     }
 
     const deleteRankList = async () => {
-        // Neee to escape backslashes 
-        const updateResponse = await fetchRequest(USERS + auth.currentUser.uid + '/' + currentListVal + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'DELETE');
+        // Neee to escape backslashes
+        const USER_PATH = `${auth.currentUser.uid}/${currentListVal}`;
+        const updateResponse = await fetchRequest(USERS + USER_PATH + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'DELETE');
         if (updateResponse && updateResponse.ok) {
             setIsNewRankList(false);
             const deleteIndex = allListsVals.indexOf(currentListVal);
