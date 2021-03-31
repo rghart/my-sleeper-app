@@ -9,7 +9,13 @@ body {
     background-color: #18202f;
     color: #FFF;
     font-family: 'Lato', Arial, Helvetica, sans-serif;
+    min-height: 500px;
+}
 
+html {
+  min-width: min-content;
+  padding: 3px;
+  overflow: visible;
 }
 
 code {
@@ -28,6 +34,6 @@ p {
     }
 
     /* body {
-        padding: 10px 0px !important;
+        padding: 10px 15px !important;
     } */
 }

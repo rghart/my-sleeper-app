@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  overflow: visible;
 }
 
 .App-logo {
@@ -12,6 +13,16 @@
     animation: App-logo-spin infinite 20s linear;
   }
 }
+
+@media screen and (max-width: 767px) {
+  .single-player-item {
+      display: block !important;
+  }
+
+  .player-add-button {
+      margin-left: 75%;
+  }
+} 
 
 .App-header {
   background-color: #282c34;
@@ -41,6 +52,7 @@
     display: flex;
     flex-direction: row;
     background-color: #18202f;
+    padding: 0px 0px;
 }
 
 .panel {
@@ -48,17 +60,11 @@
   background-color: #283245;
   border-radius: 10px;
   height: 100%;
-  margin: 8px 10px 3px 3px;
+  margin: 8px 3px 3px 3px;
   display: flex;
   flex-direction: column;
   flex: 1 1;
 }
-
-/* @media screen and (max-width: 767px) {
-  .panel {
-      min-width: 265px;
-  }
-} */
 
 .search {
     display: flex;
@@ -262,7 +268,7 @@
     color: #fff;
     border: 2px solid #4b576b;
     border-radius: 10px;
-    width: min-content;
+
 }
 
 .radio-label {
@@ -270,8 +276,8 @@
     border-radius: 22px;
     padding: 6px;
     cursor: pointer;
-    margin: 6px;
-    min-width: 28px;
+    margin: 3px;
+
     text-align: center;
 }
 
@@ -371,12 +377,6 @@
     padding: 3px;
     width: inherit;
 }
-
-/* @media screen and (max-width: 767px) {
-    .custom-horizontal-select-item {
-      font-size: 16px !important;
-  }
-} */
 
 .custom-horizontal-select .custom-horizontal-select-item >.meta {
   display: flex;

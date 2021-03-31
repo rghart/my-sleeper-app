@@ -161,7 +161,7 @@ const RanksPanel = ({
                             <SearchFilterButton name={"DEF"} handleChange={handleChange} labelName={"DEF"} checked={checkedItems.includes("DEF")} />
                         </div>
                         <div className="position-filter">
-                            <SearchFilterButton name={"Rostered players"} handleChange={() => updateFilter("showTaken", !showTaken, "filterPlayers")} labelName={"Rostered players"} checked={showTaken} />
+                            <SearchFilterButton name={"Taken"} handleChange={() => updateFilter("showTaken", !showTaken, "filterPlayers")} labelName={"Taken"} checked={showTaken} />
                             <SearchFilterButton name={"My players"} handleChange={() => updateFilter("showMyPlayers", !showMyPlayers, "filterPlayers")} labelName={"My players"} checked={showMyPlayers} />
                         </div>
                         <div className="position-filter">
