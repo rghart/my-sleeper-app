@@ -9,6 +9,7 @@ body {
     background-color: #18202f;
     color: #FFF;
     font-family: 'Lato', Arial, Helvetica, sans-serif;
+
 }
 
 code {
@@ -26,7 +27,7 @@ p {
         font-size: 16px !important;
     }
 
-    body {
+    /* body {
         padding: 10px 0px !important;
-    }
+    } */
 }
