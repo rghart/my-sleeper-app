@@ -13,12 +13,6 @@
   }
 }
 
-@media screen and (max-width: 767px) {
-    input, select, textarea {
-        font-size: 16px;
-    }
-}
-
 .App-header {
   background-color: #282c34;
   min-height: 100vh;
@@ -58,7 +52,7 @@
   display: flex;
   flex-direction: column;
   flex: 1 1;
-  
+  min-width: 215px;
 }
 
 .search {
@@ -301,10 +295,6 @@
   align-items: baseline;
 }
 
-.pick-string {
-
-}
-
 .avatar {
   border-radius: 50%;
   display: flex;
@@ -335,7 +325,7 @@
     border: 2px solid #a3bbd3;
     border-radius: 6px;
     margin-bottom: 3px;
-    width: 100%;
+    width: 95%;
     overflow: hidden;
 }
 
@@ -377,6 +367,12 @@
     width: inherit;
 }
 
+@media screen and (max-width: 767px) {
+    .custom-horizontal-select-item {
+      font-size: 16px !important;
+  }
+}
+
 .custom-horizontal-select .custom-horizontal-select-item >.meta {
   display: flex;
   flex-direction: column;
@@ -386,7 +382,7 @@
 
 .custom-horizontal-select .custom-horizontal-select-item >.meta >.name {
   font-weight: bold;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .custom-horizontal-select .custom-horizontal-select-item >.meta >.description {
