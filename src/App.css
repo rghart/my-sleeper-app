@@ -17,19 +17,42 @@
 @media screen and (max-width: 767px) {
   .single-player-item {
       display: block !important;
+
+
+  }
+
+  .avatar-player {
+      margin-left: 0 !important;
   }
 
   .panel {
-      width: 250px;
+      width: 50%;
+      min-width: 150px;
+      padding: 5px !important;
   }
 
-  .loader {
+  .league-grid {
+      width: 95% !important;
+      padding: 5px !important;
+  }
+
+  .draft-pick-rows {
+      flex-direction: column;
+  }
+
+  /* .input-small {
+      width: inherit;
+  } */
+
+  /* .loader {
       top: 55% !important;
       left: 55% !important;
-  }
+  } */
 
   .player-add-button {
-      margin-left: 75%;
+      margin-left: 70%;
+      margin-top: 3px;
+      margin-bottom: 0 !important;
   }
 } 
 
@@ -184,6 +207,7 @@
     border: 1px solid #a3bbd3;
     border-radius: 5px;
     min-width: max-content;
+    margin-bottom: 7px;
 }
 
 .disabled-sign-in {
@@ -277,7 +301,7 @@
     color: #fff;
     border: 2px solid #4b576b;
     border-radius: 10px;
-
+    margin: 0;
 }
 
 .radio-label {
