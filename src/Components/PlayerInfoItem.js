@@ -27,7 +27,7 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, rankingPlayersIdsList
                                     <option key={result} value={result}>{`${playerInfo[result].full_name} - ${playerInfo[result].team ? playerInfo[result].team : "FA"} (${playerInfo[result].position})`}</option>
                                 ))}
                             </select>
-                            <button className="button player-add-button" onClick={() => setEditingPlayer(false)}>
+                            <button className="button" onClick={() => setEditingPlayer(false)}>
                                 Close
                             </button>
                         </>
@@ -35,17 +35,17 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, rankingPlayersIdsList
                     { 
                         !editingPlayer && 
                         <>
-                            <p className="clickable-item" onClick={() => setEditingPlayer(true)}><b>{player.full_name}</b></p>
+                            <span className="clickable-item full-text" onClick={() => setEditingPlayer(true)}><b>{player.full_name}</b></span>
+                            <span className="clickable-item abbr-text" onClick={() => setEditingPlayer(true)}><b>{`${player.first_name.split('')[0]}.${player.last_name}`}</b></span>
                             <p className="player-info-item">- {player.team}</p>
                             <p className="player-info-item">({player.position})</p>
                         </>
                     }
                 </div>
                 <div className="player-info">
-                    <p className="player-info-item"><b>Is rostered:</b> {player.is_taken ? player.is_taken.toString() : "false"} </p>
-                    <p className="player-info-item"><b>Rostered by:</b> {player.rostered_by ? player.rostered_by : "None"}</p>
+                    <p className="player-info-item"><b>Manager:</b> {player.rostered_by ? player.rostered_by : "Free Agent"}</p>
                     <p className="player-info-item"><b>Rank:</b> {rankPlayerId.ranking}</p>
-                    <div className="avatar-player" aria-label="nfl Player" style={{width: 32 + "px", height: 32 + "px", flex: "0 0 32 px", background: `url(https://sleepercdn.com/content/nfl/players/thumb/${player.player_id}.jpg) center center / cover rgb(239, 239, 239)`, borderRadius: 33 + "%", marginTop: -3 + "%", backgroundColor: "transparent"}}></div>
+                    <div className="avatar-player" aria-label="nfl Player" style={{width: 32 + "px", height: 32 + "px", flex: "0 0 32 px", background: `url(https://sleepercdn.com/content/nfl/players/thumb/${player.player_id}.jpg) center center / cover rgb(239, 239, 239)`, borderRadius: 33 + "%", marginTop: -3 + "%", marginLeft: 30 + "px", backgroundColor: "transparent"}}></div>
                 </div>
             </div>
             {
