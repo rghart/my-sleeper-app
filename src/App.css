@@ -19,6 +19,15 @@
       display: block !important;
   }
 
+  .panel {
+      width: 250px;
+  }
+
+  .loader {
+      top: 55% !important;
+      left: 55% !important;
+  }
+
   .player-add-button {
       margin-left: 75%;
   }
@@ -62,8 +71,8 @@
   height: 100%;
   margin: 8px 3px 3px 3px;
   display: flex;
-  flex-direction: column;
   flex: 1 1;
+  flex-direction: column;
 }
 
 .search {
