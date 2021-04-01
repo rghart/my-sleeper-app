@@ -181,11 +181,10 @@ class App extends React.Component {
                     return pos 
                   } 
               }),
-        });
+        }, this.getTradedDraftPicks);
         if (this.state.rankingPlayersIdsList) {
             this.filterPlayers();
         }
-        this.getTradedDraftPicks();
       })
       .catch((error) => {
         console.error('Error:', error);
@@ -231,23 +230,23 @@ class App extends React.Component {
   markTakenPlayers = (rosterData, managerData) => {
     let playerObject = this.state.playerInfo;
     if (this.state.rankingPlayersIdsList) {
-        for (let i = 0; i < Object.keys(playerObject).length + 1; i++) {
-            if (playerObject[i]) {
-                playerObject[i].is_taken = false;
-                playerObject[i].rostered_by = null;
-            }
+        Object.keys(playerObject).forEach((i) => {
+        if (playerObject[i]) {
+          playerObject[i].is_taken = false;
+          playerObject[i].rostered_by = null;
         }
-    }
-    for (let i = 0; i < rosterData.length; i++) {
-      const currentManagerId = rosterData[i].owner_id;
-      const currentManagerData = managerData.find(manager => manager.user_id === currentManagerId);
-      rosterData[i].manager_display_name = currentManagerData ? currentManagerData.display_name : "Unassigned";
-      rosterData[i].avatar = currentManagerData ? currentManagerData.avatar : null;
-      rosterData[i].players.forEach(player => {
-        playerObject[player].is_taken = true;
-        playerObject[player].rostered_by = rosterData[i].manager_display_name;
       })
     }
+    rosterData.forEach((roster) => {
+      const currentManagerId = roster.owner_id;
+      const currentManagerData = managerData.find(manager => manager.user_id === currentManagerId);
+      roster.manager_display_name = currentManagerData ? currentManagerData.display_name : "Unassigned";
+      roster.avatar = currentManagerData ? currentManagerData.avatar : null;
+      roster.players.forEach(player => {
+        playerObject[player].is_taken = true;
+        playerObject[player].rostered_by = roster.manager_display_name;
+      })
+    })
     this.setState({
       playerInfo: playerObject
     })
@@ -442,7 +441,7 @@ class App extends React.Component {
           return (
             <div>
                 <div style={{display: "flex", flexDirection: "row", justifyContent: "space-between", padding: `${0}px ${3}px`}}> 
-                    <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
+                    <h1 className="title">Sleeper Team Assistant</h1>
                     { signedIn ?
                         <div style={{display: "flex", flexDirection: "row", alignItems: "baseline"}}>
                             <p className="latest-update"><i>{signedInEmail}</i></p>
@@ -451,7 +450,7 @@ class App extends React.Component {
                         <button className="button sign-in-button" onClick={this.googleSignIn}>Sign in</button>
                     }
                 </div>
-                <h1 className="title">Sleeper Team Assistant</h1>
+                <p className="latest-update"><i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i></p>
                 <div className="main-container">
                     <RanksPanel 
                         loadingMessage={loadingMessage}

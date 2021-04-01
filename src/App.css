@@ -15,10 +15,12 @@
 }
 
 @media screen and (max-width: 767px) {
+  .title {
+      font-size: x-large;
+  }
+
   .single-player-item {
       display: block !important;
-
-
   }
 
   .avatar-player {
@@ -39,15 +41,6 @@
   .draft-pick-rows {
       flex-direction: column;
   }
-
-  /* .input-small {
-      width: inherit;
-  } */
-
-  /* .loader {
-      top: 55% !important;
-      left: 55% !important;
-  } */
 
   .player-add-button {
       margin-left: 70%;
@@ -193,7 +186,7 @@
 
 .latest-update {
   margin: 0px 0px 6px 3px;
-  font-size: small;
+  font-size: x-small;
   margin-right: 8px;
 }
 
@@ -310,7 +303,6 @@
     padding: 6px;
     cursor: pointer;
     margin: 3px;
-
     text-align: center;
 }
 
