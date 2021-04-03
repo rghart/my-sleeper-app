@@ -4,12 +4,39 @@ const activePlayers = 'active_players/';
 const users = 'users/';
 const typeParams = '.json?auth=';
 
-const URLS = {
+const sleeperAPI = 'https://api.sleeper.app/';
+const V1 = 'v1/';
+const LEAGUE = 'league/';
+const DRAFT = 'draft/';
+const PLAYERS = 'players/nfl';
+const USER = 'user/521035584588267520/';
+const ROSTERS = 'rosters/';
+const SLEEPER_USERS = 'users/';
+const LEAGUES = 'leagues/nfl/';
+const YEAR = '2021';
+const TRADED_PICKS = 'traded_picks/';
+const PICKS = 'picks/';
+const DRAFTS = 'drafts/';
+
+const APP_DB_URLS = {
     APP_DB: appDB,
     LATEST_UPDATE_ATTEMPT: appDB + latestUpdateAttempt + typeParams,
     ACTIVE_PLAYERS: appDB + activePlayers + typeParams,
-    USERS: appDB + users,
+    APP_USERS: appDB + users,
     TYPE_PARAMS: typeParams,
 }
 
-export default URLS;
+const SLEEPER_API_URLS = {
+    ALL_PLAYERS: sleeperAPI + V1 + PLAYERS,
+    LEAGUE: sleeperAPI + V1 + LEAGUE,
+    ALL_LEAGUES_ACTIVE_YEAR: sleeperAPI + V1 + USER + LEAGUES + YEAR,
+    DRAFT: sleeperAPI + V1 + DRAFT,
+    ROSTERS: ROSTERS,
+    SLEEPER_USERS: SLEEPER_USERS,
+    TRADED_PICKS: TRADED_PICKS,
+    PICKS: PICKS,
+    DRAFTS: DRAFTS,
+}
+
+export default APP_DB_URLS;
+export { SLEEPER_API_URLS };

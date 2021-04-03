@@ -1,15 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import DraftRound from './DraftRound';
+import { SLEEPER_API_URLS } from '../urls';
+const {
+    DRAFT,
+    PICKS,
+    TRADED_PICKS,
+} = SLEEPER_API_URLS;
 
 const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInfo }) => {
     const { currentDraft, rosterData } = leagueData;
+    const draftPath = DRAFT + currentDraft.draft_id + '/';
     const [liveDraft, setLiveDraft] = useState(currentDraft);
     const [isSyncing, setIsSyncing] = useState(false);
     const [currentDraftId, setCurrentDraftId] = useState(currentDraft.draft_id);
+    const [DRAFT_PATH, setDraftPath] = useState(draftPath);
+
+    const updateDraftID = (val) => {
+        setCurrentDraftId(val);
+        setDraftPath(DRAFT + val + '/');
+    }
 
     const getLiveDraft = async () => {
         let newPlayerInfo = playerInfo;
-        const liveDraftData = await fetch(`https://api.sleeper.app/v1/draft/${currentDraftId}/picks`)
+        const liveDraftData = await fetch(DRAFT_PATH + PICKS)
           .then(response => response.json())
           .then(data => data)
           .catch((error) => {
@@ -34,8 +47,8 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
     }
 
     const getTradedDraftPicks = async (newLiveDraft) => {
-        const { built_draft: builtDraft, draft_id: draftId } = newLiveDraft;
-        const tradedPicks = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/traded_picks`)
+        const { built_draft: builtDraft } = newLiveDraft;
+        const tradedPicks = await fetch(DRAFT_PATH + TRADED_PICKS)
           .then(response => response.json())
           .then(data => data)
           .catch((error) => {
@@ -77,7 +90,7 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
         <div>
             <div className="league-grid">
                 <p><b>Draft ID</b></p>
-                <input type="text" className="input-small" value={currentDraftId} onChange={(e) => setCurrentDraftId(e.target.value)} />
+                <input type="text" className="input-small" value={currentDraftId} onChange={(e) => updateDraftID(e.target.value)} />
                 <button className="button sign-in-button" onClick={getLiveDraft}>Update</button>
                 <p><b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b></p>
                 <p>Status: {currentDraft.status}</p>
