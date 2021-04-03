@@ -3,8 +3,8 @@ import SearchFilterButton from '../Components/SearchFilterButton';
 import OnFocusButton from '../Components/OnFocusButton';
 import Dropdown from '../Components/Dropdown';
 import { auth } from '../firebase.js';
-import URLS from '../urls.js';
-const { USERS, TYPE_PARAMS } = URLS;
+import APP_DB_URLS from '../urls.js';
+const { APP_USERS, TYPE_PARAMS } = APP_DB_URLS;
 
 const RanksPanel = ({ 
     loadingMessage,
@@ -52,7 +52,7 @@ const RanksPanel = ({
                 'rank_list': rankingPlayersIdsList
             }
             const USER_PATH = `${auth.currentUser.uid}/${newRankListNameEscaped}`;
-            const updateResponse = await fetchRequest(USERS + USER_PATH + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'PUT', rankListData);
+            const updateResponse = await fetchRequest(APP_USERS + USER_PATH + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'PUT', rankListData);
             if (updateResponse && updateResponse.ok) {
                 setIsNewRankList(false);
                 allListsVals.push(newRankListNameEscaped);
@@ -78,7 +78,7 @@ const RanksPanel = ({
     const deleteRankList = async () => {
         // Neee to escape backslashes
         const USER_PATH = `${auth.currentUser.uid}/${currentListVal}`;
-        const updateResponse = await fetchRequest(USERS + USER_PATH + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'DELETE');
+        const updateResponse = await fetchRequest(APP_USERS + USER_PATH + TYPE_PARAMS + await auth.currentUser.getIdToken(true), 'DELETE');
         if (updateResponse && updateResponse.ok) {
             setIsNewRankList(false);
             const deleteIndex = allListsVals.indexOf(currentListVal);
@@ -110,7 +110,7 @@ const RanksPanel = ({
     useEffect(() => {
         const defaultSelectorObj = {[defaultSelector]: {'pretty_name': '-- Select saved ranks list', 'route_name': defaultSelector}}
         const getSavedRankLists = async () => {
-            const getSavedRankListsResult = await fetch(USERS + auth.currentUser.uid + TYPE_PARAMS + await auth.currentUser.getIdToken(true))
+            const getSavedRankListsResult = await fetch(APP_USERS + auth.currentUser.uid + TYPE_PARAMS + await auth.currentUser.getIdToken(true))
               .then(checkErrors)
               .then(response => response.json())
               .then(data => {

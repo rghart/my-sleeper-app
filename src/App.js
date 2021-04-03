@@ -6,8 +6,18 @@ import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import firebase, { auth } from './firebase.js';
 import createRankings from './helpers.js';
-import URLS from './urls.js';
-const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = URLS;
+import APP_DB_URLS, { SLEEPER_API_URLS } from './urls.js';
+const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
+const { 
+    ALL_PLAYERS, 
+    LEAGUE, 
+    ALL_LEAGUES_ACTIVE_YEAR, 
+    DRAFT,
+    ROSTERS,
+    SLEEPER_USERS,
+    TRADED_PICKS,
+    DRAFTS,
+} = SLEEPER_API_URLS;
 var provider = new firebase.auth.GoogleAuthProvider();
 
 class App extends React.Component {
@@ -80,7 +90,7 @@ class App extends React.Component {
     // Attempt update to latest update attempt before calling Sleeper. return if that fails
     const updateResponse = await this.fetchRequest(LATEST_UPDATE_ATTEMPT + await auth.currentUser.getIdToken(true), 'PUT', new Date().getTime());
     if (updateResponse && updateResponse.ok) {
-      const sleeperPlayerData = await fetch(`https://api.sleeper.app/v1/players/nfl`)
+      const sleeperPlayerData = await fetch(ALL_PLAYERS)
           .then(this.checkErrors)
           .then(response => response.json())
           .then(data => {
@@ -145,12 +155,13 @@ class App extends React.Component {
 
   getLeagueData = () => {
     const leagueID = this.state.leagueID;
+    const LEAGUE_PATH = LEAGUE + leagueID + '/';
     const urls = [
-      `https://api.sleeper.app/v1/league/${leagueID}/rosters`,
-      `https://api.sleeper.app/v1/league/${leagueID}/users`,
-      `https://api.sleeper.app/v1/league/${leagueID}`,
-      `https://api.sleeper.app/v1/user/521035584588267520/leagues/nfl/2021`,
-      `https://api.sleeper.app/v1/league/${leagueID}/drafts`,
+      LEAGUE_PATH + ROSTERS,
+      LEAGUE_PATH + SLEEPER_USERS,
+      LEAGUE_PATH,
+      ALL_LEAGUES_ACTIVE_YEAR,
+      LEAGUE_PATH + DRAFTS,
     ]
     let requests = urls.map(async url => {
         const response = await fetch(url);
@@ -193,7 +204,8 @@ class App extends React.Component {
 
   getTradedDraftPicks = async () => {
       const draftId = this.state.leagueData.currentLeagueDrafts[0].draft_id;
-      const tradedPicks = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/traded_picks`)
+      const DRAFT_PATH = DRAFT + draftId + '/';
+      const tradedPicks = await fetch(DRAFT_PATH + TRADED_PICKS)
         .then(response => response.json())
         .then(data => data)
         .catch((error) => {
@@ -208,7 +220,8 @@ class App extends React.Component {
   getSpecificDraft = async () => {
     let { leagueData } = this.state;
     const draftId = leagueData.currentLeagueDrafts[0].draft_id;
-    const draftData = await fetch(`https://api.sleeper.app/v1/draft/${draftId}`)
+    const DRAFT_PATH = DRAFT + draftId;
+    const draftData = await fetch(DRAFT_PATH)
       .then(response => response.json())
       .then(data => data)
       .catch((error) => {
