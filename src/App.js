@@ -343,14 +343,22 @@ class App extends React.Component {
             const includesPosition = rosterPositions.includes(playerInfo.fantasy_positions[i]);
             if (includesPosition) {
                 const positionIndex = rosterPositions.indexOf(playerInfo.fantasy_positions[i]);
-                let position = ["SFLX", "FLX"].includes(playerInfo.fantasy_positions[i]) ? `${playerInfo.fantasy_positions[i]} / ${playerInfo.position}` : playerInfo.fantasy_positions[i];
-                rosterPositions.splice(positionIndex, 1, `${position} ${playerInfo.full_name} ${playerInfo.team ? playerInfo.team : ""}`);
+                playerInfo.roster_text = playerInfo.fantasy_positions[i];
+                rosterPositions.splice(positionIndex, 1, playerInfo.player_id);
                 break;
             }
         }
          this.setState({
              rosterPositions: rosterPositions
          })
+    }
+
+    removeFromLineup = (position, i) => {
+      const { rosterPositions } = this.state;
+      rosterPositions.splice(i, 1, position);
+      this.setState({
+          rosterPositions
+      })
     }
 
     buildDraft = () => {
@@ -500,6 +508,7 @@ class App extends React.Component {
                         rosterPositions={rosterPositions}
                         playerInfo={playerInfo}
                         loadingMessage={loadingMessage}
+                        removeFromLineup={this.removeFromLineup}
                     />
                 </div>
             </div>

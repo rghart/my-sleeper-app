@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import DraftPanel from './DraftPanel';
 import Dropdown from '../Components/Dropdown';
 
-const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPositions, leagueID, loadingMessage }) => {
+const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPositions, leagueID, loadingMessage, removeFromLineup }) => {
     const [leaguePanel, setLeaguePanel] = useState("draft");
     const updateLeagueID = (value) => {
         updateParentState("leagueID", value, "getLeagueData", "Loading league panel...")
@@ -40,8 +40,18 @@ const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPosition
                 </div>
                 { leaguePanel === "weekly" && (
                     <div className="roster-positions">
-                        {rosterPositions.map((pos, index) => (
-                            <p className={`${pos} lineup-position`} key={pos + new Date().getTime() + index}>{pos}</p>
+                        {rosterPositions.map((id, i) => (
+                            <div style={{cursor: "pointer"}} className={`${playerInfo[id] ? playerInfo[id].position : id} lineup-position`} key={playerInfo[id] ? playerInfo[id].player_id : id + new Date().getTime() + i} onClick={() => playerInfo[id] ? removeFromLineup(playerInfo[id].roster_text, i) : null}>
+                                <span className="full-text" style={{marginRight: 0}}>{playerInfo[id] ? (<><b>{playerInfo[id].roster_text}</b> {playerInfo[id].full_name}</>) : <b>{id}</b>}</span>
+                                <span className="abbr-text" style={{marginRight: 0}}>{playerInfo[id] ? (<><b>{playerInfo[id].roster_text}</b> {playerInfo[id].first_name.split("")[0]}.{playerInfo[id].last_name}</>) : <b>{id}</b>}</span>
+                                { playerInfo[id] ? 
+                                    <div style={{marginBottom: -19 + "px", marginLeft: 3 + "px", position: "relative", bottom: 3 + "px"}}>
+                                        <div className="avatar-player" aria-label="nfl Player" style={{width: 22 + "px", height: 22 + "px", flex: "0 0 32 px", background: `url(https://sleepercdn.com/content/nfl/players/thumb/${playerInfo[id].player_id}.jpg) center center / cover rgb(239, 239, 239)`, borderRadius: 33 + "%", backgroundColor: "transparent"}}></div>
+                                        <div className="avatar-player" aria-label="nfl Player" style={{width: 17 + "px", height: 17 + "px", flex: "0 0 32 px", background: `url(https://sleepercdn.com/images/team_logos/nfl/${playerInfo[id].team ? playerInfo[id].team.toLowerCase() : null}.png) center center / cover rgb(239, 239, 239)`, borderRadius: 33 + "%", position: "relative", top: -12 + "px", left: 10 + "px", backgroundColor: "transparent"}}></div>
+                                    </div> 
+                                    : null
+                                }
+                            </div>
                         ))}
                     </div>
                 )}
