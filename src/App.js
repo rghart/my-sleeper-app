@@ -247,6 +247,7 @@ class App extends React.Component {
         if (playerObject[i]) {
           playerObject[i].is_taken = false;
           playerObject[i].rostered_by = null;
+          playerObject[i].in_lineup = false;
         }
       })
     }
@@ -330,27 +331,40 @@ class App extends React.Component {
         this.filterPlayers(newRankingPlayersIdsList);
     }
 
-    addToRoster = (playerInfo) => {
-        let { rosterPositions } = this.state;
-        if (playerInfo.position === "TE" || playerInfo.position === "RB" || playerInfo.position === "WR") {
-            playerInfo.fantasy_positions.push("FLX");
-            playerInfo.fantasy_positions.push("SFLX");
-        } else if (playerInfo.position === "QB") {
-            playerInfo.fantasy_positions.push("SFLX");
+    addToRoster = (player) => {
+        let { rosterPositions, playerInfo } = this.state;
+        if (player.position === "TE" || player.position === "RB" || player.position === "WR") {
+            player.fantasy_positions.push("FLX");
+            player.fantasy_positions.push("SFLX");
+        } else if (player.position === "QB") {
+            player.fantasy_positions.push("SFLX");
         }
 
-        for (let i = 0; i < playerInfo.fantasy_positions.length; i++) {
-            const includesPosition = rosterPositions.includes(playerInfo.fantasy_positions[i]);
+        for (let i = 0; i < player.fantasy_positions.length; i++) {
+            const includesPosition = rosterPositions.includes(player.fantasy_positions[i]);
             if (includesPosition) {
-                const positionIndex = rosterPositions.indexOf(playerInfo.fantasy_positions[i]);
-                let position = ["SFLX", "FLX"].includes(playerInfo.fantasy_positions[i]) ? `${playerInfo.fantasy_positions[i]} / ${playerInfo.position}` : playerInfo.fantasy_positions[i];
-                rosterPositions.splice(positionIndex, 1, `${position} ${playerInfo.full_name} ${playerInfo.team ? playerInfo.team : ""}`);
+                const positionIndex = rosterPositions.indexOf(player.fantasy_positions[i]);
+                player.roster_text = player.fantasy_positions[i];
+                rosterPositions.splice(positionIndex, 1, player.player_id);
                 break;
             }
         }
+        player.in_lineup = true;
+        playerInfo[player.player_id] = player;
          this.setState({
-             rosterPositions: rosterPositions
+             playerInfo,
+             rosterPositions
          })
+    }
+
+    removeFromLineup = (id, i) => {
+      const { rosterPositions, playerInfo } = this.state;
+      rosterPositions.splice(i, 1, playerInfo[id].roster_text);
+      playerInfo[id].in_lineup = false;
+      this.setState({
+          playerInfo,
+          rosterPositions
+      })
     }
 
     buildDraft = () => {
@@ -500,6 +514,7 @@ class App extends React.Component {
                         rosterPositions={rosterPositions}
                         playerInfo={playerInfo}
                         loadingMessage={loadingMessage}
+                        removeFromLineup={this.removeFromLineup}
                     />
                 </div>
             </div>

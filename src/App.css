@@ -47,6 +47,16 @@
       margin-top: 3px;
       margin-bottom: 0 !important;
   }
+
+  .disabled-player-add-button {
+      margin-left: 65%;
+      margin-top: 3px;
+      margin-bottom: 0 !important;
+  }
+
+  .roster-positions {
+    padding: 0 !important;
+  }
 } 
 
 .App-header {
@@ -228,6 +238,15 @@
   border-color: #4b576b;
 }
 
+.disabled-player-add-button {
+  align-self:center;
+  justify-self: flex-end;
+  text-align: center;
+  width: 45px;
+  color: #4b576b;
+  border-color: #4b576b;
+}
+
 .clickable-item:hover {
     cursor: pointer;
 }
@@ -316,6 +335,7 @@
 
 .lineup-position {
     width: fit-content;
+    display: flex;
     padding: 5px 5px 5px 5px;
     border-radius: 10px;
     margin-top: 3px;
@@ -422,6 +442,7 @@
 
 .custom-horizontal-select .custom-horizontal-select-item.selected {
   background-color: #00ceb8;
+  transition: all 0.1s ease;
 }
 
 .syncing {
