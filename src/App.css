@@ -48,6 +48,12 @@
       margin-bottom: 0 !important;
   }
 
+  .disabled-player-add-button {
+      margin-left: 65%;
+      margin-top: 3px;
+      margin-bottom: 0 !important;
+  }
+
   .roster-positions {
     padding: 0 !important;
   }
@@ -228,6 +234,15 @@
 
 .player-add-button:hover {
   transform: scale(1.02);
+  color: #4b576b;
+  border-color: #4b576b;
+}
+
+.disabled-player-add-button {
+  align-self:center;
+  justify-self: flex-end;
+  text-align: center;
+  width: 45px;
   color: #4b576b;
   border-color: #4b576b;
 }

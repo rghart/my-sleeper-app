@@ -53,8 +53,8 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, rankingPlayersIdsList
             </div>
             {
                 (player.rostered_by && player.rostered_by === "ryangh") || !player.is_taken ?   
-                <button className="button player-add-button" onClick={() => addToRoster(player)}>
-                    Add
+                <button disabled={player.in_lineup} className={player.in_lineup ? 'disabled-player-add-button button' : 'button player-add-button'} onClick={() => addToRoster(player)}>
+                    {player.in_lineup ? "Added" : "Add"}
                 </button>
                 : null
             }

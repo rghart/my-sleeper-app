@@ -41,7 +41,7 @@ const LeaguePanel = ({ leagueData, playerInfo, updateParentState, rosterPosition
                 { leaguePanel === "weekly" && (
                     <div className="roster-positions">
                         {rosterPositions.map((id, i) => (
-                            <div style={{cursor: "pointer"}} className={`${playerInfo[id] ? playerInfo[id].position : id} lineup-position`} key={playerInfo[id] ? playerInfo[id].player_id : id + new Date().getTime() + i} onClick={() => playerInfo[id] ? removeFromLineup(playerInfo[id].roster_text, i) : null}>
+                            <div style={{cursor: "pointer"}} className={`${playerInfo[id] ? playerInfo[id].position : id} lineup-position`} key={playerInfo[id] ? playerInfo[id].player_id + new Date().getTime() + i : id + new Date().getTime() + i} onClick={() => playerInfo[id] ? removeFromLineup(id, i) : null}>
                                 <span className="full-text" style={{marginRight: 0}}>{playerInfo[id] ? (<><b>{playerInfo[id].roster_text}</b> {playerInfo[id].full_name}</>) : <b>{id}</b>}</span>
                                 <span className="abbr-text" style={{marginRight: 0}}>{playerInfo[id] ? (<><b>{playerInfo[id].roster_text}</b> {playerInfo[id].first_name.split("")[0]}.{playerInfo[id].last_name}</>) : <b>{id}</b>}</span>
                                 { playerInfo[id] ? 
