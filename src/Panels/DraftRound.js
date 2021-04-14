@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../Components/Button';
 
-const DraftRound = ({ round, playerInfo, rosterData }) => {
+const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo }) => {
     const [picks, setPicks] = useState(round.picks);
     const [showRound, setShowRound] = useState(true);
     const [showPickSelection, setShowPickSelection] = useState(false);
@@ -9,16 +9,27 @@ const DraftRound = ({ round, playerInfo, rosterData }) => {
     const [searchValue, setSearchValue] = useState('');
 
     const manualPickSelection = (pick) => {
-        setCurrentManualPick(pick);
+        setCurrentManualPick({ ...pick });
         setShowPickSelection(!showPickSelection);
     };
 
-    const updatePickSelection = (playerID) => {
+    const updatePickSelection = async (playerID) => {
         picks[
             picks.findIndex((pick) => pick.pick_spot_string === currentManualPick.pick_spot_string)
         ].player_id = playerID;
+        let newPlayerInfo = playerInfo;
+        if (playerID) {
+            newPlayerInfo[playerID].is_taken = true;
+            newPlayerInfo[playerID].rostered_by = rosterData.find(
+                (roster) => currentManualPick.owner_id === roster.roster_id,
+            ).manager_display_name;
+        } else {
+            newPlayerInfo[currentManualPick.player_id].is_taken = false;
+            newPlayerInfo[currentManualPick.player_id].rostered_by = null;
+        }
         setCurrentManualPick(null);
         setPicks(picks);
+        updatePlayerInfo('playerInfo', { ...newPlayerInfo }, 'filterPlayers', '');
         setShowPickSelection(!showPickSelection);
         setSearchValue('');
     };
@@ -93,7 +104,9 @@ const DraftRound = ({ round, playerInfo, rosterData }) => {
                         onChange={(e) => setSearchValue(e.target.value)}
                         placeholder="Start typing player name to search"
                     />
-                    <Button btnStyle="primary" text="Exit" onClick={() => setShowPickSelection(!showPickSelection)} />
+                    <button className="button" onClick={() => setShowPickSelection(!showPickSelection)}>
+                        Exit
+                    </button>
                     {currentManualPick.player_id && (
                         <p
                             className="clickable-item draft-pick-rows QB"
@@ -107,9 +120,12 @@ const DraftRound = ({ round, playerInfo, rosterData }) => {
                         Object.values(playerInfo)
                             .filter((player) =>
                                 player.full_name
-                                    ? player.full_name.toLowerCase().includes(searchValue.toLowerCase())
+                                    ? player.full_name.toLowerCase().includes(searchValue.toLowerCase()) &&
+                                      ['QB', 'RB', 'WR', 'TE'].includes(player.position)
                                     : null,
                             )
+                            .sort((a, b) => a.years_exp - b.years_exp)
+                            .sort((a, b) => a.search_rank - b.search_rank)
                             .map((player) => (
                                 <p
                                     className={`clickable-item draft-pick-rows ${player.position}`}
