@@ -97,16 +97,21 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo }) => {
             )}
             {showPickSelection && (
                 <div>
-                    <h4>Manually select pick</h4>
+                    <h4>Manually select pick {currentManualPick.pick_spot_string}</h4>
                     <input
                         type="text"
                         className="input-small"
                         onChange={(e) => setSearchValue(e.target.value)}
                         placeholder="Start typing player name to search"
                     />
-                    <button className="button" onClick={() => setShowPickSelection(!showPickSelection)}>
-                        Exit
-                    </button>
+                    <Button
+                        text="Exit"
+                        btnStyle="primary"
+                        onClick={() => {
+                            setShowPickSelection(!showPickSelection);
+                            setSearchValue('');
+                        }}
+                    />
                     {currentManualPick.player_id && (
                         <p
                             className="clickable-item draft-pick-rows QB"
