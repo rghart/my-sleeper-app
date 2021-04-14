@@ -284,6 +284,15 @@
     overflow: hidden;
 }
 
+.draft-pick-rows:hover {
+  display: flex;
+  border: 2px solid #00d8a7;
+  border-radius: 6px;
+  margin-bottom: 3px;
+  width: 95%;
+  overflow: hidden;
+}
+
 .draft-picks-box {
     margin-top: 10px;
     width: 100%;
