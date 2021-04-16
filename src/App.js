@@ -9,7 +9,6 @@ import createRankings from './helpers.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from './urls.js';
 const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
 const { 
-    ALL_PLAYERS, 
     LEAGUE, 
     ALL_LEAGUES_ACTIVE_YEAR, 
     DRAFT,
@@ -86,38 +85,6 @@ class App extends React.Component {
     return response;
   }
 
-  updatePlayerDB = async () => {
-    // Attempt update to latest update attempt before calling Sleeper. return if that fails
-    const updateResponse = await this.fetchRequest(LATEST_UPDATE_ATTEMPT + await auth.currentUser.getIdToken(true), 'PUT', new Date().getTime());
-    if (updateResponse && updateResponse.ok) {
-      const sleeperPlayerData = await fetch(ALL_PLAYERS)
-          .then(this.checkErrors)
-          .then(response => response.json())
-          .then(data => {
-            console.log("Successfully fetched Sleeper Player data from API");
-            let filteredData = {};
-            filteredData.active_players = Object.fromEntries(
-              Object.entries(data)
-              .filter(([key, val]) => val.active)
-            )
-            const currentDate = new Date().getTime();
-            filteredData.latest_update_attempt = currentDate;
-            this.setState({
-              lastUpdate: currentDate
-            })
-            return filteredData;
-          })
-          .catch((error) => {
-              console.error('Error:', error);
-            });
-        const { latest_update_attempt: latestUpdateAttempt, active_players: activePlayers } = sleeperPlayerData;
-        this.fetchRequest(LATEST_UPDATE_ATTEMPT + await auth.currentUser.getIdToken(true), 'PUT', latestUpdateAttempt);
-        await this.fetchRequest(ACTIVE_PLAYERS + await auth.currentUser.getIdToken(true), 'PUT', activePlayers);
-    } else {
-      console.log("Wasn't able to update latest_update_attempt field")
-    }
-  }
-
   getLatestUpdateAttempt = async () => {
     return await fetch(LATEST_UPDATE_ATTEMPT + await auth.currentUser.getIdToken(true))
       .then(this.checkErrors)
@@ -134,12 +101,7 @@ class App extends React.Component {
   }
 
   getPlayerData = async () => {
-    const day = 24 * 60 * 60 * 1000;
-    const currentDate = new Date().getTime();
-    const latestUpdateAttempt = await this.getLatestUpdateAttempt();
-    if (currentDate - latestUpdateAttempt >= day) {
-      await this.updatePlayerDB();
-    }
+    this.getLatestUpdateAttempt();
     await fetch(ACTIVE_PLAYERS + await auth.currentUser.getIdToken(true))
       .then(response => response.json())
       .then(data => {
