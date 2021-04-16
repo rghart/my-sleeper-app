@@ -8,7 +8,6 @@ const sleeperAPI = 'https://api.sleeper.app/';
 const V1 = 'v1/';
 const LEAGUE = 'league/';
 const DRAFT = 'draft/';
-const PLAYERS = 'players/nfl';
 const USER = 'user/521035584588267520/';
 const ROSTERS = 'rosters/';
 const SLEEPER_USERS = 'users/';
@@ -27,7 +26,6 @@ const APP_DB_URLS = {
 }
 
 const SLEEPER_API_URLS = {
-    ALL_PLAYERS: sleeperAPI + V1 + PLAYERS,
     LEAGUE: sleeperAPI + V1 + LEAGUE,
     ALL_LEAGUES_ACTIVE_YEAR: sleeperAPI + V1 + USER + LEAGUES + YEAR,
     DRAFT: sleeperAPI + V1 + DRAFT,
