@@ -1,0 +1,78 @@
+button {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #a3bbd3;
+    border-radius: 5px;
+    min-width: max-content;
+    margin-bottom: 7px;
+}
+
+button:hover {
+    transform: scale(1.02);
+}
+
+:disabled {
+    transform: none !important;
+    border: 1px solid #4b576b !important;
+    color: #4b576b !important;
+}
+
+.primary-large {
+    width: 80%;
+    text-align: center;
+    margin-top: 8px;
+    margin-bottom: 15px;
+    font-size: medium;
+    height: 30px;
+}
+
+.primary:hover, .primary-large:hover {
+    color: #00d8a7;
+    border-color: #00d8a7;
+}
+
+.alert {
+    background-color: #ff2a6d;
+    border-color: #ff2a6d;
+}
+  
+.alert:hover {
+    transform: scale(1.05);
+}
+
+.active {
+    background-color: #00d8a7;
+    overflow: hidden;
+}
+
+.active:hover {
+    color: #fff;
+}
+
+.primary-invert, .player-add-button {
+    color: #18202f;
+    border-color: #18202f;
+}
+
+.player-add-button {
+    align-self:center;
+    justify-self: flex-end;
+    text-align: center;
+    width: 45px;
+    margin-left: 70%;
+    margin-top: 3px;
+    margin-bottom: 0 !important;
+}
+
+.player-add-button:hover, .primary-invert:hover {
+    color: #4b576b;
+    border-color: #4b576b;
+}
+
+.player-add-button:disabled {
+    margin-left: 65%;
+}
+
+.clickable-item:hover {
+    cursor: pointer;
+}

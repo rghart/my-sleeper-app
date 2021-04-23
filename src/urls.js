@@ -23,7 +23,7 @@ const APP_DB_URLS = {
     ACTIVE_PLAYERS: appDB + activePlayers + typeParams,
     APP_USERS: appDB + users,
     TYPE_PARAMS: typeParams,
-}
+};
 
 const SLEEPER_API_URLS = {
     LEAGUE: sleeperAPI + V1 + LEAGUE,
@@ -34,7 +34,7 @@ const SLEEPER_API_URLS = {
     TRADED_PICKS: TRADED_PICKS,
     PICKS: PICKS,
     DRAFTS: DRAFTS,
-}
+};
 
 export default APP_DB_URLS;
 export { SLEEPER_API_URLS };

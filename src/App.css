@@ -42,18 +42,6 @@
       flex-direction: column;
   }
 
-  .player-add-button {
-      margin-left: 70%;
-      margin-top: 3px;
-      margin-bottom: 0 !important;
-  }
-
-  .disabled-player-add-button {
-      margin-left: 65%;
-      margin-top: 3px;
-      margin-bottom: 0 !important;
-  }
-
   .roster-positions {
     padding: 0 !important;
   }
@@ -202,95 +190,6 @@
 
 .title {
   margin: 0px 0px 6px 3px;
-}
-
-.button {
-    background: transparent;
-    color: #fff;
-    border: 1px solid #a3bbd3;
-    border-radius: 5px;
-    min-width: max-content;
-    margin-bottom: 7px;
-}
-
-.disabled-sign-in {
-    border: 2px solid #4b576b;
-    color: #4b576b;
-}
-
-.disabled-sign-in:hover {
-  border: 2px solid #4b576b;
-  color: #4b576b;
-}
-
-.player-add-button {
-  align-self:center;
-  justify-self: flex-end;
-  text-align: center;
-  width: 45px;
-  color: #18202f;
-  border-color: #18202f;
-}
-
-.player-add-button:hover {
-  transform: scale(1.02);
-  color: #4b576b;
-  border-color: #4b576b;
-}
-
-.disabled-player-add-button {
-  align-self:center;
-  justify-self: flex-end;
-  text-align: center;
-  width: 45px;
-  color: #4b576b;
-  border-color: #4b576b;
-}
-
-.clickable-item:hover {
-    cursor: pointer;
-}
-
-.search-button {
-  width: 80%;
-  text-align: center;
-  margin-top: 8px;
-  margin-bottom: 15px;
-  font-size: medium;
-  height: 30px;
-}
-
-.disabled-search-button {
-  border: 2px solid #4b576b;
-  color: #4b576b;
-  width: 80%;
-  text-align: center;
-  margin-top: 8px;
-  margin-bottom: 15px;
-  font-size: medium;
-  height: 30px;
-}
-
-.delete-button {
-  color: #fff;
-  background-color: #ff2a6d;
-  border-color: #ff2a6d;
-}
-
-.delete-button:hover {
-  transform: scale(1.05);
-}
-
-.search-button:hover {
-  color: #00d8a7;
-  transform: scale(1.02);
-  border-color: #00d8a7;
-}
-
-.sign-in-button:hover {
-  color: #00d8a7;
-  transform: scale(1.02);
-  border-color: #00d8a7;
 }
 
 .input {
@@ -443,11 +342,6 @@
 .custom-horizontal-select .custom-horizontal-select-item.selected {
   background-color: #00ceb8;
   transition: all 0.1s ease;
-}
-
-.syncing {
-  background-color: #00d8a7;
-  overflow: hidden;
 }
 
 .is-hidden {
