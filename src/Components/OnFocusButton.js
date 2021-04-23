@@ -1,36 +1,20 @@
 import React, { useState } from 'react';
+import Button from './Button';
 
-const OnFocusButton = ({ copy, event }) => {
+const OnFocusButton = ({ event }) => {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
         <>
-            { !isFocused &&
-                <button 
-                    className={`sign-in-button button`}
-                    onClick={() => setIsFocused(true)}
-                >
-                    Edit
-                </button>
-            }
-            { isFocused &&
+            {!isFocused && <Button text="Edit" onClick={() => setIsFocused(true)} btnStyle="primary" />}
+            {isFocused && (
                 <div>
-                    <button 
-                        className={`delete-button button`}
-                        onClick={event}
-                    >
-                        Delete?
-                    </button>
-                    <button 
-                        className={`sign-in-button button`}
-                        onClick={() => setIsFocused(false)}
-                    >
-                        Cancel
-                    </button>
+                    <Button text="Delete?" onClick={event} btnStyle="alert" />
+                    <Button text="Cancel" onClick={() => setIsFocused(false)} btnStyle="primary" />
                 </div>
-            }
-        </>  
+            )}
+        </>
     );
-}
+};
 
 export default OnFocusButton;

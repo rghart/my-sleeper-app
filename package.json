@@ -7,19 +7,25 @@
         "@testing-library/jest-dom": "^5.11.9",
         "@testing-library/react": "^11.2.5",
         "@testing-library/user-event": "^12.7.0",
+        "@types/jest": "^26.0.22",
+        "@types/node": "^14.14.41",
+        "@types/react": "^17.0.3",
+        "@types/react-dom": "^17.0.3",
+        "classnames": "^2.3.1",
         "firebase": "^8.2.7",
         "fuse.js": "^6.4.6",
         "react": "^16.14.0",
         "react-dom": "^16.14.0",
-        "react-scripts": "3.4.3"
+        "react-scripts": "^4.0.3"
     },
     "scripts": {
         "start": "react-scripts start",
         "predeploy": "npm run build",
         "deploy": "firebase deploy",
-        "build": "react-scripts build",
+        "build": "CI=false react-scripts build",
         "test": "react-scripts test",
-        "eject": "react-scripts eject"
+        "eject": "react-scripts eject",
+        "lint": "eslint '*/**/*.{js,ts,tsx}' --quiet --fix"
     },
     "eslintConfig": {
         "extends": "react-app"
@@ -37,6 +43,13 @@
         ]
     },
     "devDependencies": {
-        "gh-pages": "^3.1.0"
+        "@typescript-eslint/eslint-plugin": "^4.22.0",
+        "@typescript-eslint/parser": "^4.22.0",
+        "eslint-config-prettier": "^8.2.0",
+        "eslint-plugin-prettier": "^3.4.0",
+        "eslint-plugin-react": "^7.23.2",
+        "gh-pages": "^3.1.0",
+        "prettier": "2.2.1",
+        "typescript": "^4.2.4"
     }
 }
