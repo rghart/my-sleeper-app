@@ -20,9 +20,9 @@
     },
     "scripts": {
         "start": "react-scripts start",
-        "predeploy": "CI=false npm run build",
+        "predeploy": "npm run build",
         "deploy": "firebase deploy",
-        "build": "react-scripts build",
+        "build": "CI=false react-scripts build",
         "test": "react-scripts test",
         "eject": "react-scripts eject",
         "lint": "eslint '*/**/*.{js,ts,tsx}' --quiet --fix"
