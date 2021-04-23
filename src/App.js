@@ -283,7 +283,13 @@ class App extends React.Component {
         let playerList = rankingPlayers ? rankingPlayers : rankingPlayersIdsList;
 
         let removedPlayers = playerList.filter((id) => !playerInfo[id.match_results[0]]);
-        console.log(removedPlayers);
+        if (removedPlayers) {
+            removedPlayers.forEach((player) =>
+                console.log(
+                    `Couldn't find player with ID ${player.match_results[0]} at rank ${player.ranking} - could be a retired player that was removed from database.`,
+                ),
+            );
+        }
         playerList = playerList.filter((result) => playerInfo[result.match_results[0]]);
 
         if (!showTaken && showMyPlayers) {
