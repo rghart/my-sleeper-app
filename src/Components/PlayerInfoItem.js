@@ -1,34 +1,34 @@
 import React, { useState } from 'react';
 import Button from './Button';
 
-const PlayerInfoItem = ({ player, playerInfo, addToRoster, rankingPlayersIdsList, updatePlayerId }) => {
+const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePlayerId, isNewRankList }) => {
     const [editingPlayer, setEditingPlayer] = useState(false);
-    const rankPlayerId = rankingPlayersIdsList.find((obj) => obj.match_results[0] === player.player_id);
+
     const updatePlayerInfo = (e) => {
         const newPlayerId = e.target.value;
-        const newPlayerIdIndex = rankPlayerId.match_results.findIndex((result) => result === newPlayerId);
-        const newPlayerIdResult = rankPlayerId.match_results.splice(newPlayerIdIndex, 1)[0];
-        rankPlayerId.match_results.unshift(newPlayerIdResult);
-        const currentIdIndex = rankingPlayersIdsList.findIndex((obj) => obj.ranking === rankPlayerId.ranking);
-        rankingPlayersIdsList.splice(currentIdIndex, 1, rankPlayerId);
-        updatePlayerId(rankingPlayersIdsList);
+        const newPlayerIdIndex = searchData.match_results.findIndex((result) => result[0] === newPlayerId);
+        const newPlayerIdResult = searchData.match_results.splice(newPlayerIdIndex, 1)[0];
+        searchData.match_results.unshift(newPlayerIdResult);
+        updatePlayerId(searchData);
         setEditingPlayer(false);
     };
 
     return (
         <div
             key={player.player_id}
-            className={`single-player-item ${player.position} ${player.is_taken ? '' : 'available'}`}
+            className={`single-player-item ${
+                Number(searchData.match_results[0][1]) <= 0 ? player.position : 'search-alert'
+            } ${player.is_taken ? '' : 'available'}`}
         >
             <div>
                 <div className="player-name">
                     {editingPlayer && (
                         <>
                             <select className="dropdown" value={player.player_id} onChange={updatePlayerInfo}>
-                                {rankPlayerId.match_results.map((result) => (
-                                    <option key={result} value={result}>{`${playerInfo[result].full_name} - ${
-                                        playerInfo[result].team ? playerInfo[result].team : 'FA'
-                                    } (${playerInfo[result].position})`}</option>
+                                {searchData.match_results.map((result) => (
+                                    <option key={result[0]} value={result[0]}>{`${playerInfo[result[0]].full_name} - ${
+                                        playerInfo[result[0]].team ? playerInfo[result[0]].team : 'FA'
+                                    } (${playerInfo[result[0]].position})`}</option>
                                 ))}
                             </select>
                             <Button text="Close" btnStyle="primary-invert" onClick={() => setEditingPlayer(false)} />
@@ -50,12 +50,20 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, rankingPlayersIdsList
                         </>
                     )}
                 </div>
+                {(isNewRankList || Number(searchData.match_results[0][1]) > 0 || editingPlayer) && (
+                    <div>
+                        <p style={{ fontSize: 'small' }}>
+                            <i>&quot;{searchData.search_string}&quot; </i> - Search score:{' '}
+                            {searchData.match_results[0][1]}
+                        </p>
+                    </div>
+                )}
                 <div className="player-info">
                     <p className="player-info-item">
                         <b>Manager:</b> {player.rostered_by ? player.rostered_by : 'Free Agent'}
                     </p>
                     <p className="player-info-item">
-                        <b>Rank:</b> {rankPlayerId.ranking}
+                        <b>Rank:</b> {searchData.ranking}
                     </p>
                     <div>
                         <div

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SearchFilterButton from '../Components/SearchFilterButton';
 import OnFocusButton from '../Components/OnFocusButton';
+import PlayerInfoItem from '../Components/PlayerInfoItem';
 import Dropdown from '../Components/Dropdown';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
@@ -10,17 +11,15 @@ const { APP_USERS, TYPE_PARAMS } = APP_DB_URLS;
 const RanksPanel = ({
     loadingMessage,
     signedIn,
-    handleChange,
-    checkedItems,
+    playerInfo,
     updateFilter,
-    showMyPlayers,
-    showTaken,
-    showRookiesOnly,
     startLoad,
     fetchRequest,
     checkErrors,
     rankingPlayersIdsList,
-    children: playerItem,
+    addToRoster,
+    updatePlayerId,
+    notFoundPlayers,
 }) => {
     const defaultSelector = 'default';
     const defaultSelectorObj = {
@@ -34,15 +33,26 @@ const RanksPanel = ({
     const [allRankLists, setAllRankLists] = useState({ [defaultSelector]: defaultSelectorObj });
     const [allListsVals, setAllListsVals] = useState([defaultSelector]);
     const [rankListType, setRankListType] = useState('new');
+    const [filters, setFilters] = useState({
+        showTaken: false,
+        showMyPlayers: true,
+        showRookiesOnly: false,
+        QB: true,
+        RB: true,
+        WR: true,
+        TE: true,
+        K: false,
+        DEF: false,
+    });
 
     const startSearch = () => {
-        updateFilter('filteredPlayersIdsList', []);
         updateFilter('rankingPlayersIdsList', []);
         setCurrentListVal(defaultSelector);
         setIsNewRankList(true);
         startLoad('Loading search panel...', searchText);
         setSearchText('');
     };
+
     const saveRankList = async () => {
         // Neee to escape backslashes
         if (newRankListName.length > 3) {
@@ -106,14 +116,55 @@ const RanksPanel = ({
 
     const updateRankList = (newListName) => {
         setIsNewRankList(false);
-        updateFilter('filteredPlayersIdsList', []);
         setCurrentListVal(newListName);
         if (newListName !== defaultSelector) {
-            updateFilter('rankingPlayersIdsList', allRankLists[newListName].rank_list, 'filterPlayers');
+            updateFilter('rankingPlayersIdsList', allRankLists[newListName].rank_list);
         } else {
             updateFilter('rankingPlayersIdsList', []);
         }
     };
+
+    const updateFilters = (filterName, filter) => {
+        let newFilters = filters;
+        newFilters[filterName] = filter;
+        setFilters({ ...newFilters });
+    };
+
+    const filterPlayers = (rankingPlayers) => {
+        const { showTaken, showMyPlayers, showRookiesOnly } = filters;
+
+        if (!playerInfo[rankingPlayers.match_results[0][0]]) {
+            console.log(
+                `Couldn't find player with ID ${rankingPlayers.match_results[0][0]} at rank ${rankingPlayers.match_results[0].ranking} - could be a retired player that was removed from database. Search string: ${rankingPlayers.match_results[0].search_string}`,
+            );
+            return false;
+        }
+
+        if (
+            !showTaken &&
+            showMyPlayers &&
+            (!playerInfo[rankingPlayers.match_results[0][0]].is_taken ||
+                playerInfo[rankingPlayers.match_results[0][0]].rostered_by === 'ryangh')
+        ) {
+            return true;
+        } else if (
+            showTaken &&
+            !showMyPlayers &&
+            playerInfo[rankingPlayers.match_results[0][0]].rostered_by !== 'ryangh'
+        ) {
+            return true;
+        } else if (!showMyPlayers && !showTaken && !playerInfo[rankingPlayers.match_results[0][0]].is_taken) {
+            return true;
+        } else if (showTaken && showMyPlayers) {
+            return true;
+        }
+
+        return false;
+    };
+
+    // useEffect(() => {
+    //     filterPlayers();
+    // }, [filters, playerInfo, rankingPlayersIdsList]);
 
     useEffect(() => {
         const defaultSelectorObj = {
@@ -167,63 +218,36 @@ const RanksPanel = ({
                 <>
                     <div className="search">
                         <div className="position-filter" style={{ flexWrap: 'wrap' }}>
-                            <SearchFilterButton
-                                name={'QB'}
-                                handleChange={handleChange}
-                                labelName={'QB'}
-                                checked={checkedItems.includes('QB')}
-                            />
-                            <SearchFilterButton
-                                name={'RB'}
-                                handleChange={handleChange}
-                                labelName={'RB'}
-                                checked={checkedItems.includes('RB')}
-                            />
-                            <SearchFilterButton
-                                name={'WR'}
-                                handleChange={handleChange}
-                                labelName={'WR'}
-                                checked={checkedItems.includes('WR')}
-                            />
-                            <SearchFilterButton
-                                name={'TE'}
-                                handleChange={handleChange}
-                                labelName={'TE'}
-                                checked={checkedItems.includes('TE')}
-                            />
-                            <SearchFilterButton
-                                name={'K'}
-                                handleChange={handleChange}
-                                labelName={'K'}
-                                checked={checkedItems.includes('K')}
-                            />
-                            <SearchFilterButton
-                                name={'DEF'}
-                                handleChange={handleChange}
-                                labelName={'DEF'}
-                                checked={checkedItems.includes('DEF')}
-                            />
+                            {['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].map((pos, i) => (
+                                <SearchFilterButton
+                                    name={pos}
+                                    handleChange={() => updateFilters(pos, !filters[pos])}
+                                    labelName={pos}
+                                    key={pos + i}
+                                    checked={filters[pos]}
+                                />
+                            ))}
                         </div>
                         <div className="position-filter">
-                            <SearchFilterButton
-                                name={'Taken'}
-                                handleChange={() => updateFilter('showTaken', !showTaken, 'filterPlayers')}
-                                labelName={'Taken'}
-                                checked={showTaken}
-                            />
-                            <SearchFilterButton
-                                name={'My players'}
-                                handleChange={() => updateFilter('showMyPlayers', !showMyPlayers, 'filterPlayers')}
-                                labelName={'My players'}
-                                checked={showMyPlayers}
-                            />
+                            {[
+                                { label: 'Taken', name: 'showTaken' },
+                                { label: 'My players', name: 'showMyPlayers' },
+                            ].map((filter, i) => (
+                                <SearchFilterButton
+                                    name={filter.label}
+                                    handleChange={() => updateFilters(filter.name, !filters[filter.name])}
+                                    labelName={filter.label}
+                                    checked={filters[filter.name]}
+                                    key={filter.name}
+                                />
+                            ))}
                         </div>
                         <div className="position-filter">
                             <SearchFilterButton
                                 name={'Only rookies'}
-                                handleChange={() => updateFilter('showRookiesOnly', !showRookiesOnly, 'filterPlayers')}
+                                handleChange={() => updateFilters('showRookiesOnly', !filters['showRookiesOnly'])}
                                 labelName={'Only rookies'}
-                                checked={showRookiesOnly}
+                                checked={filters['showRookiesOnly']}
                             />
                         </div>
                         {signedIn && allListsVals.length > 1 && (
@@ -302,7 +326,33 @@ const RanksPanel = ({
                             </>
                         )}
                     </div>
-                    <div className="player-grid">{playerItem}</div>
+                    <div className="player-grid">
+                        {rankingPlayersIdsList
+                            .filter(filterPlayers)
+                            .filter((results) =>
+                                Object.entries(filters)
+                                    .filter((filter) => filter[1] === true)
+                                    .map((ar) => ar[0])
+                                    .includes(playerInfo[results.match_results[0][0]].position),
+                            )
+                            .filter((results) =>
+                                filters.showRookiesOnly ? playerInfo[results.match_results[0][0]].years_exp < 1 : true,
+                            )
+                            .map((results, i) => (
+                                <PlayerInfoItem
+                                    key={`${results.match_results[0]}${i}`}
+                                    player={playerInfo[results.match_results[0][0]]}
+                                    playerInfo={playerInfo}
+                                    isNewRankList={isNewRankList}
+                                    addToRoster={addToRoster}
+                                    updatePlayerId={updatePlayerId}
+                                    searchData={results}
+                                />
+                            ))}
+                        {notFoundPlayers.map((item, index) => (
+                            <p key={item + new Date().getTime() + index}>{item}</p>
+                        ))}
+                    </div>
                 </>
             )}
         </div>
