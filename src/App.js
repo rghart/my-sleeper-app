@@ -2,7 +2,6 @@ import React from 'react';
 import './App.css';
 import './loader.css';
 import Button from './Components/Button';
-import PlayerInfoItem from './Components/PlayerInfoItem';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import firebase, { auth } from './firebase.js';
@@ -20,16 +19,11 @@ class App extends React.Component {
         isLoading: true,
         loadingMessage: 'Initial load...',
         rankingPlayersIdsList: [],
-        filteredPlayersIdsList: [],
         isTyping: false,
-        checkedItems: ['QB', 'RB', 'WR', 'TE'],
         leagueID: '662349421429727232',
         rosterPositions: [],
         notFoundPlayers: [],
         lastUpdate: null,
-        showTaken: false,
-        showMyPlayers: true,
-        showRookiesOnly: false,
         liveDraft: [],
         signedIn: false,
         signedInEmail: null,
@@ -152,8 +146,8 @@ class App extends React.Component {
                     },
                     this.getTradedDraftPicks,
                 );
-                if (this.state.rankingPlayersIdsList) {
-                    this.filterPlayers();
+                if (this.state.rankingPlayersIdsList.length > 0) {
+                    this.setState({ rankingPlayersIdsList: [...this.state.rankingPlayersIdsList] });
                 }
             })
             .catch((error) => {
@@ -241,17 +235,6 @@ class App extends React.Component {
         );
     };
 
-    handleChange = (e) => {
-        const item = e.target.name;
-        const index = this.state.checkedItems.indexOf(item);
-        const checkedItems = this.state.checkedItems;
-        index !== -1 ? checkedItems.splice(index, 1) : checkedItems.push(item);
-        this.setState({
-            checkedItems: checkedItems,
-        });
-        this.filterPlayers();
-    };
-
     startLoad = (loadMessage, searchText) => {
         this.setState(
             {
@@ -266,63 +249,20 @@ class App extends React.Component {
         const { playerInfo } = this.state;
         const [searchResultsArray, notFoundPlayers] = createRankings(searchText, playerInfo);
 
-        this.setState(
-            {
-                rankingPlayersIdsList: searchResultsArray,
-                isLoading: false,
-                loadingMessage: '',
-                notFoundPlayers: notFoundPlayers,
-                searchText: '',
-            },
-            this.filterPlayers,
-        );
-    };
-
-    filterPlayers = (rankingPlayers) => {
-        const { showTaken, showMyPlayers, showRookiesOnly, playerInfo, rankingPlayersIdsList } = this.state;
-        let playerList = rankingPlayers ? rankingPlayers : rankingPlayersIdsList;
-
-        let removedPlayers = playerList.filter((id) => !playerInfo[id.match_results[0]]);
-        if (removedPlayers) {
-            removedPlayers.forEach((player) =>
-                console.log(
-                    `Couldn't find player with ID ${player.match_results[0]} at rank ${player.ranking} - could be a retired player that was removed from database.`,
-                ),
-            );
-        }
-        playerList = playerList.filter((result) => playerInfo[result.match_results[0]]);
-
-        if (!showTaken && showMyPlayers) {
-            playerList = playerList.filter(
-                (results) =>
-                    !playerInfo[results.match_results[0]].is_taken ||
-                    playerInfo[results.match_results[0]].rostered_by === 'ryangh',
-            );
-        } else if (!showTaken) {
-            playerList = playerList.filter((results) => !playerInfo[results.match_results[0]].is_taken);
-        } else if (showTaken && !showMyPlayers) {
-            playerList = playerList.filter((results) => playerInfo[results.match_results[0]].rostered_by !== 'ryangh');
-        } else if (!showMyPlayers) {
-            playerList = playerList.filter(
-                (results) =>
-                    playerInfo[results.match_results[0]].rostered_by !== 'ryangh' ||
-                    playerInfo[results.match_results[0]].rostered_by,
-            );
-        }
-
-        if (showRookiesOnly) {
-            playerList = playerList.filter((results) => playerInfo[results.match_results[0]].years_exp < 1);
-        }
-
         this.setState({
-            filteredPlayersIdsList: playerList.filter((results) =>
-                this.state.checkedItems.includes(playerInfo[results.match_results[0]].position),
-            ),
+            rankingPlayersIdsList: searchResultsArray,
+            isLoading: false,
+            loadingMessage: '',
+            notFoundPlayers: notFoundPlayers,
+            searchText: '',
         });
     };
 
-    updatePlayerId = (newRankingPlayersIdsList) => {
-        this.filterPlayers(newRankingPlayersIdsList);
+    updatePlayerId = (searchData) => {
+        let { rankingPlayersIdsList } = this.state;
+        const currentIdIndex = rankingPlayersIdsList.findIndex((obj) => obj.ranking === searchData.ranking);
+        rankingPlayersIdsList.splice(currentIdIndex, 1, searchData);
+        this.setState({ rankingPlayersIdsList: rankingPlayersIdsList });
     };
 
     addToRoster = (player) => {
@@ -434,7 +374,6 @@ class App extends React.Component {
             .signOut()
             .then(() => {
                 this.setState({
-                    filteredPlayersIdsList: [],
                     rankingPlayersIdsList: [],
                 });
                 console.log('Sign-out successful.');
@@ -450,11 +389,6 @@ class App extends React.Component {
             isLoading,
             lastUpdate,
             loadingMessage,
-            showTaken,
-            showMyPlayers,
-            showRookiesOnly,
-            filteredPlayersIdsList,
-            checkedItems,
             rankingPlayersIdsList,
             rosterPositions,
             leagueData,
@@ -495,31 +429,16 @@ class App extends React.Component {
                         <RanksPanel
                             loadingMessage={loadingMessage}
                             signedIn={signedIn}
-                            handleChange={this.handleChange}
-                            checkedItems={checkedItems}
+                            playerInfo={playerInfo}
                             updateFilter={this.updateParentState}
-                            showMyPlayers={showMyPlayers}
-                            showRookiesOnly={showRookiesOnly}
-                            showTaken={showTaken}
                             startLoad={this.startLoad}
                             fetchRequest={this.fetchRequest}
                             checkErrors={this.checkErrors}
+                            addToRoster={this.addToRoster}
+                            updatePlayerId={this.updatePlayerId}
+                            notFoundPlayers={notFoundPlayers}
                             rankingPlayersIdsList={rankingPlayersIdsList}
-                        >
-                            {filteredPlayersIdsList.map((results) => (
-                                <PlayerInfoItem
-                                    key={`${results.match_results[0]}${results.ranking}`}
-                                    player={playerInfo[results.match_results[0]]}
-                                    playerInfo={playerInfo}
-                                    addToRoster={this.addToRoster}
-                                    updatePlayerId={this.updatePlayerId}
-                                    rankingPlayersIdsList={rankingPlayersIdsList}
-                                />
-                            ))}
-                            {notFoundPlayers.map((item, index) => (
-                                <p key={item + new Date().getTime() + index}>{item}</p>
-                            ))}
-                        </RanksPanel>
+                        />
                         <LeaguePanel
                             leagueData={leagueData}
                             leagueID={leagueID}

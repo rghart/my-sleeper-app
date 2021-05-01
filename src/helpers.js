@@ -5,7 +5,7 @@ const getHighestScore = (arr, fuseSearch) => {
         .map((item) => fuseSearch.search(item.replace(/[^a-zA-Z]/g, '')))
         .filter((item) => item.length > 0)
         .sort((a, b) => a[0]?.score - b[0]?.score);
-    return bestResult[0] ? bestResult[0][0].item : null;
+    return bestResult[0] && bestResult[0][0].score === 0 ? bestResult[0][0].item : null;
 };
 
 const createRankings = (searchText, playerInfo) => {
@@ -86,24 +86,30 @@ const createRankings = (searchText, playerInfo) => {
             splitString.splice(1, 1, '');
         }
         const lettersOnly = splitString.map((string) => string.replace(/[^a-zA-Z\s]/g, ''));
+        if (!lettersOnly.join('').trim()) {
+            return;
+        }
         let nameAndTeam = lettersOnly.join('').trim();
         // Splitting by spaces and removing whitespace
         let firstLastTeamArrays = nameAndTeam.split(/\s/).map((item) => item.trim());
-        let searchArray;
+        let searchArray = [];
         let foundPositionStr;
         let foundTeamStr;
         // If there's more than 2 indexes, we want to see if they can help with our search by looking for player position and team initials
         if (firstLastTeamArrays.length > 2) {
-            const positionIndex = firstLastTeamArrays.findIndex((item, i) => positions.includes(item) && i > 1);
+            const positionIndex = firstLastTeamArrays.findIndex((item) => positions.includes(item));
             if (positionIndex >= 0) {
                 foundPositionStr = firstLastTeamArrays.splice(positionIndex, 1)[0];
+                searchArray.unshift(foundPositionStr);
             }
             foundTeamStr = getHighestScore(firstLastTeamArrays, teamsFuse);
             if (foundTeamStr) {
                 firstLastTeamArrays.splice(firstLastTeamArrays.indexOf(foundTeamStr), 1);
+                searchArray.unshift(foundTeamStr);
             }
         }
-        searchArray = [firstLastTeamArrays[0], firstLastTeamArrays[1], foundTeamStr, foundPositionStr];
+        searchArray.unshift(firstLastTeamArrays[0], firstLastTeamArrays[1]);
+
         let results = playerInfoFuse.search({
             $or: [
                 {
@@ -149,12 +155,16 @@ const createRankings = (searchText, playerInfo) => {
         });
         let fResults = results
             .filter((result) => positions.includes(result.item.position))
-            .map((result) => result.item.player_id);
+            .map((result) => [result.item.player_id, result.score.toFixed(3)]);
         if (fResults[0]) {
             if (fResults.length > 5) {
                 fResults = fResults.filter((result) => fResults.indexOf(result) <= 4);
             }
-            searchResultsArray.push({ match_results: fResults, ranking: ranking });
+            searchResultsArray.push({
+                match_results: fResults,
+                ranking: ranking,
+                search_string: searchArray.join(' '),
+            });
             if (results[0].item.search_rank > 1000) {
                 console.log(
                     `${results[0].item.full_name} ${results[0].item.position} ${results[0].item.team} Rank: ${ranking}`,

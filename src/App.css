@@ -356,3 +356,7 @@
 .is-hidden {
     display: none;
 }
+
+.search-alert {
+  border: 6px solid red;
+}
