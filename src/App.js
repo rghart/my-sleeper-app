@@ -443,6 +443,7 @@ class App extends React.Component {
                             leagueData={leagueData}
                             leagueID={leagueID}
                             updateParentState={this.updateParentState}
+                            rankingPlayersIdsList={rankingPlayersIdsList}
                             rosterPositions={rosterPositions}
                             playerInfo={playerInfo}
                             loadingMessage={loadingMessage}

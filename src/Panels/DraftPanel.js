@@ -4,7 +4,7 @@ import DraftRound from './DraftRound';
 import { SLEEPER_API_URLS } from '../urls';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
-const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInfo }) => {
+const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInfo, rankingPlayersIdsList }) => {
     const { currentDraft, rosterData } = leagueData;
     const draftPath = DRAFT + currentDraft.draft_id + '/';
     const [liveDraft, setLiveDraft] = useState(currentDraft);
@@ -115,6 +115,7 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
                             <DraftRound
                                 round={round}
                                 playerInfo={playerInfo}
+                                rankingPlayersIdsList={rankingPlayersIdsList}
                                 rosterData={rosterData}
                                 updatePlayerInfo={updatePlayerInfo}
                             />
