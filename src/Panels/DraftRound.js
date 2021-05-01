@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../Components/Button';
 
-const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo }) => {
+const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPlayersIdsList }) => {
     const [picks, setPicks] = useState(round.picks);
     const [showRound, setShowRound] = useState(true);
     const [showPickSelection, setShowPickSelection] = useState(false);
@@ -29,7 +29,7 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo }) => {
         }
         setCurrentManualPick(null);
         setPicks(picks);
-        updatePlayerInfo('playerInfo', { ...newPlayerInfo }, 'filterPlayers', '');
+        updatePlayerInfo('playerInfo', { ...newPlayerInfo });
         setShowPickSelection(!showPickSelection);
         setSearchValue('');
     };
@@ -121,6 +121,25 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo }) => {
                             Remove pick?
                         </p>
                     )}
+                    {searchValue.length < 2 &&
+                        rankingPlayersIdsList
+                            .filter((result) => !playerInfo[result.match_results[0][0].is_taken])
+                            .map((data) => (
+                                <p
+                                    className={`clickable-item draft-pick-rows ${
+                                        playerInfo[data.match_results[0][0]].position
+                                    }`}
+                                    style={{ padding: `${0} ${3}px` }}
+                                    key={playerInfo[data.match_results[0][0]].player_id}
+                                    onClick={() => updatePickSelection(playerInfo[data.match_results[0][0]].player_id)}
+                                >
+                                    {playerInfo[data.match_results[0][0]].full_name}{' '}
+                                    {playerInfo[data.match_results[0][0]].position}{' '}
+                                    {playerInfo[data.match_results[0][0]].team
+                                        ? playerInfo[data.match_results[0][0]].team
+                                        : null}
+                                </p>
+                            ))}
                     {searchValue.length > 2 &&
                         Object.values(playerInfo)
                             .filter((player) =>

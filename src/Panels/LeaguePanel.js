@@ -10,6 +10,7 @@ const LeaguePanel = ({
     leagueID,
     loadingMessage,
     removeFromLineup,
+    rankingPlayersIdsList,
 }) => {
     const [leaguePanel, setLeaguePanel] = useState('draft');
     const updateLeagueID = (value) => {
@@ -139,6 +140,7 @@ const LeaguePanel = ({
                             leagueData={leagueData}
                             playerInfo={playerInfo}
                             updateParentState={updateParentState}
+                            rankingPlayersIdsList={rankingPlayersIdsList}
                         />
                     )}
                 </>
