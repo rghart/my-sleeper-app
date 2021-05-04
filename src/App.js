@@ -207,18 +207,22 @@ class App extends React.Component {
         rosterData.forEach((roster) => {
             const currentManagerId = roster.owner_id;
             const currentManagerData = managerData.find((manager) => manager.user_id === currentManagerId);
-            roster.manager_display_name = currentManagerData ? currentManagerData.display_name : 'Unassigned';
+            roster.manager_display_name = currentManagerData
+                ? currentManagerData.display_name
+                : 'Unassigned' + ' ' + roster.roster_id;
             roster.avatar = currentManagerData ? currentManagerData.avatar : null;
-            roster.players.forEach((player) => {
-                if (playerObject[player]) {
-                    playerObject[player].is_taken = true;
-                    playerObject[player].rostered_by = roster.manager_display_name;
-                } else {
-                    console.warn(
-                        `Can't find player ID ${player} - may be a retired player that was removed from the database`,
-                    );
-                }
-            });
+            if (roster.players) {
+                roster.players.forEach((player) => {
+                    if (playerObject[player]) {
+                        playerObject[player].is_taken = true;
+                        playerObject[player].rostered_by = roster.manager_display_name;
+                    } else {
+                        console.warn(
+                            `Can't find player ID ${player} - may be a retired player that was removed from the database`,
+                        );
+                    }
+                });
+            }
         });
         this.setState({
             playerInfo: playerObject,
@@ -319,20 +323,32 @@ class App extends React.Component {
         }
         const createPickOrder = (round) => {
             let pickOrder = [];
-            for (const [key, value] of Object.entries(currentDraft.draft_order)) {
+            for (const [key, value] of Object.entries(currentDraft.slot_to_roster_id)) {
+                const userID = leagueData.rosterData.find((roster) => roster.roster_id === value)
+                    ? leagueData.rosterData.find((roster) => roster.roster_id === value).owner_id
+                    : null;
                 let obj = {
-                    pick_number: value,
-                    user_id: key,
-                    roster_id: currentDraft.slot_to_roster_id[value],
+                    user_id: userID,
+                    roster_id: value,
                     is_traded: false,
-                    owner_id: currentDraft.slot_to_roster_id[value],
+                    owner_id: value,
                     pick_round: round,
-                    pick_spot_string: `${round}.${value}`,
+                    pick_number: Number(key),
+                    board_spot: Number(key),
                     player_id: null,
                 };
                 pickOrder.push(obj);
             }
-            return pickOrder.sort((a, b) => a.pick_number - b.pick_number);
+            pickOrder.sort((a, b) => a.pick_number - b.pick_number);
+            if (currentDraft.type === 'snake' && round % 2 === 0) {
+                pickOrder.reverse();
+                pickOrder.forEach((pick, i) => {
+                    pick.pick_number = i + 1;
+                    return pick;
+                });
+            }
+
+            return pickOrder;
         };
 
         let draftRounds = [];

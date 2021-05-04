@@ -25,23 +25,34 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
             .catch((error) => {
                 console.error('Error:', error);
             });
-        console.log(liveDraftData);
         let newLiveDraft = liveDraft;
         await liveDraftData.forEach((livePick) => {
             let { round, draft_slot: draftSlot } = livePick;
             round -= 1;
-            draftSlot -= 1;
-            const pick = newLiveDraft.built_draft[round].picks[draftSlot];
+            const pickIndex = newLiveDraft.built_draft[round].picks.findIndex((pick) => pick.board_spot === draftSlot);
+            const pick = newLiveDraft.built_draft[round].picks[pickIndex];
             pick.player_id = livePick.player_id;
             pick.picked = true;
             newPlayerInfo[livePick.player_id].is_taken = true;
             newPlayerInfo[livePick.player_id].rostered_by = rosterData.find(
                 (roster) => pick.owner_id === roster.roster_id,
             ).manager_display_name;
-            newLiveDraft.built_draft[round].picks[draftSlot] = pick;
+            newLiveDraft.built_draft[round].picks[pickIndex] = pick;
         });
         updatePlayerInfo('playerInfo', { ...newPlayerInfo }, 'filterPlayers', '');
         newLiveDraft = await getTradedDraftPicks(newLiveDraft);
+
+        if (leagueData.currentDraft.type === 'snake') {
+            await newLiveDraft.built_draft.forEach((round) => {
+                if (round.round % 2 === 0) {
+                    if (round.picks[0].board_spot === 1) {
+                        round.picks.reverse();
+                    }
+                    round.picks.sort((a, b) => a.pick_number - b.pick_number);
+                }
+            });
+        }
+
         setLiveDraft({ ...newLiveDraft });
     };
 

@@ -14,9 +14,7 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
     };
 
     const updatePickSelection = async (playerID) => {
-        picks[
-            picks.findIndex((pick) => pick.pick_spot_string === currentManualPick.pick_spot_string)
-        ].player_id = playerID;
+        picks[picks.findIndex((pick) => pick.pick_number === currentManualPick.pick_number)].player_id = playerID;
         let newPlayerInfo = playerInfo;
         if (playerID) {
             newPlayerInfo[playerID].is_taken = true;
@@ -44,11 +42,11 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
                         </h4>
                         {picks.map((pick) => (
                             <div
-                                key={pick.pick_spot_string}
+                                key={pick.pick_number}
                                 className={`draft-pick clickable-item ${!showRound ? 'is-hidden' : null}`}
                                 onClick={() => manualPickSelection(pick)}
                             >
-                                <p className="pick-string">{pick.pick_spot_string}</p>
+                                <p className="pick-string">{`${round.round}.${pick.pick_number}`}</p>
                                 <div className="player-info-item draft-pick-rows">
                                     <div style={{ display: 'flex' }}>
                                         <img
@@ -97,7 +95,7 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
             )}
             {showPickSelection && (
                 <div>
-                    <h4>Manually select pick {currentManualPick.pick_spot_string}</h4>
+                    <h4>Manually select pick {`${round.round}.${currentManualPick.pick_number}`}</h4>
                     <input
                         type="text"
                         className="input-small"
@@ -124,13 +122,13 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
                     {searchValue.length < 2 &&
                         rankingPlayersIdsList
                             .filter((result) => !playerInfo[result.match_results[0][0].is_taken])
-                            .map((data) => (
+                            .map((data, i) => (
                                 <p
                                     className={`clickable-item draft-pick-rows ${
                                         playerInfo[data.match_results[0][0]].position
                                     }`}
                                     style={{ padding: `${0} ${3}px` }}
-                                    key={playerInfo[data.match_results[0][0]].player_id}
+                                    key={playerInfo[data.match_results[0][0]].player_id + i}
                                     onClick={() => updatePickSelection(playerInfo[data.match_results[0][0]].player_id)}
                                 >
                                     {playerInfo[data.match_results[0][0]].full_name}{' '}
