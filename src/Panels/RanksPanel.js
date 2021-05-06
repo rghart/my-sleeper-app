@@ -353,7 +353,11 @@ const RanksPanel = ({
                                 Object.entries(filters)
                                     .filter((filter) => filter[1] === true)
                                     .map((ar) => ar[0])
-                                    .includes(playerInfo[results.match_results[0][0]].position),
+                                    .includes(
+                                        !filters.showAllPlayers
+                                            ? playerInfo[results.match_results[0][0]].position
+                                            : 'showAllPlayers',
+                                    ),
                             )
                             .filter((results) =>
                                 filters.showRookiesOnly ? playerInfo[results.match_results[0][0]].years_exp < 1 : true,
