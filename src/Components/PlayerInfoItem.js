@@ -3,13 +3,25 @@ import Button from './Button';
 
 const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePlayerId, isNewRankList }) => {
     const [editingPlayer, setEditingPlayer] = useState(false);
+    const [searchValue, setSearchValue] = useState('');
 
-    const updatePlayerInfo = (e) => {
-        const newPlayerId = e.target.value;
-        const newPlayerIdIndex = searchData.match_results.findIndex((result) => result[0] === newPlayerId);
-        const newPlayerIdResult = searchData.match_results.splice(newPlayerIdIndex, 1)[0];
-        searchData.match_results.unshift(newPlayerIdResult);
-        updatePlayerId(searchData);
+    const updatePlayerInfo = (newPlayerId) => {
+        let newSearchData = { ...searchData };
+        let newPlayerIdResult;
+        const newPlayerIdIndex = newSearchData.match_results.findIndex((result) => result[0] === newPlayerId);
+
+        if (newPlayerIdIndex > 0) {
+            newPlayerIdResult = newSearchData.match_results.splice(newPlayerIdIndex, 1)[0];
+            newSearchData.match_results.unshift(newPlayerIdResult);
+        } else {
+            newPlayerIdResult = [newPlayerId, '0.000'];
+            if (newPlayerIdIndex === 0) {
+                newSearchData.match_results.shift();
+            }
+            newSearchData.match_results.unshift(newPlayerIdResult);
+        }
+
+        updatePlayerId(newSearchData);
         setEditingPlayer(false);
     };
 
@@ -24,7 +36,11 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                 <div className="player-name">
                     {editingPlayer && (
                         <>
-                            <select className="dropdown" value={player.player_id} onChange={updatePlayerInfo}>
+                            <select
+                                className="dropdown"
+                                value={player.player_id}
+                                onChange={(e) => updatePlayerInfo(e.target.value)}
+                            >
                                 {searchData.match_results.map((result) => (
                                     <option key={result[0]} value={result[0]}>{`${playerInfo[result[0]].full_name} - ${
                                         playerInfo[result[0]].team ? playerInfo[result[0]].team : 'FA'
@@ -32,6 +48,7 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                                 ))}
                             </select>
                             <Button text="Close" btnStyle="primary-invert" onClick={() => setEditingPlayer(false)} />
+                            <Button text="Delete" btnStyle="alert" onClick={() => updatePlayerId(searchData, true)} />
                         </>
                     )}
                     {!editingPlayer && (
@@ -56,6 +73,33 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                             <i>&quot;{searchData.search_string}&quot; </i> - Search score:{' '}
                             {searchData.match_results[0][1]}
                         </p>
+                        {editingPlayer && (
+                            <input
+                                type="text"
+                                className="input-small"
+                                onChange={(e) => setSearchValue(e.target.value)}
+                                placeholder="Manually update player"
+                            />
+                        )}
+                        {searchValue.length > 2 &&
+                            Object.values(playerInfo)
+                                .filter((player) =>
+                                    player.full_name
+                                        ? player.full_name.toLowerCase().includes(searchValue.toLowerCase()) &&
+                                          ['QB', 'RB', 'WR', 'TE'].includes(player.position)
+                                        : null,
+                                )
+                                .sort((a, b) => a.search_rank - b.search_rank)
+                                .map((player) => (
+                                    <p
+                                        className={`clickable-item draft-pick-rows ${player.position}`}
+                                        style={{ padding: `${0} ${3}px` }}
+                                        key={player.player_id}
+                                        onClick={() => updatePlayerInfo(player.player_id)}
+                                    >
+                                        {player.full_name} {player.position} {player.team ? player.team : null}
+                                    </p>
+                                ))}
                     </div>
                 )}
                 <div className="player-info">
