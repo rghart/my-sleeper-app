@@ -37,6 +37,7 @@ const RanksPanel = ({
         showTaken: false,
         showMyPlayers: true,
         showRookiesOnly: false,
+        showAllPlayers: false,
         QB: true,
         RB: true,
         WR: true,
@@ -54,39 +55,47 @@ const RanksPanel = ({
     };
 
     const saveRankList = async () => {
-        // Neee to escape backslashes
-        if (newRankListName.length > 3) {
-            const newRankListNameEscaped = newRankListName.replace(/([^A-Za-z0-9])/g, '_').toLowerCase();
-            const rankListData = {
+        let newRankList;
+        let rankListData;
+        if (isNewRankList && newRankListName.length > 3) {
+            newRankList = newRankListName.replace(/([^A-Za-z0-9])/g, '_').toLowerCase();
+            rankListData = {
                 pretty_name: newRankListName,
-                route_name: newRankListNameEscaped,
+                route_name: newRankList,
                 rank_list: rankingPlayersIdsList,
             };
-            const USER_PATH = `${auth.currentUser.uid}/${newRankListNameEscaped}`;
-            const updateResponse = await fetchRequest(
-                APP_USERS + USER_PATH + TYPE_PARAMS + (await auth.currentUser.getIdToken(true)),
-                'PUT',
-                rankListData,
-            );
-            if (updateResponse && updateResponse.ok) {
-                setIsNewRankList(false);
-                allListsVals.push(newRankListNameEscaped);
-                setAllListsVals(allListsVals);
-                setCurrentListVal(newRankListNameEscaped);
-                allRankLists[newRankListNameEscaped] = {};
-                Object.assign(allRankLists[newRankListNameEscaped], {
-                    rank_list: rankingPlayersIdsList,
-                    pretty_name: newRankListName,
-                    route_name: newRankListNameEscaped,
-                });
-                setAllRankLists(allRankLists);
-                setNewRankListName('');
-                console.log(updateResponse.status);
-            } else {
-                console.log(updateResponse);
-            }
+        } else if (!isNewRankList) {
+            newRankList = currentListVal;
+            allRankLists[newRankList].rank_list = rankingPlayersIdsList;
+            rankListData = allRankLists[newRankList];
         } else {
             console.log('List not saved: name for a new rank list should be longer than 3 characters');
+            return;
+        }
+        const USER_PATH = `${auth.currentUser.uid}/${newRankList}`;
+        const updateResponse = await fetchRequest(
+            APP_USERS + USER_PATH + TYPE_PARAMS + (await auth.currentUser.getIdToken(true)),
+            'PUT',
+            rankListData,
+        );
+        if (updateResponse && updateResponse.ok) {
+            if (isNewRankList) {
+                setIsNewRankList(false);
+                allListsVals.push(newRankList);
+                setAllListsVals(allListsVals);
+                setCurrentListVal(newRankList);
+                allRankLists[newRankList] = {};
+                Object.assign(allRankLists[newRankList], {
+                    rank_list: rankingPlayersIdsList,
+                    pretty_name: newRankListName,
+                    route_name: newRankList,
+                });
+            }
+            setAllRankLists(allRankLists);
+            setNewRankListName('');
+            console.log(updateResponse.status);
+        } else {
+            console.log(updateResponse);
         }
     };
 
@@ -131,8 +140,15 @@ const RanksPanel = ({
     };
 
     const filterPlayers = (rankingPlayers) => {
-        const { showTaken, showMyPlayers, showRookiesOnly } = filters;
+        const { showTaken, showMyPlayers, showAllPlayers } = filters;
 
+        if (showAllPlayers) {
+            return true;
+        }
+        if (rankingPlayers.match_results === undefined) {
+            console.log(rankingPlayers);
+            return true;
+        }
         if (!playerInfo[rankingPlayers.match_results[0][0]]) {
             console.log(
                 `Couldn't find player with ID ${rankingPlayers.match_results[0][0]} at rank ${rankingPlayers.match_results[0].ranking} - could be a retired player that was removed from database. Search string: ${rankingPlayers.match_results[0].search_string}`,
@@ -161,10 +177,6 @@ const RanksPanel = ({
 
         return false;
     };
-
-    // useEffect(() => {
-    //     filterPlayers();
-    // }, [filters, playerInfo, rankingPlayersIdsList]);
 
     useEffect(() => {
         const defaultSelectorObj = {
@@ -249,6 +261,12 @@ const RanksPanel = ({
                                 labelName={'Only rookies'}
                                 checked={filters['showRookiesOnly']}
                             />
+                            <SearchFilterButton
+                                name={'All players'}
+                                handleChange={() => updateFilters('showAllPlayers', !filters['showAllPlayers'])}
+                                labelName={'All players'}
+                                checked={filters['showAllPlayers']}
+                            />
                         </div>
                         {signedIn && allListsVals.length > 1 && (
                             <div className="custom-horizontal-select">
@@ -285,7 +303,9 @@ const RanksPanel = ({
                                         </option>
                                     ))}
                                 </Dropdown>
-                                {currentListVal !== defaultSelector && <OnFocusButton event={deleteRankList} />}
+                                {currentListVal !== defaultSelector && (
+                                    <OnFocusButton event={deleteRankList} saveRankList={saveRankList} />
+                                )}
                             </div>
                         )}
                         {rankListType === 'new' && (

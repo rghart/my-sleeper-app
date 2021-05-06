@@ -262,10 +262,15 @@ class App extends React.Component {
         });
     };
 
-    updatePlayerId = (searchData) => {
+    updatePlayerId = (searchData, deleting) => {
         let { rankingPlayersIdsList } = this.state;
         const currentIdIndex = rankingPlayersIdsList.findIndex((obj) => obj.ranking === searchData.ranking);
-        rankingPlayersIdsList.splice(currentIdIndex, 1, searchData);
+        if (deleting) {
+            rankingPlayersIdsList.splice(currentIdIndex, 1);
+            rankingPlayersIdsList.forEach((rankList, i) => (rankList.ranking = i + 1));
+        } else {
+            rankingPlayersIdsList.splice(currentIdIndex, 1, searchData);
+        }
         this.setState({ rankingPlayersIdsList: rankingPlayersIdsList });
     };
 
