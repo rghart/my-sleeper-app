@@ -6,7 +6,7 @@ import Dropdown from '../Components/Dropdown';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Button from '../Components/Button';
-const { APP_USERS, TYPE_PARAMS } = APP_DB_URLS;
+const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
 
 const RanksPanel = ({
     loadingMessage,
@@ -33,6 +33,8 @@ const RanksPanel = ({
     const [allRankLists, setAllRankLists] = useState({ [defaultSelector]: defaultSelectorObj });
     const [allListsVals, setAllListsVals] = useState([defaultSelector]);
     const [rankListType, setRankListType] = useState('new');
+    const [adp, setADP] = useState();
+    const [adpType, setADPType] = useState();
     const [filters, setFilters] = useState({
         showTaken: false,
         showMyPlayers: true,
@@ -179,6 +181,20 @@ const RanksPanel = ({
     };
 
     useEffect(() => {
+        const getADP = async () => {
+            const updateResponse = await fetchRequest(DLF_ADP + (await auth.currentUser.getIdToken(true)), 'GET');
+            const lastResponse = await updateResponse.json().then((data) => data);
+            if (updateResponse && updateResponse.ok) {
+                setADP(lastResponse);
+                console.log(updateResponse.status);
+            } else {
+                console.log(updateResponse.status);
+            }
+        };
+        getADP();
+    }, []);
+
+    useEffect(() => {
         const defaultSelectorObj = {
             [defaultSelector]: { pretty_name: '-- Select saved ranks list', route_name: defaultSelector },
         };
@@ -229,7 +245,10 @@ const RanksPanel = ({
             ) : (
                 <>
                     <div className="search">
-                        <div className="position-filter" style={{ flexWrap: 'wrap' }}>
+                        <p>
+                            <b>Player filters</b>
+                        </p>
+                        <div className="position-filter" style={{ overflow: 'scroll' }}>
                             {['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].map((pos, i) => (
                                 <SearchFilterButton
                                     name={pos}
@@ -267,6 +286,35 @@ const RanksPanel = ({
                                 labelName={'All players'}
                                 checked={filters['showAllPlayers']}
                             />
+                        </div>
+                        <p>
+                            <b>ADP type</b>
+                        </p>
+                        <div className="position-filter" style={{ alignItems: 'center', overflow: 'scroll' }}>
+                            <div
+                                className={`radio-label ${adpType === 'startup_adp' ? 'checked' : ''}`}
+                                onClick={() => setADPType('startup_adp')}
+                            >
+                                Startup
+                            </div>
+                            <div
+                                className={`radio-label ${adpType === 'sf_startup_adp' ? 'checked' : ''}`}
+                                onClick={() => setADPType('sf_startup_adp')}
+                            >
+                                SF startup
+                            </div>
+                            <div
+                                className={`radio-label ${adpType === 'rookie_adp' ? 'checked' : ''}`}
+                                onClick={() => setADPType('rookie_adp')}
+                            >
+                                Rookie
+                            </div>
+                            <div
+                                className={`radio-label ${adpType === 'sf_rookie_adp' ? 'checked' : ''}`}
+                                onClick={() => setADPType('sf_rookie_adp')}
+                            >
+                                SF rookie
+                            </div>
                         </div>
                         {signedIn && allListsVals.length > 1 && (
                             <div className="custom-horizontal-select">
@@ -371,6 +419,11 @@ const RanksPanel = ({
                                     addToRoster={addToRoster}
                                     updatePlayerId={updatePlayerId}
                                     searchData={results}
+                                    adpData={
+                                        adp[results.match_results[0][0]]
+                                            ? adp[results.match_results[0][0]][adpType]
+                                            : null
+                                    }
                                 />
                             ))}
                         {notFoundPlayers.map((item, index) => (

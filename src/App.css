@@ -19,12 +19,8 @@
       font-size: x-large;
   }
 
-  .single-player-item {
-      display: block !important;
-  }
-
   .avatar-player {
-      margin-left: 0 !important;
+      margin-left: 10px !important;
   }
 
   .panel {
@@ -117,6 +113,7 @@
     padding: 5px;
     border-radius: 10px;
     margin-top: 3px;
+    position: relative;
 }
 
 .player-grid {
@@ -137,22 +134,39 @@
 
 .player-info-item {
     font-size: small;
+    margin-right: 6px;
 }
 
 .RB {
-    background: #00ceb8;
+    background: rgb(0, 206, 184);
 }
 
 .WR {
-    background: #58a7ff;
+    background: rgb(88, 167, 255);
 }
 
 .TE {
-    background: #ffae58;
+    background: rgb(255, 174, 88);
 }
 
 .QB {
-    background: #ff2a6d;
+    background: rgb(255, 42, 109);
+}
+
+.RB-available {
+  background-color: rgba(0, 206, 185, 0.45);
+}
+
+.WR-available {
+  background-color: rgb(88, 167, 255, 0.45);
+}
+
+.TE-available {
+  background-color: rgb(255, 174, 88, 0.45);
+}
+
+.QB-available {
+  background-color: rgb(255, 42, 109, 0.45);
 }
 
 .available {
@@ -263,7 +277,12 @@
 .abbr-text { display: none; }
 
 @media all and (orientation: portrait) {
-    .abbr-text { display: inline-block; }
+    .abbr-text { 
+      display: inline-block;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
     .full-text { display: none; }
 }
 

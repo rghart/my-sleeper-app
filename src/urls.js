@@ -1,6 +1,7 @@
 const appDB = 'https://sleeper-player-db-default-rtdb.firebaseio.com/';
 const latestUpdateAttempt = 'latest_update_attempt/';
 const activePlayers = 'active_players/';
+const dlfADP = 'dlf_adp/';
 const users = 'users/';
 const typeParams = '.json?auth=';
 
@@ -21,6 +22,7 @@ const APP_DB_URLS = {
     APP_DB: appDB,
     LATEST_UPDATE_ATTEMPT: appDB + latestUpdateAttempt + typeParams,
     ACTIVE_PLAYERS: appDB + activePlayers + typeParams,
+    DLF_ADP: appDB + dlfADP + typeParams,
     APP_USERS: appDB + users,
     TYPE_PARAMS: typeParams,
 };
