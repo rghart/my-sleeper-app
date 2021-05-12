@@ -64,25 +64,31 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                                         placeholder="Manually update player"
                                     />
                                 )}
-                                {searchValue.length > 2 &&
-                                    Object.values(playerInfo)
-                                        .filter((player) =>
-                                            player.full_name
-                                                ? player.full_name.toLowerCase().includes(searchValue.toLowerCase()) &&
-                                                  ['QB', 'RB', 'WR', 'TE'].includes(player.position)
-                                                : null,
-                                        )
-                                        .sort((a, b) => a.search_rank - b.search_rank)
-                                        .map((player) => (
-                                            <p
-                                                className={`clickable-item draft-pick-rows ${player.position}`}
-                                                style={{ padding: `${0} ${3}px` }}
-                                                key={player.player_id}
-                                                onClick={() => updatePlayerInfo(player.player_id)}
-                                            >
-                                                {player.full_name} {player.position} {player.team ? player.team : null}
-                                            </p>
-                                        ))}
+                                {searchValue.length > 2 && (
+                                    <div style={{ overflow: 'scroll', height: 100 + 'px' }}>
+                                        {Object.values(playerInfo)
+                                            .filter((player) =>
+                                                player.full_name
+                                                    ? player.full_name
+                                                          .toLowerCase()
+                                                          .includes(searchValue.toLowerCase()) &&
+                                                      ['QB', 'RB', 'WR', 'TE'].includes(player.position)
+                                                    : null,
+                                            )
+                                            .sort((a, b) => a.search_rank - b.search_rank)
+                                            .map((player) => (
+                                                <p
+                                                    className={`clickable-item draft-pick-rows ${player.position}`}
+                                                    style={{ padding: `${0} ${3}px` }}
+                                                    key={player.player_id}
+                                                    onClick={() => updatePlayerInfo(player.player_id)}
+                                                >
+                                                    {player.full_name} {player.position}{' '}
+                                                    {player.team ? player.team : null}
+                                                </p>
+                                            ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -158,7 +164,7 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                 ></div>
             </div>
             {(player.rostered_by && player.rostered_by === 'ryangh') || !player.is_taken ? (
-                <div style={{ gridColumnStart: 2, gridRowStart: 3 }}>
+                <div className="player-add-div">
                     <Button
                         text={`${player.in_lineup ? 'Added' : 'Add'}`}
                         isDisabled={player.in_lineup}

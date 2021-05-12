@@ -63,6 +63,13 @@ button:hover {
     margin-bottom: 0 !important;
 }
 
+@media screen and (max-width: 767px) {
+    .player-add-div {
+        grid-column-start: 2; 
+        grid-row-start: 3;
+    }
+}
+
 .player-add-button:hover, .primary-invert:hover {
     color: #4b576b;
     border-color: #4b576b;
