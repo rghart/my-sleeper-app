@@ -32,69 +32,81 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
         setSearchValue('');
     };
 
+    const style = {
+        manualPickModal: {
+            position: 'fixed',
+            background: '#18202f',
+            zIndex: 999,
+            bottom: 0,
+            top: 45 + '%',
+            right: 0,
+            left: 51.1 + '%',
+            borderRadius: 10 + 'px',
+            padding: 6 + 'px',
+        },
+    };
+
     return (
         <>
-            {!showPickSelection && (
-                <div key={round.round} className="draft-round-box">
-                    <div className={'draft-picks-box'}>
-                        <h4 className="round-number clickable-item" onClick={() => setShowRound(!showRound)}>
-                            Round {round.round}
-                        </h4>
-                        {picks.map((pick) => (
-                            <div
-                                key={pick.pick_number}
-                                className={`draft-pick clickable-item ${!showRound ? 'is-hidden' : null}`}
-                                onClick={() => manualPickSelection(pick)}
-                            >
-                                <p className="pick-string">{`${round.round}.${pick.pick_number}`}</p>
-                                <div className="player-info-item draft-pick-rows">
-                                    <div style={{ display: 'flex' }}>
-                                        <img
-                                            className="avatar"
-                                            src={`https://sleepercdn.com/avatars/thumbs/${
-                                                rosterData.find((roster) => roster.roster_id === pick.owner_id).avatar
-                                            }`}
-                                            alt="Users avatar"
-                                        />
-                                        <p className="draft-pick">
-                                            {
-                                                rosterData.find((roster) => roster.roster_id === pick.owner_id)
-                                                    .manager_display_name
-                                            }
-                                            {pick.is_traded && pick.roster_id !== pick.owner_id
-                                                ? ` via ${
-                                                      rosterData.find((roster) => roster.roster_id === pick.roster_id)
-                                                          .manager_display_name
-                                                  }`
-                                                : null}
-                                        </p>
-                                    </div>
-                                    {pick.player_id && (
-                                        <div
-                                            className={`${
-                                                playerInfo[pick.player_id] ? playerInfo[pick.player_id].position : null
-                                            } draft-pick-details`}
-                                        >
-                                            <span className="full-text" style={{ paddingRight: 3 + 'px' }}>
-                                                {playerInfo[pick.player_id].full_name}
-                                            </span>
-                                            <span className="abbr-text" style={{ paddingRight: 3 + 'px' }}>
-                                                {`${playerInfo[pick.player_id].first_name.split('')[0]}.${
-                                                    playerInfo[pick.player_id].last_name
-                                                }`}{' '}
-                                            </span>
-                                            <p>{playerInfo[pick.player_id].team}</p>
-                                            <p>{playerInfo[pick.player_id].position}</p>
-                                        </div>
-                                    )}
+            <div key={round.round} className="draft-round-box">
+                <div className={'draft-picks-box'}>
+                    <h4 className="round-number clickable-item" onClick={() => setShowRound(!showRound)}>
+                        Round {round.round}
+                    </h4>
+                    {picks.map((pick) => (
+                        <div
+                            key={pick.pick_number}
+                            className={`draft-pick clickable-item ${!showRound ? 'is-hidden' : null}`}
+                            onClick={() => manualPickSelection(pick)}
+                        >
+                            <p className="pick-string">{`${round.round}.${pick.pick_number}`}</p>
+                            <div className="player-info-item draft-pick-rows">
+                                <div style={{ display: 'flex' }}>
+                                    <img
+                                        className="avatar"
+                                        src={`https://sleepercdn.com/avatars/thumbs/${
+                                            rosterData.find((roster) => roster.roster_id === pick.owner_id).avatar
+                                        }`}
+                                        alt="Users avatar"
+                                    />
+                                    <p className="draft-pick">
+                                        {
+                                            rosterData.find((roster) => roster.roster_id === pick.owner_id)
+                                                .manager_display_name
+                                        }
+                                        {pick.is_traded && pick.roster_id !== pick.owner_id
+                                            ? ` via ${
+                                                  rosterData.find((roster) => roster.roster_id === pick.roster_id)
+                                                      .manager_display_name
+                                              }`
+                                            : null}
+                                    </p>
                                 </div>
+                                {pick.player_id && (
+                                    <div
+                                        className={`${
+                                            playerInfo[pick.player_id] ? playerInfo[pick.player_id].position : null
+                                        } draft-pick-details`}
+                                    >
+                                        <span className="full-text" style={{ paddingRight: 3 + 'px' }}>
+                                            {playerInfo[pick.player_id].full_name}
+                                        </span>
+                                        <span className="abbr-text" style={{ paddingRight: 3 + 'px' }}>
+                                            {`${playerInfo[pick.player_id].first_name.split('')[0]}.${
+                                                playerInfo[pick.player_id].last_name
+                                            }`}{' '}
+                                        </span>
+                                        <p>{playerInfo[pick.player_id].team}</p>
+                                        <p>{playerInfo[pick.player_id].position}</p>
+                                    </div>
+                                )}
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ))}
                 </div>
-            )}
+            </div>
             {showPickSelection && (
-                <div>
+                <div style={style.manualPickModal}>
                     <div>
                         <h4>Manually select pick {`${round.round}.${currentManualPick.pick_number}`}</h4>
                         <input
@@ -112,7 +124,7 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
                             }}
                         />
                     </div>
-                    <div style={{ overflow: 'scroll', height: 100 + 'px' }}>
+                    <div style={{ overflow: 'scroll', height: 75 + '%' }}>
                         {currentManualPick.player_id && (
                             <p
                                 className="clickable-item draft-pick-rows QB"
@@ -124,7 +136,7 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
                         )}
                         {searchValue.length < 2 &&
                             rankingPlayersIdsList
-                                .filter((result) => !playerInfo[result.match_results[0][0].is_taken])
+                                .filter((result) => !playerInfo[result.match_results[0][0]].is_taken)
                                 .map((data, i) => (
                                     <p
                                         className={`clickable-item draft-pick-rows ${
