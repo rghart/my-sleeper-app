@@ -95,69 +95,75 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
             )}
             {showPickSelection && (
                 <div>
-                    <h4>Manually select pick {`${round.round}.${currentManualPick.pick_number}`}</h4>
-                    <input
-                        type="text"
-                        className="input-small"
-                        onChange={(e) => setSearchValue(e.target.value)}
-                        placeholder="Start typing player name to search"
-                    />
-                    <Button
-                        text="Exit"
-                        btnStyle="primary"
-                        onClick={() => {
-                            setShowPickSelection(!showPickSelection);
-                            setSearchValue('');
-                        }}
-                    />
-                    {currentManualPick.player_id && (
-                        <p
-                            className="clickable-item draft-pick-rows QB"
-                            style={{ width: 'fit-content', padding: `${0} ${3}px`, border: 2 + 'px' }}
-                            onClick={() => updatePickSelection(null)}
-                        >
-                            Remove pick?
-                        </p>
-                    )}
-                    {searchValue.length < 2 &&
-                        rankingPlayersIdsList
-                            .filter((result) => !playerInfo[result.match_results[0][0].is_taken])
-                            .map((data, i) => (
-                                <p
-                                    className={`clickable-item draft-pick-rows ${
-                                        playerInfo[data.match_results[0][0]].position
-                                    }`}
-                                    style={{ padding: `${0} ${3}px` }}
-                                    key={playerInfo[data.match_results[0][0]].player_id + i}
-                                    onClick={() => updatePickSelection(playerInfo[data.match_results[0][0]].player_id)}
-                                >
-                                    {playerInfo[data.match_results[0][0]].full_name}{' '}
-                                    {playerInfo[data.match_results[0][0]].position}{' '}
-                                    {playerInfo[data.match_results[0][0]].team
-                                        ? playerInfo[data.match_results[0][0]].team
-                                        : null}
-                                </p>
-                            ))}
-                    {searchValue.length > 2 &&
-                        Object.values(playerInfo)
-                            .filter((player) =>
-                                player.full_name
-                                    ? player.full_name.toLowerCase().includes(searchValue.toLowerCase()) &&
-                                      ['QB', 'RB', 'WR', 'TE'].includes(player.position)
-                                    : null,
-                            )
-                            .sort((a, b) => a.years_exp - b.years_exp)
-                            .sort((a, b) => a.search_rank - b.search_rank)
-                            .map((player) => (
-                                <p
-                                    className={`clickable-item draft-pick-rows ${player.position}`}
-                                    style={{ padding: `${0} ${3}px` }}
-                                    key={player.player_id}
-                                    onClick={() => updatePickSelection(player.player_id)}
-                                >
-                                    {player.full_name} {player.position} {player.team ? player.team : null}
-                                </p>
-                            ))}
+                    <div>
+                        <h4>Manually select pick {`${round.round}.${currentManualPick.pick_number}`}</h4>
+                        <input
+                            type="text"
+                            className="input-small"
+                            onChange={(e) => setSearchValue(e.target.value)}
+                            placeholder="Start typing player name to search"
+                        />
+                        <Button
+                            text="Exit"
+                            btnStyle="primary"
+                            onClick={() => {
+                                setShowPickSelection(!showPickSelection);
+                                setSearchValue('');
+                            }}
+                        />
+                    </div>
+                    <div style={{ overflow: 'scroll', height: 100 + 'px' }}>
+                        {currentManualPick.player_id && (
+                            <p
+                                className="clickable-item draft-pick-rows QB"
+                                style={{ width: 'fit-content', padding: `${0} ${3}px`, border: 2 + 'px' }}
+                                onClick={() => updatePickSelection(null)}
+                            >
+                                Remove pick?
+                            </p>
+                        )}
+                        {searchValue.length < 2 &&
+                            rankingPlayersIdsList
+                                .filter((result) => !playerInfo[result.match_results[0][0].is_taken])
+                                .map((data, i) => (
+                                    <p
+                                        className={`clickable-item draft-pick-rows ${
+                                            playerInfo[data.match_results[0][0]].position
+                                        }`}
+                                        style={{ padding: `${0} ${3}px` }}
+                                        key={playerInfo[data.match_results[0][0]].player_id + i}
+                                        onClick={() =>
+                                            updatePickSelection(playerInfo[data.match_results[0][0]].player_id)
+                                        }
+                                    >
+                                        {playerInfo[data.match_results[0][0]].full_name}{' '}
+                                        {playerInfo[data.match_results[0][0]].position}{' '}
+                                        {playerInfo[data.match_results[0][0]].team
+                                            ? playerInfo[data.match_results[0][0]].team
+                                            : null}
+                                    </p>
+                                ))}
+                        {searchValue.length > 2 &&
+                            Object.values(playerInfo)
+                                .filter((player) =>
+                                    player.full_name
+                                        ? player.full_name.toLowerCase().includes(searchValue.toLowerCase()) &&
+                                          ['QB', 'RB', 'WR', 'TE'].includes(player.position)
+                                        : null,
+                                )
+                                .sort((a, b) => a.years_exp - b.years_exp)
+                                .sort((a, b) => a.search_rank - b.search_rank)
+                                .map((player) => (
+                                    <p
+                                        className={`clickable-item draft-pick-rows ${player.position}`}
+                                        style={{ padding: `${0} ${3}px` }}
+                                        key={player.player_id}
+                                        onClick={() => updatePickSelection(player.player_id)}
+                                    >
+                                        {player.full_name} {player.position} {player.team ? player.team : null}
+                                    </p>
+                                ))}
+                    </div>
                 </div>
             )}
         </>
