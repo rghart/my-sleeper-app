@@ -41,6 +41,12 @@
   .roster-positions {
     padding: 0 !important;
   }
+  .team {
+      flex-direction: column;
+  }
+  .team-name {
+      font-size: smaller;
+  }
 } 
 
 .App-header {
