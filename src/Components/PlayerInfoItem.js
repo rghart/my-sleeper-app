@@ -107,13 +107,18 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                     </>
                 )}
             </div>
-            <div className="player-info" style={{ gridRowStart: 2 }}>
+            <div className="player-info" style={{ gridRowStart: 2, overflow: 'hidden' }}>
                 <p className="player-info-item">
                     <b>Rank:</b> {searchData.ranking}
                 </p>
-                <p className="player-info-item">
-                    <b>Manager:</b> {player.rostered_by ? player.rostered_by : 'Free Agent'}
-                </p>
+                <div className="player-info-item team" style={{ overflow: 'hidden', display: 'flex' }}>
+                    <p style={{ overflow: 'visible' }}>
+                        <b>Team:</b>
+                    </p>
+                    <p className="team-name" style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {player.rostered_by ? player.rostered_by : 'Free Agent'}
+                    </p>
+                </div>
             </div>
             {adpData && (
                 <div style={{ display: 'flex', alignItems: 'center', gridRowStart: 3 }}>
@@ -129,7 +134,7 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                     </p>
                 </div>
             )}
-            <div style={{ gridRowStart: 2, gridColumnStart: 2 }}>
+            <div style={{ gridRowStart: 2, gridColumnStart: 2, marginLeft: 3 + 'px' }}>
                 <div
                     className="avatar-player"
                     aria-label="nfl Player"
@@ -163,16 +168,16 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                     }}
                 ></div>
             </div>
-            {(player.rostered_by && player.rostered_by === 'ryangh') || !player.is_taken ? (
-                <div className="player-add-div">
+            <div className="player-add-div">
+                {(player.rostered_by && player.rostered_by === 'ryangh') || !player.is_taken ? (
                     <Button
                         text={`${player.in_lineup ? 'Added' : 'Add'}`}
                         isDisabled={player.in_lineup}
                         btnStyle="player-add-button"
                         onClick={() => addToRoster(player)}
                     />
-                </div>
-            ) : null}
+                ) : null}
+            </div>
         </div>
     );
 };
