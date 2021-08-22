@@ -83,7 +83,7 @@ const createRankings = (searchText, playerInfo) => {
         // Sometimes ranks just have the first letter of the first name and the last name separated by a period. ex. "T.Brady"
         // Want to remove this without removing for players that go by initials, ex. "J.K. Dobbins"
         if (splitString[1] === '.' && splitString[3] !== '.') {
-            splitString.splice(1, 1, '');
+            splitString.splice(1, 1, ' ');
         }
         const lettersOnly = splitString.map((string) => string.replace(/[^a-zA-Z\s]/g, ''));
         if (!lettersOnly.join('').trim()) {
