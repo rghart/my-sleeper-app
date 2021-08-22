@@ -91,7 +91,6 @@ const createRankings = (searchText, playerInfo) => {
         if (!lettersOnly.join('').trim()) {
             return;
         }
-        console.log(lettersOnly);
         let nameAndTeam = lettersOnly.join('').trim();
         // Splitting by spaces and removing whitespace
         let firstLastTeamArrays = nameAndTeam.split(/\s/).map((item) => item.trim());
@@ -113,7 +112,6 @@ const createRankings = (searchText, playerInfo) => {
         }
 
         searchArray.unshift(firstLastTeamArrays[0], firstLastTeamArrays[1]);
-        console.log(searchArray);
 
         let results = playerInfoFuse.search({
             $or: [
