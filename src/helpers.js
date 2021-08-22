@@ -84,11 +84,14 @@ const createRankings = (searchText, playerInfo) => {
         // Want to remove this without removing for players that go by initials, ex. "J.K. Dobbins"
         if (splitString[1] === '.' && splitString[3] !== '.') {
             splitString.splice(1, 1, ' ');
+        } else if (splitString[1] === '.' && splitString[3] === '.' && splitString[4] !== ' ') {
+            splitString.splice(3, 1, '. ');
         }
         const lettersOnly = splitString.map((string) => string.replace(/[^a-zA-Z\s]/g, ''));
         if (!lettersOnly.join('').trim()) {
             return;
         }
+        console.log(lettersOnly);
         let nameAndTeam = lettersOnly.join('').trim();
         // Splitting by spaces and removing whitespace
         let firstLastTeamArrays = nameAndTeam.split(/\s/).map((item) => item.trim());
@@ -97,7 +100,7 @@ const createRankings = (searchText, playerInfo) => {
         let foundTeamStr;
         // If there's more than 2 indexes, we want to see if they can help with our search by looking for player position and team initials
         if (firstLastTeamArrays.length > 2) {
-            const positionIndex = firstLastTeamArrays.findIndex((item) => positions.includes(item));
+            const positionIndex = firstLastTeamArrays.findIndex((item, index) => positions.includes(item) && index > 1);
             if (positionIndex >= 0) {
                 foundPositionStr = firstLastTeamArrays.splice(positionIndex, 1)[0];
                 searchArray.unshift(foundPositionStr);
@@ -108,7 +111,9 @@ const createRankings = (searchText, playerInfo) => {
                 searchArray.unshift(foundTeamStr);
             }
         }
+
         searchArray.unshift(firstLastTeamArrays[0], firstLastTeamArrays[1]);
+        console.log(searchArray);
 
         let results = playerInfoFuse.search({
             $or: [
