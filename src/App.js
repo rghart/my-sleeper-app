@@ -20,7 +20,7 @@ class App extends React.Component {
         loadingMessage: 'Initial load...',
         rankingPlayersIdsList: [],
         isTyping: false,
-        leagueID: '662349421429727232',
+        leagueID: '784538565915897856',
         rosterPositions: [],
         notFoundPlayers: [],
         lastUpdate: null,
