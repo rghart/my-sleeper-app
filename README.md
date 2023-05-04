@@ -1,6 +1,6 @@
 # [WIP]
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). MVP version with a lot to clean up.
 
 ## Available Scripts
 
