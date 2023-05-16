@@ -1,76 +1,76 @@
 .App {
-  text-align: center;
-  overflow: visible;
+    text-align: center;
+    overflow: visible;
 }
 
 .App-logo {
-  height: 40vmin;
-  pointer-events: none;
+    height: 40vmin;
+    pointer-events: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+    .App-logo {
+        animation: App-logo-spin infinite 20s linear;
+    }
 }
 
 @media screen and (max-width: 767px) {
-  .title {
-      font-size: x-large;
-  }
+    .title {
+        font-size: x-large;
+    }
 
-  .avatar-player {
-      margin-left: 10px !important;
-  }
+    .avatar-player {
+        margin-left: 10px !important;
+    }
 
-  .panel {
-      width: 50%;
-      min-width: 150px;
-      padding: 5px !important;
-  }
+    .panel {
+        width: 50%;
+        min-width: 150px;
+        padding: 5px !important;
+    }
 
-  .league-grid {
-      width: 95% !important;
-      padding: 5px !important;
-  }
+    .league-grid {
+        width: 95% !important;
+        padding: 5px !important;
+    }
 
-  .draft-pick-rows {
-      flex-direction: column;
-  }
+    .draft-pick-rows {
+        flex-direction: column;
+    }
 
-  .roster-positions {
-    padding: 0 !important;
-  }
-  .team {
-      flex-direction: column;
-  }
-  .team-name {
-      font-size: smaller;
-  }
-} 
+    .roster-positions {
+        padding: 0 !important;
+    }
+    .team {
+        flex-direction: column;
+    }
+    .team-name {
+        font-size: smaller;
+    }
+}
 
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+    background-color: #282c34;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(10px + 2vmin);
+    color: white;
 }
 
 .App-link {
-  color: #61dafb;
+    color: #61dafb;
 }
 
 @keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .main-container {
@@ -81,14 +81,14 @@
 }
 
 .panel {
-  padding: 5px 15px 15px 15px;
-  background-color: #283245;
-  border-radius: 10px;
-  height: 100%;
-  margin: 8px 3px 3px 3px;
-  display: flex;
-  flex: 1 1;
-  flex-direction: column;
+    padding: 5px 15px 15px 15px;
+    background-color: #283245;
+    border-radius: 10px;
+    height: 100%;
+    margin: 8px 3px 3px 3px;
+    display: flex;
+    flex: 1 1;
+    flex-direction: column;
 }
 
 .search {
@@ -160,34 +160,34 @@
 }
 
 .RB-available {
-  background-color: rgba(0, 206, 185, 0.45);
+    background-color: rgba(0, 206, 185, 0.45);
 }
 
 .WR-available {
-  background-color: rgb(88, 167, 255, 0.45);
+    background-color: rgb(88, 167, 255, 0.45);
 }
 
 .TE-available {
-  background-color: rgb(255, 174, 88, 0.45);
+    background-color: rgb(255, 174, 88, 0.45);
 }
 
 .QB-available {
-  background-color: rgb(255, 42, 109, 0.45);
+    background-color: rgb(255, 42, 109, 0.45);
 }
 
 .available {
-    opacity: .45;
+    opacity: 0.45;
 }
 
 .dropdown {
-  background: transparent;
-  caret-color: #ddd;
-  color: #fff;
-  border: 2px solid #4b576b;
-  border-radius: 10px;
-  margin-top: 8px;
-  width: 85%;
-  height: 25px;
+    background: transparent;
+    caret-color: #ddd;
+    color: #fff;
+    border: 2px solid #4b576b;
+    border-radius: 10px;
+    margin-top: 8px;
+    width: 85%;
+    height: 25px;
 }
 
 .roster-positions {
@@ -197,19 +197,19 @@
 }
 
 .search-box {
-  display: flex;
-  flex-direction: column;
-  margin: 3px 0px 16px;
+    display: flex;
+    flex-direction: column;
+    margin: 3px 0px 16px;
 }
 
 .latest-update {
-  margin: 0px 0px 6px 3px;
-  font-size: x-small;
-  margin-right: 8px;
+    margin: 0px 0px 6px 3px;
+    font-size: x-small;
+    margin-right: 8px;
 }
 
 .title {
-  margin: 0px 0px 6px 3px;
+    margin: 0px 0px 6px 3px;
 }
 
 .input {
@@ -261,35 +261,39 @@
 }
 
 .draft-pick {
-  display: flex;
-  flex: 1 3 0px;
-  padding: 0px 0 0px 2px;
-  border-radius: 10px;
-  margin-top: 3px;
-  font-size: smaller;
-  align-items: baseline;
+    display: flex;
+    flex: 1 3 0px;
+    padding: 0px 0 0px 2px;
+    border-radius: 10px;
+    margin-top: 3px;
+    font-size: smaller;
+    align-items: baseline;
 }
 
 .avatar {
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  height: 20px;
-  width: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    height: 20px;
+    width: 20px;
 }
 
-.abbr-text { display: none; }
+.abbr-text {
+    display: none;
+}
 
 @media all and (orientation: portrait) {
-    .abbr-text { 
-      display: inline-block;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      white-space: nowrap;
+    .abbr-text {
+        display: inline-block;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
     }
-    .full-text { display: none; }
+    .full-text {
+        display: none;
+    }
 }
 
 .draft-pick-details {
@@ -310,12 +314,12 @@
 }
 
 .draft-pick-rows:hover {
-  display: flex;
-  border: 2px solid #00d8a7;
-  border-radius: 6px;
-  margin-bottom: 3px;
-  width: 95%;
-  overflow: hidden;
+    display: flex;
+    border: 2px solid #00d8a7;
+    border-radius: 6px;
+    margin-bottom: 3px;
+    width: 95%;
+    overflow: hidden;
 }
 
 .draft-picks-box {
@@ -356,26 +360,26 @@
     width: inherit;
 }
 
-.custom-horizontal-select .custom-horizontal-select-item >.meta {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+.custom-horizontal-select .custom-horizontal-select-item > .meta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
-.custom-horizontal-select .custom-horizontal-select-item >.meta >.name {
-  font-weight: bold;
-  font-size: 16px;
+.custom-horizontal-select .custom-horizontal-select-item > .meta > .name {
+    font-weight: bold;
+    font-size: 16px;
 }
 
-.custom-horizontal-select .custom-horizontal-select-item >.meta >.description {
-  font-size: 10px;
-  margin-top: 3px;
+.custom-horizontal-select .custom-horizontal-select-item > .meta > .description {
+    font-size: 10px;
+    margin-top: 3px;
 }
 
 .custom-horizontal-select .custom-horizontal-select-item.selected {
-  background-color: #00ceb8;
-  transition: all 0.1s ease;
+    background-color: #00ceb8;
+    transition: all 0.1s ease;
 }
 
 .is-hidden {
@@ -383,5 +387,5 @@
 }
 
 .search-alert {
-  border: 6px solid red;
+    border: 6px solid red;
 }
