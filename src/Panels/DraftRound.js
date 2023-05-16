@@ -65,19 +65,19 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
                                     <img
                                         className="avatar"
                                         src={`https://sleepercdn.com/avatars/thumbs/${
-                                            rosterData.find((roster) => roster.roster_id === pick.owner_id).avatar
+                                            rosterData.find((roster) => roster.roster_id === pick.owner_id)?.avatar
                                         }`}
                                         alt="Users avatar"
                                     />
                                     <p className="draft-pick">
-                                        {
-                                            rosterData.find((roster) => roster.roster_id === pick.owner_id)
-                                                .manager_display_name
-                                        }
+                                        {pick.owner_id
+                                            ? rosterData.find((roster) => roster.roster_id === pick.owner_id)
+                                                  ?.manager_display_name
+                                            : 'Pick owner missing'}
                                         {pick.is_traded && pick.roster_id !== pick.owner_id
                                             ? ` via ${
                                                   rosterData.find((roster) => roster.roster_id === pick.roster_id)
-                                                      .manager_display_name
+                                                      ?.manager_display_name
                                               }`
                                             : null}
                                     </p>

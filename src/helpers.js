@@ -126,7 +126,7 @@ const createRankings = (searchText, playerInfo) => {
                     ],
                 },
                 // eslint-disable-next-line
-          {
+                {
                     $and: [
                         { search_last_name: searchArray[1] },
                         {
@@ -136,7 +136,7 @@ const createRankings = (searchText, playerInfo) => {
                     ],
                 },
                 // eslint-disable-next-line
-          {
+                {
                     $and: [
                         { search_last_name: searchArray[1] },
                         {
@@ -146,7 +146,7 @@ const createRankings = (searchText, playerInfo) => {
                     ],
                 },
                 // eslint-disable-next-line
-          {
+                {
                     $and: [
                         { search_last_name: searchArray[1] },
                         {

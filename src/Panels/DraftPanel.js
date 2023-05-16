@@ -94,7 +94,7 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
         }
         return () => clearTimeout(timer);
         // eslint-disable-next-line
-    }, [isSyncing])
+    }, [isSyncing]);
 
     return (
         <div>
