@@ -1,4 +1,5 @@
 # Sleeper Team Assistant
+_This app was built for personal use in 2020 and is in need of refactoring. Currently plan to migrate backend to [sleeper-player-be](https://github.com/rghart/sleeper-player-be) and move some of the helper functions here as well. Hope to migrate other portions of frontend/backend to Next.js and utilize server components._
 
 Interacts with the [Sleeper API](https://docs.sleeper.com/) to pull league, team, and draft pick data to assist with drafts and setting your weekly lineup.
 
