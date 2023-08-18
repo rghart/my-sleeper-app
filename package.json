@@ -51,6 +51,5 @@
         "gh-pages": "^3.1.0",
         "prettier": "2.2.1",
         "typescript": "^4.2.4"
-    },
-    "proxy": "https://fantasyteamassistant.com/"
+    }
 }
