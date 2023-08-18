@@ -1,4 +1,6 @@
 const appDB = 'https://sleeper-player-db-default-rtdb.firebaseio.com/';
+const fta = 'https://fantasyteamassistant.com/';
+const ftaLegacy = 'api/legacy/players'
 const latestUpdateAttempt = 'latest_update_attempt/';
 const activePlayers = 'active_players/';
 const dlfADP = 'dlf_adp/';
@@ -21,7 +23,7 @@ const DRAFTS = 'drafts/';
 const APP_DB_URLS = {
     APP_DB: appDB,
     LATEST_UPDATE_ATTEMPT: appDB + latestUpdateAttempt + typeParams,
-    ACTIVE_PLAYERS: appDB + activePlayers + typeParams,
+    ACTIVE_PLAYERS: fta + ftaLegacy,
     DLF_ADP: appDB + dlfADP + typeParams,
     APP_USERS: appDB + users,
     TYPE_PARAMS: typeParams,

@@ -89,7 +89,7 @@ class App extends React.Component {
 
     getPlayerData = async () => {
         this.getLatestUpdateAttempt();
-        await fetch(ACTIVE_PLAYERS + (await auth.currentUser.getIdToken(true)))
+        await fetch(ACTIVE_PLAYERS)
             .then((response) => response.json())
             .then((data) => {
                 this.setState({
