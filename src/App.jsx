@@ -4,12 +4,12 @@ import './loader.css';
 import Button from './Components/Button';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
-import firebase, { auth } from './firebase.js';
+import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import { auth, googleProvider } from './firebase.js';
 import createRankings from './helpers.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from './urls.js';
 const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
 const { LEAGUE, ALL_LEAGUES_ACTIVE_YEAR, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
-const provider = new firebase.auth.GoogleAuthProvider();
 
 class App extends React.Component {
     state = {
@@ -30,7 +30,7 @@ class App extends React.Component {
     };
 
     componentDidMount() {
-        auth.onAuthStateChanged((user) => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
                 const { playerInfo } = this.state;
                 const { currentUser } = auth;
@@ -44,7 +44,7 @@ class App extends React.Component {
                     this.getLeagueData();
                 }
             } else {
-                auth.signInAnonymously().catch((err) => console.error('Error:', err));
+                signInAnonymously(auth).catch((err) => console.error('Error:', err));
             }
         });
     }
@@ -382,18 +382,13 @@ class App extends React.Component {
     };
 
     googleSignIn = () => {
-        firebase
-            .auth()
-            .signInWithPopup(provider)
-            .catch((error) => {
-                console.log(error);
-            });
+        signInWithPopup(auth, googleProvider).catch((error) => {
+            console.log(error);
+        });
     };
 
     signOut = () => {
-        firebase
-            .auth()
-            .signOut()
+        firebaseSignOut(auth)
             .then(() => {
                 this.setState({
                     rankingPlayersIdsList: [],
