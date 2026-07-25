@@ -33,7 +33,7 @@ const RanksPanel = ({
     const [allRankLists, setAllRankLists] = useState({ [defaultSelector]: defaultSelectorObj });
     const [allListsVals, setAllListsVals] = useState([defaultSelector]);
     const [rankListType, setRankListType] = useState('new');
-    const [adp, setADP] = useState();
+    const [adp, setADP] = useState({});
     const [adpType, setADPType] = useState();
     const [filters, setFilters] = useState({
         showTaken: false,
@@ -419,15 +419,11 @@ const RanksPanel = ({
                                     addToRoster={addToRoster}
                                     updatePlayerId={updatePlayerId}
                                     searchData={results}
-                                    adpData={
-                                        adp[results.match_results[0][0]]
-                                            ? adp[results.match_results[0][0]][adpType]
-                                            : null
-                                    }
+                                    adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
                                 />
                             ))}
                         {notFoundPlayers.map((item, index) => (
-                            <p key={item + new Date().getTime() + index}>{item}</p>
+                            <p key={`${item}-${index}`}>{item}</p>
                         ))}
                     </div>
                 </>

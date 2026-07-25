@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Button from '../Components/Button';
 
 const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPlayersIdsList }) => {
-    const [picks, setPicks] = useState(round.picks);
     const [showRound, setShowRound] = useState(true);
     const [showPickSelection, setShowPickSelection] = useState(false);
     const [currentManualPick, setCurrentManualPick] = useState();
@@ -14,7 +13,9 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
     };
 
     const updatePickSelection = async (playerID) => {
-        picks[picks.findIndex((pick) => pick.pick_number === currentManualPick.pick_number)].player_id = playerID;
+        round.picks[
+            round.picks.findIndex((pick) => pick.pick_number === currentManualPick.pick_number)
+        ].player_id = playerID;
         let newPlayerInfo = playerInfo;
         if (playerID) {
             newPlayerInfo[playerID].is_taken = true;
@@ -26,7 +27,6 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
             newPlayerInfo[currentManualPick.player_id].rostered_by = null;
         }
         setCurrentManualPick(null);
-        setPicks(picks);
         updatePlayerInfo('playerInfo', { ...newPlayerInfo });
         setShowPickSelection(!showPickSelection);
         setSearchValue('');
@@ -53,7 +53,7 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
                     <h4 className="round-number clickable-item" onClick={() => setShowRound(!showRound)}>
                         Round {round.round}
                     </h4>
-                    {picks.map((pick) => (
+                    {round.picks.map((pick) => (
                         <div
                             key={pick.pick_number}
                             className={`draft-pick clickable-item ${!showRound ? 'is-hidden' : null}`}

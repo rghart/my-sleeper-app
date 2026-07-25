@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Button from '../Components/Button';
 import DraftRound from './DraftRound';
 import { SLEEPER_API_URLS } from '../urls';
@@ -81,19 +81,31 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
         return newLiveDraft;
     };
 
+    const getLiveDraftRef = useRef(getLiveDraft);
     useEffect(() => {
-        let timer;
-        if (isSyncing) {
-            const callback = async () => {
-                await getLiveDraft();
-                timer = setTimeout(callback, 3000);
-            };
-            callback();
-        } else {
-            clearTimeout(timer);
+        getLiveDraftRef.current = getLiveDraft;
+    });
+
+    useEffect(() => {
+        if (!isSyncing) {
+            return;
         }
-        return () => clearTimeout(timer);
-        // eslint-disable-next-line
+        let timer;
+        let cancelled = false;
+        const poll = async () => {
+            await getLiveDraftRef.current();
+            // The await above can resolve after cleanup has already run, so re-check
+            // before scheduling the next tick or the loop never stops.
+            if (cancelled) {
+                return;
+            }
+            timer = setTimeout(poll, 3000);
+        };
+        poll();
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [isSyncing]);
 
     return (

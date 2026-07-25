@@ -68,7 +68,9 @@ class App extends React.Component {
         })
             .then(this.checkErrors)
             .catch((err) => console.error('Error:', err));
-        console.log(response.statusText);
+        if (response) {
+            console.log(response.statusText);
+        }
         return response;
     };
 
@@ -244,8 +246,7 @@ class App extends React.Component {
             {
                 loadingMessage: loadMessage,
             },
-            () => setTimeout(() => this.updateRankings(searchText)),
-            0,
+            () => setTimeout(() => this.updateRankings(searchText), 0),
         );
     };
 

@@ -1,5 +1,8 @@
 const appDB = 'https://sleeper-player-db-default-rtdb.firebaseio.com/';
-const fta = 'https://fantasyteamassistant.com/';
+// In dev this is left relative so it goes through the Vite proxy (see
+// vite.config.mjs) — the API only sends CORS headers for the deployed origin,
+// so a direct cross-origin request from localhost is blocked by the browser.
+const fta = import.meta.env.DEV ? '/' : 'https://fantasyteamassistant.com/';
 const ftaLegacy = 'api/legacy/players';
 const latestUpdateAttempt = 'latest_update_attempt/';
 const activePlayers = 'active_players/';
