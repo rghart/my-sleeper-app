@@ -65,11 +65,7 @@ const LeaguePanel = ({
                                 <div
                                     style={{ cursor: 'pointer' }}
                                     className={`${playerInfo[id] ? playerInfo[id].position : id} lineup-position`}
-                                    key={
-                                        playerInfo[id]
-                                            ? playerInfo[id].player_id + new Date().getTime() + i
-                                            : id + new Date().getTime() + i
-                                    }
+                                    key={`${id}-${i}`}
                                     onClick={() => (playerInfo[id] ? removeFromLineup(id, i) : null)}
                                 >
                                     <span className="full-text" style={{ marginRight: 0 }}>
