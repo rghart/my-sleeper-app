@@ -9,7 +9,7 @@ import createRankings from './helpers.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from './urls.js';
 const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
 const { LEAGUE, ALL_LEAGUES_ACTIVE_YEAR, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
-var provider = new firebase.auth.GoogleAuthProvider();
+const provider = new firebase.auth.GoogleAuthProvider();
 
 class App extends React.Component {
     state = {
@@ -114,7 +114,7 @@ class App extends React.Component {
             ALL_LEAGUES_ACTIVE_YEAR,
             LEAGUE_PATH + DRAFTS,
         ];
-        let requests = urls.map(async (url) => {
+        const requests = urls.map(async (url) => {
             const response = await fetch(url);
             return response.json();
         });
@@ -173,7 +173,7 @@ class App extends React.Component {
     };
 
     getSpecificDraft = async () => {
-        let { leagueData } = this.state;
+        const { leagueData } = this.state;
         const draftId = leagueData.currentLeagueDrafts[0].draft_id;
         const DRAFT_PATH = DRAFT + draftId;
         const draftData = await fetch(DRAFT_PATH)
@@ -196,7 +196,7 @@ class App extends React.Component {
     };
 
     markTakenPlayers = (rosterData, managerData) => {
-        let playerObject = this.state.playerInfo;
+        const playerObject = this.state.playerInfo;
         if (this.state.rankingPlayersIdsList) {
             Object.keys(playerObject).forEach((i) => {
                 if (playerObject[i]) {
@@ -264,7 +264,7 @@ class App extends React.Component {
     };
 
     updatePlayerId = (searchData, deleting) => {
-        let { rankingPlayersIdsList } = this.state;
+        const { rankingPlayersIdsList } = this.state;
         const currentIdIndex = rankingPlayersIdsList.findIndex((obj) => obj.ranking === searchData.ranking);
         if (deleting) {
             rankingPlayersIdsList.splice(currentIdIndex, 1);
@@ -276,7 +276,7 @@ class App extends React.Component {
     };
 
     addToRoster = (player) => {
-        let { rosterPositions, playerInfo } = this.state;
+        const { rosterPositions, playerInfo } = this.state;
         if (player.position === 'TE' || player.position === 'RB' || player.position === 'WR') {
             player.fantasy_positions.push('FLX');
             player.fantasy_positions.push('SFLX');
@@ -328,12 +328,12 @@ class App extends React.Component {
                 break;
         }
         const createPickOrder = (round) => {
-            let pickOrder = [];
+            const pickOrder = [];
             for (const [key, value] of Object.entries(currentDraft.slot_to_roster_id)) {
                 const userID = leagueData.rosterData.find((roster) => roster.roster_id === value)
                     ? leagueData.rosterData.find((roster) => roster.roster_id === value).owner_id
                     : null;
-                let obj = {
+                const obj = {
                     user_id: userID,
                     roster_id: value,
                     is_traded: false,
@@ -357,15 +357,15 @@ class App extends React.Component {
             return pickOrder;
         };
 
-        let draftRounds = [];
+        const draftRounds = [];
         for (let i = 0; i < settings.rounds; i++) {
-            let round = {};
+            const round = {};
             round.round = settings.rounds - i;
             round.picks = createPickOrder(round.round);
             draftRounds.unshift(round);
         }
         tradedDraftPicks.forEach((tradedPick) => {
-            let draftRoundIndex = draftRounds[tradedPick.round - 1].picks.findIndex(
+            const draftRoundIndex = draftRounds[tradedPick.round - 1].picks.findIndex(
                 (pick) => pick.roster_id === tradedPick.roster_id,
             );
             Object.assign(draftRounds[tradedPick.round - 1].picks[draftRoundIndex], {
@@ -401,7 +401,7 @@ class App extends React.Component {
                 console.log('Sign-out successful.');
             })
             .catch((error) => {
-                // An error happened.
+                console.error('Sign-out failed:', error);
             });
     };
 

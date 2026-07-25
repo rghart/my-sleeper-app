@@ -1,7 +1,7 @@
 import Fuse from 'fuse.js';
 
 const getHighestScore = (arr, fuseSearch) => {
-    let bestResult = arr
+    const bestResult = arr
         .map((item) => fuseSearch.search(item.replace(/[^a-zA-Z]/g, '')))
         .filter((item) => item.length > 0)
         .sort((a, b) => a[0]?.score - b[0]?.score);
@@ -62,11 +62,11 @@ const createRankings = (searchText, playerInfo) => {
     const playerInfoFuse = new Fuse(playerInfoArray, playerInfoFuseOptions, playerInfoIndex);
     const teamsFuse = new Fuse(teams, options);
 
-    let addLineBreak = searchText.replace(/(?:\r\n|\r|\n)/g, '<br>');
-    let splitLineBreak = addLineBreak.split('<br>');
-    let searchResultsArray = [];
+    const addLineBreak = searchText.replace(/(?:\r\n|\r|\n)/g, '<br>');
+    const splitLineBreak = addLineBreak.split('<br>');
+    const searchResultsArray = [];
     let ranking = 1;
-    let notFoundPlayers = [];
+    const notFoundPlayers = [];
 
     splitLineBreak.forEach((line) => {
         // Removing any numbers from the search string
@@ -75,7 +75,7 @@ const createRankings = (searchText, playerInfo) => {
             return;
         }
         // Splitting the string
-        let splitString = line.split('');
+        const splitString = line.split('');
         // Making sure the first index isn't a period after removing numbers. Just in case we get "1., 2., 3."" etc
         if (splitString[0] === '.') {
             splitString.splice(0, 1, '');
@@ -91,10 +91,10 @@ const createRankings = (searchText, playerInfo) => {
         if (!lettersOnly.join('').trim()) {
             return;
         }
-        let nameAndTeam = lettersOnly.join('').trim();
+        const nameAndTeam = lettersOnly.join('').trim();
         // Splitting by spaces and removing whitespace
-        let firstLastTeamArrays = nameAndTeam.split(/\s/).map((item) => item.trim());
-        let searchArray = [];
+        const firstLastTeamArrays = nameAndTeam.split(/\s/).map((item) => item.trim());
+        const searchArray = [];
         let foundPositionStr;
         let foundTeamStr;
         // If there's more than 2 indexes, we want to see if they can help with our search by looking for player position and team initials
@@ -113,7 +113,7 @@ const createRankings = (searchText, playerInfo) => {
 
         searchArray.unshift(firstLastTeamArrays[0], firstLastTeamArrays[1]);
 
-        let results = playerInfoFuse.search({
+        const results = playerInfoFuse.search({
             $or: [
                 {
                     $and: [
@@ -125,7 +125,7 @@ const createRankings = (searchText, playerInfo) => {
                         { team: `=${searchArray[2]}` },
                     ],
                 },
-                // eslint-disable-next-line
+
                 {
                     $and: [
                         { search_last_name: searchArray[1] },
@@ -135,7 +135,7 @@ const createRankings = (searchText, playerInfo) => {
                         { position: `=${searchArray[3]}` },
                     ],
                 },
-                // eslint-disable-next-line
+
                 {
                     $and: [
                         { search_last_name: searchArray[1] },
@@ -145,7 +145,7 @@ const createRankings = (searchText, playerInfo) => {
                         { team: `=${searchArray[2]}` },
                     ],
                 },
-                // eslint-disable-next-line
+
                 {
                     $and: [
                         { search_last_name: searchArray[1] },

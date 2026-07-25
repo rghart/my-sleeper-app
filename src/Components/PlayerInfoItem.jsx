@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Button from './Button';
 
 const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePlayerId, isNewRankList, adpData }) => {
@@ -6,7 +6,7 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
     const [searchValue, setSearchValue] = useState('');
 
     const updatePlayerInfo = (newPlayerId) => {
-        let newSearchData = { ...searchData };
+        const newSearchData = { ...searchData };
         let newPlayerIdResult;
         const newPlayerIdIndex = newSearchData.match_results.findIndex((result) => result[0] === newPlayerId);
 
@@ -129,8 +129,8 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                         {Math.round(Number(searchData.ranking) - adpData) < 0
                             ? 'Ranked ' + Math.round(adpData - Number(searchData.ranking)) + ' picks before ADP'
                             : Math.round(Number(searchData.ranking) - adpData) === 0
-                            ? 'Rank matches ADP'
-                            : 'Ranked ' + Math.round(Number(searchData.ranking) - adpData) + ' picks after ADP'}
+                              ? 'Rank matches ADP'
+                              : 'Ranked ' + Math.round(Number(searchData.ranking) - adpData) + ' picks after ADP'}
                     </p>
                 </div>
             )}

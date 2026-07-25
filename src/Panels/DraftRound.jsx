@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Button from '../Components/Button';
 
 const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPlayersIdsList }) => {
@@ -13,10 +13,9 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
     };
 
     const updatePickSelection = async (playerID) => {
-        round.picks[
-            round.picks.findIndex((pick) => pick.pick_number === currentManualPick.pick_number)
-        ].player_id = playerID;
-        let newPlayerInfo = playerInfo;
+        round.picks[round.picks.findIndex((pick) => pick.pick_number === currentManualPick.pick_number)].player_id =
+            playerID;
+        const newPlayerInfo = playerInfo;
         if (playerID) {
             newPlayerInfo[playerID].is_taken = true;
             newPlayerInfo[playerID].rostered_by = rosterData.find(

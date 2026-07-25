@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import SearchFilterButton from '../Components/SearchFilterButton';
 import OnFocusButton from '../Components/OnFocusButton';
 import PlayerInfoItem from '../Components/PlayerInfoItem';
@@ -136,7 +136,7 @@ const RanksPanel = ({
     };
 
     const updateFilters = (filterName, filter) => {
-        let newFilters = filters;
+        const newFilters = filters;
         newFilters[filterName] = filter;
         setFilters({ ...newFilters });
     };
@@ -212,7 +212,7 @@ const RanksPanel = ({
                 });
 
             if (getSavedRankListsResult) {
-                let rankListNames = Object.keys(getSavedRankListsResult).map(
+                const rankListNames = Object.keys(getSavedRankListsResult).map(
                     (key) => getSavedRankListsResult[key].route_name,
                 );
                 rankListNames.unshift(defaultSelector);
@@ -263,7 +263,7 @@ const RanksPanel = ({
                             {[
                                 { label: 'Taken', name: 'showTaken' },
                                 { label: 'My players', name: 'showMyPlayers' },
-                            ].map((filter, i) => (
+                            ].map((filter) => (
                                 <SearchFilterButton
                                     name={filter.label}
                                     handleChange={() => updateFilters(filter.name, !filters[filter.name])}

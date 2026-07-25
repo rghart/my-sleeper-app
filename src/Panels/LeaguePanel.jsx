@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import DraftPanel from './DraftPanel';
 import Dropdown from '../Components/Dropdown';
 

@@ -28,3 +28,6 @@ node_modules
 
 # Claude Code local machine state (launch.json is shared, settings.local.json is not)
 .claude/settings.local.json
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
