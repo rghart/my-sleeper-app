@@ -1,7 +1,7 @@
 import firebase from 'firebase/app';
 import 'firebase/auth';
 
-var firebaseConfig = {
+const firebaseConfig = {
     apiKey: 'AIzaSyCg0BOhB2oh686NyBEW_YhDVZjPei6DHIo',
     authDomain: 'sleeper-player-db.firebaseapp.com',
     databaseURL: 'https://sleeper-player-db-default-rtdb.firebaseio.com',

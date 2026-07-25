@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Button from '../Components/Button';
 import DraftRound from './DraftRound';
 import { SLEEPER_API_URLS } from '../urls';
@@ -18,7 +18,7 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
     };
 
     const getLiveDraft = async () => {
-        let newPlayerInfo = playerInfo;
+        const newPlayerInfo = playerInfo;
         const liveDraftData = await fetch(DRAFT_PATH + PICKS)
             .then((response) => response.json())
             .then((data) => data)
@@ -27,8 +27,8 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
             });
         let newLiveDraft = liveDraft;
         await liveDraftData.forEach((livePick) => {
-            let { round, draft_slot: draftSlot } = livePick;
-            round -= 1;
+            const { draft_slot: draftSlot } = livePick;
+            const round = livePick.round - 1;
             const pickIndex = newLiveDraft.built_draft[round].picks.findIndex((pick) => pick.board_spot === draftSlot);
             const pick = newLiveDraft.built_draft[round].picks[pickIndex];
             pick.player_id = livePick.player_id;
@@ -70,7 +70,7 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
             let { round } = tradedPick;
             round -= 1;
             const { picks } = builtDraft[round];
-            let pickIndex = picks.findIndex((pick) => pick.roster_id === tradedPick.roster_id);
+            const pickIndex = picks.findIndex((pick) => pick.roster_id === tradedPick.roster_id);
             Object.assign(picks[pickIndex], {
                 owner_id: tradedPick.owner_id,
                 is_traded: true,

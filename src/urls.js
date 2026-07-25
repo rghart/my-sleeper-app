@@ -5,7 +5,6 @@ const appDB = 'https://sleeper-player-db-default-rtdb.firebaseio.com/';
 const fta = import.meta.env.DEV ? '/' : 'https://fantasyteamassistant.com/';
 const ftaLegacy = 'api/legacy/players';
 const latestUpdateAttempt = 'latest_update_attempt/';
-const activePlayers = 'active_players/';
 const dlfADP = 'dlf_adp/';
 const users = 'users/';
 const typeParams = '.json?auth=';
