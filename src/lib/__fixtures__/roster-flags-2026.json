@@ -1,0 +1,2982 @@
+{
+    "rosterDataRaw": [
+        {
+            "roster_id": 1,
+            "owner_id": "521035584588267520",
+            "players": [
+                "11435",
+                "11569",
+                "11631",
+                "11646",
+                "12474",
+                "12490",
+                "12492",
+                "12509",
+                "12526",
+                "13274",
+                "13279",
+                "13288",
+                "13346",
+                "13405",
+                "13421",
+                "1373",
+                "4018",
+                "4039",
+                "4137",
+                "4950",
+                "4984",
+                "5001",
+                "5012",
+                "7553",
+                "7591",
+                "8117",
+                "8134",
+                "8148",
+                "8408",
+                "9480"
+            ]
+        },
+        {
+            "roster_id": 2,
+            "owner_id": "521424042611961856",
+            "players": [
+                "11565",
+                "11626",
+                "12495",
+                "12499",
+                "12512",
+                "12524",
+                "13272",
+                "13294",
+                "13317",
+                "13319",
+                "13434",
+                "2078",
+                "2216",
+                "3163",
+                "3198",
+                "4993",
+                "5844",
+                "5870",
+                "5947",
+                "5967",
+                "6783",
+                "6826",
+                "8126",
+                "8188",
+                "8225",
+                "9225",
+                "9504"
+            ]
+        },
+        {
+            "roster_id": 3,
+            "owner_id": "467132282604351488",
+            "players": [
+                "10219",
+                "10232",
+                "11370",
+                "11557",
+                "11564",
+                "11575",
+                "11589",
+                "11592",
+                "11655",
+                "1166",
+                "12048",
+                "12489",
+                "12521",
+                "12543",
+                "13345",
+                "13380",
+                "3257",
+                "4881",
+                "5849",
+                "6149",
+                "6794",
+                "7021",
+                "7564",
+                "7588",
+                "7610",
+                "8112",
+                "8130",
+                "8150",
+                "8698",
+                "9488"
+            ]
+        },
+        {
+            "roster_id": 4,
+            "owner_id": "521485413219885056",
+            "players": [
+                "11299",
+                "11563",
+                "11576",
+                "11628",
+                "11637",
+                "11834",
+                "12457",
+                "12504",
+                "12507",
+                "12511",
+                "12514",
+                "12889",
+                "13275",
+                "13286",
+                "13298",
+                "13302",
+                "13420",
+                "2374",
+                "4098",
+                "4199",
+                "5906",
+                "6804",
+                "6865",
+                "7002",
+                "8122",
+                "8135",
+                "8144",
+                "9482",
+                "9756"
+            ]
+        },
+        {
+            "roster_id": 5,
+            "owner_id": "989213899293569024",
+            "players": [
+                "11571",
+                "11581",
+                "11596",
+                "11610",
+                "11635",
+                "11643",
+                "12467",
+                "12469",
+                "12483",
+                "12493",
+                "12502",
+                "12503",
+                "12508",
+                "12527",
+                "12536",
+                "12547",
+                "13276",
+                "13287",
+                "13289",
+                "13296",
+                "13306",
+                "13335",
+                "13347",
+                "13349",
+                "13411",
+                "7523",
+                "7571",
+                "9230",
+                "9506",
+                "9753"
+            ]
+        },
+        {
+            "roster_id": 6,
+            "owner_id": "665051007910236160",
+            "players": [
+                "10222",
+                "11566",
+                "11600",
+                "11625",
+                "11632",
+                "12484",
+                "12497",
+                "12498",
+                "12517",
+                "12534",
+                "12535",
+                "12545",
+                "13278",
+                "13281",
+                "13301",
+                "13320",
+                "13333",
+                "13417",
+                "421",
+                "4981",
+                "5022",
+                "5846",
+                "6770",
+                "8138",
+                "8142",
+                "8155",
+                "8167",
+                "9221",
+                "9226",
+                "9754"
+            ]
+        },
+        {
+            "roster_id": 7,
+            "owner_id": "464153930528452608",
+            "players": [
+                "10235",
+                "11783",
+                "12485",
+                "12500",
+                "12540",
+                "13285",
+                "13330",
+                "13402",
+                "13403",
+                "4037",
+                "4217",
+                "4866",
+                "4892",
+                "5995",
+                "6813",
+                "6819",
+                "7049",
+                "7527",
+                "7543",
+                "7569",
+                "8111",
+                "8132",
+                "8146",
+                "8160",
+                "8172",
+                "8180",
+                "9228",
+                "9484",
+                "9486",
+                "9501"
+            ]
+        },
+        {
+            "roster_id": 8,
+            "owner_id": "999040645685649408",
+            "players": [
+                "10859",
+                "11577",
+                "11597",
+                "11618",
+                "11624",
+                "12481",
+                "12505",
+                "12522",
+                "12531",
+                "13269",
+                "13305",
+                "13311",
+                "13404",
+                "1426",
+                "2133",
+                "3214",
+                "4943",
+                "5892",
+                "6790",
+                "7525",
+                "7526",
+                "8125",
+                "8136",
+                "8151",
+                "9481",
+                "9511",
+                "96",
+                "9999"
+            ]
+        },
+        {
+            "roster_id": 9,
+            "owner_id": "467766220007927808",
+            "players": [
+                "10213",
+                "11586",
+                "11603",
+                "11604",
+                "11638",
+                "12470",
+                "12476",
+                "12501",
+                "12518",
+                "12529",
+                "13268",
+                "13293",
+                "13303",
+                "13337",
+                "13342",
+                "13353",
+                "4983",
+                "6803",
+                "7585",
+                "7600",
+                "8137",
+                "8183",
+                "8210",
+                "8228",
+                "9224",
+                "9487",
+                "9502",
+                "9758"
+            ]
+        },
+        {
+            "roster_id": 10,
+            "owner_id": "325380343328686080",
+            "players": [
+                "11256",
+                "11560",
+                "11583",
+                "11584",
+                "11627",
+                "11647",
+                "11651",
+                "12471",
+                "12487",
+                "12510",
+                "12519",
+                "12530",
+                "12544",
+                "13392",
+                "13414",
+                "13423",
+                "1466",
+                "2449",
+                "4017",
+                "4034",
+                "4046",
+                "5045",
+                "5859",
+                "6011",
+                "7594",
+                "8110",
+                "8154",
+                "8800",
+                "9494",
+                "9997"
+            ]
+        },
+        {
+            "roster_id": 11,
+            "owner_id": "325371992242946048",
+            "players": [
+                "10216",
+                "10226",
+                "10236",
+                "11559",
+                "12472",
+                "13324",
+                "13338",
+                "13413",
+                "13424",
+                "19",
+                "3294",
+                "3321",
+                "4035",
+                "4179",
+                "6271",
+                "6768",
+                "6786",
+                "6806",
+                "7547",
+                "7670",
+                "827",
+                "829",
+                "8917",
+                "9229",
+                "9479",
+                "9493",
+                "9500",
+                "9508",
+                "9509"
+            ]
+        },
+        {
+            "roster_id": 12,
+            "owner_id": "560984104439771136",
+            "players": [
+                "10229",
+                "11199",
+                "11620",
+                "12506",
+                "12533",
+                "12641",
+                "12670",
+                "13079",
+                "13150",
+                "13329",
+                "13348",
+                "13400",
+                "13418",
+                "2307",
+                "4066",
+                "5850",
+                "5872",
+                "5927",
+                "6797",
+                "6801",
+                "6904",
+                "7090",
+                "7567",
+                "7611",
+                "8119",
+                "8121",
+                "8131",
+                "8161",
+                "8205",
+                "8676"
+            ]
+        }
+    ],
+    "managerData": [
+        {
+            "user_id": "325371992242946048",
+            "display_name": "kpresley",
+            "avatar": "00b11790b9017eaade80f30127ec9986"
+        },
+        {
+            "user_id": "325380343328686080",
+            "display_name": "spight",
+            "avatar": "db7b742f6549b03367eb48ed1e328e5e"
+        },
+        {
+            "user_id": "464153930528452608",
+            "display_name": "crbiehl",
+            "avatar": "4f4090e5e9c3941414db40a871e3e909"
+        },
+        {
+            "user_id": "467132282604351488",
+            "display_name": "OptimalPooper",
+            "avatar": "2c8a8167cf05381ebcc6f971aa8653cd"
+        },
+        {
+            "user_id": "467766220007927808",
+            "display_name": "gdavidson",
+            "avatar": "4d46b7d568cc71d4819293c612731196"
+        },
+        {
+            "user_id": "521035584588267520",
+            "display_name": "ryangh",
+            "avatar": "b5cdc0dfb49f018bd6a38bc33bc61c99"
+        },
+        {
+            "user_id": "521424042611961856",
+            "display_name": "aphilliny21",
+            "avatar": "3dd5a49b6e8b46b474e36af0acaf7914"
+        },
+        {
+            "user_id": "521485413219885056",
+            "display_name": "CHood20",
+            "avatar": "0b99d6cc26aa7519e37cdfb269184da3"
+        },
+        {
+            "user_id": "560984104439771136",
+            "display_name": "MaddensWok",
+            "avatar": "f2c37a242ed4c9a774bb10a881f1a024"
+        },
+        {
+            "user_id": "665051007910236160",
+            "display_name": "Bloomberg4",
+            "avatar": "b319fdf8b7b5b0359d3c78622ba4d70c"
+        },
+        {
+            "user_id": "989213899293569024",
+            "display_name": "HEFFinAround305",
+            "avatar": "e7af4deab0289b4f5505646424895246"
+        },
+        {
+            "user_id": "999040645685649408",
+            "display_name": "cmurtagh86",
+            "avatar": "f0edbf4278f53f9425db175073df6584"
+        }
+    ],
+    "playerInfo": {
+        "167": {
+            "active": true,
+            "age": 45,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Tom",
+            "full_name": "Tom Brady",
+            "id": 167,
+            "last_name": "Brady",
+            "player_id": "167",
+            "position": "QB",
+            "search_first_name": "tom",
+            "search_full_name": "tombrady",
+            "search_last_name": "brady",
+            "search_rank": 74,
+            "status": "Active",
+            "team": null,
+            "years_exp": 23
+        },
+        "289": {
+            "active": true,
+            "age": 42,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Drew",
+            "full_name": "Drew Brees",
+            "id": 289,
+            "last_name": "Brees",
+            "player_id": "289",
+            "position": "QB",
+            "search_first_name": "drew",
+            "search_full_name": "drewbrees",
+            "search_last_name": "brees",
+            "search_rank": 76,
+            "status": "Injured Reserve",
+            "team": null,
+            "years_exp": 20
+        },
+        "515": {
+            "active": true,
+            "age": 32,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Rob",
+            "full_name": "Rob Gronkowski",
+            "id": 515,
+            "last_name": "Gronkowski",
+            "player_id": "515",
+            "position": "TE",
+            "search_first_name": "rob",
+            "search_full_name": "robgronkowski",
+            "search_last_name": "gronkowski",
+            "search_rank": 118,
+            "status": "Active",
+            "team": null,
+            "years_exp": 12
+        },
+        "536": {
+            "active": true,
+            "age": 33,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Antonio",
+            "full_name": "Antonio Brown",
+            "id": 536,
+            "last_name": "Brown",
+            "player_id": "536",
+            "position": "WR",
+            "search_first_name": "antonio",
+            "search_full_name": "antoniobrown",
+            "search_last_name": "brown",
+            "search_rank": 89,
+            "status": "Active",
+            "team": null,
+            "years_exp": 12
+        },
+        "2315": {
+            "active": true,
+            "age": 27,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Todd",
+            "full_name": "Todd Gurley",
+            "id": 2315,
+            "last_name": "Gurley",
+            "player_id": "2315",
+            "position": "RB",
+            "search_first_name": "todd",
+            "search_full_name": "toddgurley",
+            "search_last_name": "gurley",
+            "search_rank": 27,
+            "status": "Active",
+            "team": null,
+            "years_exp": 7
+        },
+        "5248": {
+            "active": true,
+            "age": 29,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Gus",
+            "full_name": "Gus Edwards",
+            "id": 5248,
+            "last_name": "Edwards",
+            "player_id": "5248",
+            "position": "RB",
+            "search_first_name": "gus",
+            "search_full_name": "gusedwards",
+            "search_last_name": "edwards",
+            "search_rank": 104,
+            "status": "Active",
+            "team": "LAC",
+            "years_exp": 7
+        },
+        "8924": {
+            "active": true,
+            "age": 28,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Thomas",
+            "full_name": "Thomas Odukoya",
+            "id": 8924,
+            "last_name": "Odukoya",
+            "player_id": "8924",
+            "position": "TE",
+            "search_first_name": "thomas",
+            "search_full_name": "thomasodukoya",
+            "search_last_name": "odukoya",
+            "search_rank": 104,
+            "status": "Active",
+            "team": "NE",
+            "years_exp": 4
+        },
+        "9499": {
+            "active": true,
+            "age": 26,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Bryce",
+            "full_name": "Bryce Ford-Wheaton",
+            "id": 9499,
+            "last_name": "Ford-Wheaton",
+            "player_id": "9499",
+            "position": "WR",
+            "search_first_name": "bryce",
+            "search_full_name": "brycefordwheaton",
+            "search_last_name": "fordwheaton",
+            "search_rank": 44,
+            "status": "Active",
+            "team": "NYG",
+            "years_exp": 3
+        },
+        "10213": {
+            "active": true,
+            "age": 25,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Tre",
+            "full_name": "Tre Tucker",
+            "id": 10213,
+            "last_name": "Tucker",
+            "player_id": "10213",
+            "position": "WR",
+            "search_first_name": "tre",
+            "search_full_name": "tretucker",
+            "search_last_name": "tucker",
+            "search_rank": 188,
+            "status": "Active",
+            "team": "LV",
+            "years_exp": 3
+        },
+        "10216": {
+            "active": true,
+            "age": 26,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Kenny",
+            "full_name": "Kenny McIntosh",
+            "id": 10216,
+            "last_name": "McIntosh",
+            "player_id": "10216",
+            "position": "RB",
+            "search_first_name": "kenny",
+            "search_full_name": "kennymcintosh",
+            "search_last_name": "mcintosh",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "SEA",
+            "years_exp": 3
+        },
+        "10219": {
+            "active": true,
+            "age": 26,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Chris",
+            "full_name": "Chris Rodriguez",
+            "id": 10219,
+            "last_name": "Rodriguez",
+            "player_id": "10219",
+            "position": "RB",
+            "search_first_name": "chris",
+            "search_full_name": "chrisrodriguez",
+            "search_last_name": "rodriguez",
+            "search_rank": 141,
+            "status": "Active",
+            "team": "JAX",
+            "years_exp": 3
+        },
+        "10222": {
+            "active": true,
+            "age": 26,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Jayden",
+            "full_name": "Jayden Reed",
+            "id": 10222,
+            "last_name": "Reed",
+            "player_id": "10222",
+            "position": "WR",
+            "search_first_name": "jayden",
+            "search_full_name": "jaydenreed",
+            "search_last_name": "reed",
+            "search_rank": 111,
+            "status": "Active",
+            "team": "GB",
+            "years_exp": 3
+        },
+        "10229": {
+            "active": true,
+            "age": 26,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Rashee",
+            "full_name": "Rashee Rice",
+            "id": 10229,
+            "last_name": "Rice",
+            "player_id": "10229",
+            "position": "WR",
+            "search_first_name": "rashee",
+            "search_full_name": "rasheerice",
+            "search_last_name": "rice",
+            "search_rank": 23,
+            "status": "Active",
+            "team": "KC",
+            "years_exp": 3
+        },
+        "10235": {
+            "active": true,
+            "age": 25,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Roschon",
+            "full_name": "Roschon Johnson",
+            "id": 10235,
+            "last_name": "Johnson",
+            "player_id": "10235",
+            "position": "RB",
+            "search_first_name": "roschon",
+            "search_full_name": "roschonjohnson",
+            "search_last_name": "johnson",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "CHI",
+            "years_exp": 3
+        },
+        "10859": {
+            "active": true,
+            "age": 25,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Sam",
+            "full_name": "Sam LaPorta",
+            "id": 10859,
+            "last_name": "LaPorta",
+            "player_id": "10859",
+            "position": "TE",
+            "search_first_name": "sam",
+            "search_full_name": "samlaporta",
+            "search_last_name": "laporta",
+            "search_rank": 76,
+            "status": "Active",
+            "team": "DET",
+            "years_exp": 3
+        },
+        "11256": {
+            "active": true,
+            "age": 26,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Tyson",
+            "full_name": "Tyson Bagent",
+            "id": 11256,
+            "last_name": "Bagent",
+            "player_id": "11256",
+            "position": "QB",
+            "search_first_name": "tyson",
+            "search_full_name": "tysonbagent",
+            "search_last_name": "bagent",
+            "search_rank": 412,
+            "status": "Active",
+            "team": "CHI",
+            "years_exp": 3
+        },
+        "11299": {
+            "active": true,
+            "age": 27,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Zavier",
+            "full_name": "Zavier Scott",
+            "id": 11299,
+            "last_name": "Scott",
+            "player_id": "11299",
+            "position": "RB",
+            "search_first_name": "zavier",
+            "search_full_name": "zavierscott",
+            "search_last_name": "scott",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "MIN",
+            "years_exp": 3
+        },
+        "11435": {
+            "active": true,
+            "age": 27,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Emanuel",
+            "full_name": "Emanuel Wilson",
+            "id": 11435,
+            "last_name": "Wilson",
+            "player_id": "11435",
+            "position": "RB",
+            "search_first_name": "emanuel",
+            "search_full_name": "emanuelwilson",
+            "search_last_name": "wilson",
+            "search_rank": 161,
+            "status": "Active",
+            "team": "SEA",
+            "years_exp": 3
+        },
+        "11565": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "J.J.",
+            "full_name": "J.J. McCarthy",
+            "id": 11565,
+            "last_name": "McCarthy",
+            "player_id": "11565",
+            "position": "QB",
+            "search_first_name": "jj",
+            "search_full_name": "jjmccarthy",
+            "search_last_name": "mccarthy",
+            "search_rank": 200,
+            "status": "Active",
+            "team": "MIN",
+            "years_exp": 2
+        },
+        "11571": {
+            "active": true,
+            "age": 24,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Isaiah",
+            "full_name": "Isaiah Davis",
+            "id": 11571,
+            "last_name": "Davis",
+            "player_id": "11571",
+            "position": "RB",
+            "search_first_name": "isaiah",
+            "search_full_name": "isaiahdavis",
+            "search_last_name": "davis",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "NYJ",
+            "years_exp": 2
+        },
+        "13268": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Elijah",
+            "full_name": "Elijah Sarratt",
+            "id": 13268,
+            "last_name": "Sarratt",
+            "player_id": "13268",
+            "position": "WR",
+            "search_first_name": "elijah",
+            "search_full_name": "elijahsarratt",
+            "search_last_name": "sarratt",
+            "search_rank": 201,
+            "status": "Active",
+            "team": "BAL",
+            "years_exp": 0
+        },
+        "13269": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Fernando",
+            "full_name": "Fernando Mendoza",
+            "id": 13269,
+            "last_name": "Mendoza",
+            "player_id": "13269",
+            "position": "QB",
+            "search_first_name": "fernando",
+            "search_full_name": "fernandomendoza",
+            "search_last_name": "mendoza",
+            "search_rank": 39,
+            "status": "Active",
+            "team": "LV",
+            "years_exp": 0
+        },
+        "13272": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Carson",
+            "full_name": "Carson Beck",
+            "id": 13272,
+            "last_name": "Beck",
+            "player_id": "13272",
+            "position": "QB",
+            "search_first_name": "carson",
+            "search_full_name": "carsonbeck",
+            "search_last_name": "beck",
+            "search_rank": 416,
+            "status": "Active",
+            "team": "ARI",
+            "years_exp": 0
+        },
+        "13274": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Germie",
+            "full_name": "Germie Bernard",
+            "id": 13274,
+            "last_name": "Bernard",
+            "player_id": "13274",
+            "position": "WR",
+            "search_first_name": "germie",
+            "search_full_name": "germiebernard",
+            "search_last_name": "bernard",
+            "search_rank": 194,
+            "status": "Active",
+            "team": "PIT",
+            "years_exp": 0
+        },
+        "13275": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Ty",
+            "full_name": "Ty Simpson",
+            "id": 13275,
+            "last_name": "Simpson",
+            "player_id": "13275",
+            "position": "QB",
+            "search_first_name": "ty",
+            "search_full_name": "tysimpson",
+            "search_last_name": "simpson",
+            "search_rank": 141,
+            "status": "Active",
+            "team": "LAR",
+            "years_exp": 0
+        },
+        "13276": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Omar",
+            "full_name": "Omar Cooper",
+            "id": 13276,
+            "last_name": "Cooper",
+            "player_id": "13276",
+            "position": "WR",
+            "search_first_name": "omar",
+            "search_full_name": "omarcooper",
+            "search_last_name": "cooper",
+            "search_rank": 146,
+            "status": "Active",
+            "team": "NYJ",
+            "years_exp": 0
+        },
+        "13278": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Max",
+            "full_name": "Max Klare",
+            "id": 13278,
+            "last_name": "Klare",
+            "player_id": "13278",
+            "position": "TE",
+            "search_first_name": "max",
+            "search_full_name": "maxklare",
+            "search_last_name": "klare",
+            "search_rank": 212,
+            "status": "Active",
+            "team": "LAR",
+            "years_exp": 0
+        },
+        "13279": {
+            "active": true,
+            "age": 21,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Carnell",
+            "full_name": "Carnell Tate",
+            "id": 13279,
+            "last_name": "Tate",
+            "player_id": "13279",
+            "position": "WR",
+            "search_first_name": "carnell",
+            "search_full_name": "carnelltate",
+            "search_last_name": "tate",
+            "search_rank": 61,
+            "status": "Active",
+            "team": "TEN",
+            "years_exp": 0
+        },
+        "13281": {
+            "active": true,
+            "age": 21,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Jordyn",
+            "full_name": "Jordyn Tyson",
+            "id": 13281,
+            "last_name": "Tyson",
+            "player_id": "13281",
+            "position": "WR",
+            "search_first_name": "jordyn",
+            "search_full_name": "jordyntyson",
+            "search_last_name": "tyson",
+            "search_rank": 69,
+            "status": "Active",
+            "team": "NO",
+            "years_exp": 0
+        },
+        "13285": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Malachi",
+            "full_name": "Malachi Fields",
+            "id": 13285,
+            "last_name": "Fields",
+            "player_id": "13285",
+            "position": "WR",
+            "search_first_name": "malachi",
+            "search_full_name": "malachifields",
+            "search_last_name": "fields",
+            "search_rank": 210,
+            "status": "Active",
+            "team": "NYG",
+            "years_exp": 0
+        },
+        "13286": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Jadarian",
+            "full_name": "Jadarian Price",
+            "id": 13286,
+            "last_name": "Price",
+            "player_id": "13286",
+            "position": "RB",
+            "search_first_name": "jadarian",
+            "search_full_name": "jadarianprice",
+            "search_last_name": "price",
+            "search_rank": 63,
+            "status": "Active",
+            "team": "SEA",
+            "years_exp": 0
+        },
+        "13287": {
+            "active": true,
+            "age": 21,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Jeremiyah",
+            "full_name": "Jeremiyah Love",
+            "id": 13287,
+            "last_name": "Love",
+            "player_id": "13287",
+            "position": "RB",
+            "search_first_name": "jeremiyah",
+            "search_full_name": "jeremiyahlove",
+            "search_last_name": "love",
+            "search_rank": 15,
+            "status": "Active",
+            "team": "ARI",
+            "years_exp": 0
+        },
+        "13288": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Nicholas",
+            "full_name": "Nicholas Singleton",
+            "id": 13288,
+            "last_name": "Singleton",
+            "player_id": "13288",
+            "position": "RB",
+            "search_first_name": "nicholas",
+            "search_full_name": "nicholassingleton",
+            "search_last_name": "singleton",
+            "search_rank": 167,
+            "status": "Active",
+            "team": "TEN",
+            "years_exp": 0
+        },
+        "13289": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Drew",
+            "full_name": "Drew Allar",
+            "id": 13289,
+            "last_name": "Allar",
+            "player_id": "13289",
+            "position": "QB",
+            "search_first_name": "drew",
+            "search_full_name": "drewallar",
+            "search_last_name": "allar",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "PIT",
+            "years_exp": 0
+        },
+        "13293": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Ja'Kobi",
+            "full_name": "Ja'Kobi Lane",
+            "id": 13293,
+            "last_name": "Lane",
+            "player_id": "13293",
+            "position": "WR",
+            "search_first_name": "jakobi",
+            "search_full_name": "jakobilane",
+            "search_last_name": "lane",
+            "search_rank": 182,
+            "status": "Active",
+            "team": "BAL",
+            "years_exp": 0
+        },
+        "13294": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Makai",
+            "full_name": "Makai Lemon",
+            "id": 13294,
+            "last_name": "Lemon",
+            "player_id": "13294",
+            "position": "WR",
+            "search_first_name": "makai",
+            "search_full_name": "makailemon",
+            "search_last_name": "lemon",
+            "search_rank": 77,
+            "status": "Active",
+            "team": "PHI",
+            "years_exp": 0
+        },
+        "13296": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Caleb",
+            "full_name": "Caleb Douglas",
+            "id": 13296,
+            "last_name": "Douglas",
+            "player_id": "13296",
+            "position": "WR",
+            "search_first_name": "caleb",
+            "search_full_name": "calebdouglas",
+            "search_last_name": "douglas",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "MIA",
+            "years_exp": 0
+        },
+        "13298": {
+            "active": true,
+            "age": 21,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "KC",
+            "full_name": "KC Concepcion",
+            "id": 13298,
+            "last_name": "Concepcion",
+            "player_id": "13298",
+            "position": "WR",
+            "search_first_name": "kc",
+            "search_full_name": "kcconcepcion",
+            "search_last_name": "concepcion",
+            "search_rank": 116,
+            "status": "Active",
+            "team": "CLE",
+            "years_exp": 0
+        },
+        "13301": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Antonio",
+            "full_name": "Antonio Williams",
+            "id": 13301,
+            "last_name": "Williams",
+            "player_id": "13301",
+            "position": "WR",
+            "search_first_name": "antonio",
+            "search_full_name": "antoniowilliams",
+            "search_last_name": "williams",
+            "search_rank": 156,
+            "status": "Active",
+            "team": "WAS",
+            "years_exp": 0
+        },
+        "13302": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Adam",
+            "full_name": "Adam Randall",
+            "id": 13302,
+            "last_name": "Randall",
+            "player_id": "13302",
+            "position": "RB",
+            "search_first_name": "adam",
+            "search_full_name": "adamrandall",
+            "search_last_name": "randall",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "BAL",
+            "years_exp": 0
+        },
+        "13303": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Cade",
+            "full_name": "Cade Klubnik",
+            "id": 13303,
+            "last_name": "Klubnik",
+            "player_id": "13303",
+            "position": "QB",
+            "search_first_name": "cade",
+            "search_full_name": "cadeklubnik",
+            "search_last_name": "klubnik",
+            "search_rank": 398,
+            "status": "Active",
+            "team": "NYJ",
+            "years_exp": 0
+        },
+        "13305": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Mike",
+            "full_name": "Mike Washington",
+            "id": 13305,
+            "last_name": "Washington",
+            "player_id": "13305",
+            "position": "RB",
+            "search_first_name": "mike",
+            "search_full_name": "mikewashington",
+            "search_last_name": "washington",
+            "search_rank": 139,
+            "status": "Active",
+            "team": "LV",
+            "years_exp": 0
+        },
+        "13306": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Taylen",
+            "full_name": "Taylen Green",
+            "id": 13306,
+            "last_name": "Green",
+            "player_id": "13306",
+            "position": "QB",
+            "search_first_name": "taylen",
+            "search_full_name": "taylengreen",
+            "search_last_name": "green",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "CLE",
+            "years_exp": 0
+        },
+        "13307": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Marlin",
+            "full_name": "Marlin Klein",
+            "id": 13307,
+            "last_name": "Klein",
+            "player_id": "13307",
+            "position": "TE",
+            "search_first_name": "marlin",
+            "search_full_name": "marlinklein",
+            "search_last_name": "klein",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "HOU",
+            "years_exp": 0
+        },
+        "13311": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Chris",
+            "full_name": "Chris Bell",
+            "id": 13311,
+            "last_name": "Bell",
+            "player_id": "13311",
+            "position": "WR",
+            "search_first_name": "chris",
+            "search_full_name": "chrisbell",
+            "search_last_name": "bell",
+            "search_rank": 203,
+            "status": "Active",
+            "team": "MIA",
+            "years_exp": 0
+        },
+        "13317": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Ted",
+            "full_name": "Ted Hurst",
+            "id": 13317,
+            "last_name": "Hurst",
+            "player_id": "13317",
+            "position": "WR",
+            "search_first_name": "ted",
+            "search_full_name": "tedhurst",
+            "search_last_name": "hurst",
+            "search_rank": 196,
+            "status": "Active",
+            "team": "TB",
+            "years_exp": 0
+        },
+        "13319": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Oscar",
+            "full_name": "Oscar Delp",
+            "id": 13319,
+            "last_name": "Delp",
+            "player_id": "13319",
+            "position": "TE",
+            "search_first_name": "oscar",
+            "search_full_name": "oscardelp",
+            "search_last_name": "delp",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "NO",
+            "years_exp": 0
+        },
+        "13320": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Zachariah",
+            "full_name": "Zachariah Branch",
+            "id": 13320,
+            "last_name": "Branch",
+            "player_id": "13320",
+            "position": "WR",
+            "search_first_name": "zachariah",
+            "search_full_name": "zachariahbranch",
+            "search_last_name": "branch",
+            "search_rank": 180,
+            "status": "Active",
+            "team": "ATL",
+            "years_exp": 0
+        },
+        "13330": {
+            "active": true,
+            "age": 21,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Kenyon",
+            "full_name": "Kenyon Sadiq",
+            "id": 13330,
+            "last_name": "Sadiq",
+            "player_id": "13330",
+            "position": "TE",
+            "search_first_name": "kenyon",
+            "search_full_name": "kenyonsadiq",
+            "search_last_name": "sadiq",
+            "search_rank": 109,
+            "status": "Active",
+            "team": "NYJ",
+            "years_exp": 0
+        },
+        "13333": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Deion",
+            "full_name": "Deion Burks",
+            "id": 13333,
+            "last_name": "Burks",
+            "player_id": "13333",
+            "position": "WR",
+            "search_first_name": "deion",
+            "search_full_name": "deionburks",
+            "search_last_name": "burks",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "IND",
+            "years_exp": 0
+        },
+        "13337": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Emmett",
+            "full_name": "Emmett Johnson",
+            "id": 13337,
+            "last_name": "Johnson",
+            "player_id": "13337",
+            "position": "RB",
+            "search_first_name": "emmett",
+            "search_full_name": "emmettjohnson",
+            "search_last_name": "johnson",
+            "search_rank": 113,
+            "status": "Active",
+            "team": "KC",
+            "years_exp": 0
+        },
+        "13338": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Kevin",
+            "full_name": "Kevin Coleman",
+            "id": 13338,
+            "last_name": "Coleman",
+            "player_id": "13338",
+            "position": "WR",
+            "search_first_name": "kevin",
+            "search_full_name": "kevincoleman",
+            "search_last_name": "coleman",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "MIA",
+            "years_exp": 0
+        },
+        "13345": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Jonah",
+            "full_name": "Jonah Coleman",
+            "id": 13345,
+            "last_name": "Coleman",
+            "player_id": "13345",
+            "position": "RB",
+            "search_first_name": "jonah",
+            "search_full_name": "jonahcoleman",
+            "search_last_name": "coleman",
+            "search_rank": 118,
+            "status": "Active",
+            "team": "DEN",
+            "years_exp": 0
+        },
+        "13346": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Denzel",
+            "full_name": "Denzel Boston",
+            "id": 13346,
+            "last_name": "Boston",
+            "player_id": "13346",
+            "position": "WR",
+            "search_first_name": "denzel",
+            "search_full_name": "denzelboston",
+            "search_last_name": "boston",
+            "search_rank": 144,
+            "status": "Active",
+            "team": "CLE",
+            "years_exp": 0
+        },
+        "13347": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Demond",
+            "full_name": "Demond Claiborne",
+            "id": 13347,
+            "last_name": "Claiborne",
+            "player_id": "13347",
+            "position": "RB",
+            "search_first_name": "demond",
+            "search_full_name": "demondclaiborne",
+            "search_last_name": "claiborne",
+            "search_rank": 176,
+            "status": "Active",
+            "team": "MIN",
+            "years_exp": 0
+        },
+        "13348": {
+            "active": true,
+            "age": 24,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "J'Mari",
+            "full_name": "J'Mari Taylor",
+            "id": 13348,
+            "last_name": "Taylor",
+            "player_id": "13348",
+            "position": "RB",
+            "search_first_name": "jmari",
+            "search_full_name": "jmaritaylor",
+            "search_last_name": "taylor",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "JAX",
+            "years_exp": 0
+        },
+        "13349": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Eli",
+            "full_name": "Eli Stowers",
+            "id": 13349,
+            "last_name": "Stowers",
+            "player_id": "13349",
+            "position": "TE",
+            "search_first_name": "eli",
+            "search_full_name": "elistowers",
+            "search_last_name": "stowers",
+            "search_rank": 140,
+            "status": "Active",
+            "team": "PHI",
+            "years_exp": 0
+        },
+        "13353": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Chris",
+            "full_name": "Chris Brazzell",
+            "id": 13353,
+            "last_name": "Brazzell",
+            "player_id": "13353",
+            "position": "WR",
+            "search_first_name": "chris",
+            "search_full_name": "chrisbrazzell",
+            "search_last_name": "brazzell",
+            "search_rank": 202,
+            "status": "Active",
+            "team": "CAR",
+            "years_exp": 0
+        },
+        "13380": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Brenen",
+            "full_name": "Brenen Thompson",
+            "id": 13380,
+            "last_name": "Thompson",
+            "player_id": "13380",
+            "position": "WR",
+            "search_first_name": "brenen",
+            "search_full_name": "brenenthompson",
+            "search_last_name": "thompson",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "LAC",
+            "years_exp": 0
+        },
+        "13400": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Justin",
+            "full_name": "Justin Joly",
+            "id": 13400,
+            "last_name": "Joly",
+            "player_id": "13400",
+            "position": "TE",
+            "search_first_name": "justin",
+            "search_full_name": "justinjoly",
+            "search_last_name": "joly",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "DEN",
+            "years_exp": 0
+        },
+        "13402": {
+            "active": true,
+            "age": 24,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Skyler",
+            "full_name": "Skyler Bell",
+            "id": 13402,
+            "last_name": "Bell",
+            "player_id": "13402",
+            "position": "WR",
+            "search_first_name": "skyler",
+            "search_full_name": "skylerbell",
+            "search_last_name": "bell",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "BUF",
+            "years_exp": 0
+        },
+        "13403": {
+            "active": true,
+            "age": null,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Jam",
+            "full_name": "Jam Miller",
+            "id": 13403,
+            "last_name": "Miller",
+            "player_id": "13403",
+            "position": "RB",
+            "search_first_name": "jam",
+            "search_full_name": "jammiller",
+            "search_last_name": "miller",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "NE",
+            "years_exp": 0
+        },
+        "13404": {
+            "active": true,
+            "age": 24,
+            "fantasy_positions": [
+                "QB"
+            ],
+            "first_name": "Garrett",
+            "full_name": "Garrett Nussmeier",
+            "id": 13404,
+            "last_name": "Nussmeier",
+            "player_id": "13404",
+            "position": "QB",
+            "search_first_name": "garrett",
+            "search_full_name": "garrettnussmeier",
+            "search_last_name": "nussmeier",
+            "search_rank": 329,
+            "status": "Active",
+            "team": "KC",
+            "years_exp": 0
+        },
+        "13405": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Kaytron",
+            "full_name": "Kaytron Allen",
+            "id": 13405,
+            "last_name": "Allen",
+            "player_id": "13405",
+            "position": "RB",
+            "search_first_name": "kaytron",
+            "search_full_name": "kaytronallen",
+            "search_last_name": "allen",
+            "search_rank": 157,
+            "status": "Active",
+            "team": "WAS",
+            "years_exp": 0
+        },
+        "13414": {
+            "active": true,
+            "age": 24,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Kaelon",
+            "full_name": "Kaelon Black",
+            "id": 13414,
+            "last_name": "Black",
+            "player_id": "13414",
+            "position": "RB",
+            "search_first_name": "kaelon",
+            "search_full_name": "kaelonblack",
+            "search_last_name": "black",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "SF",
+            "years_exp": 0
+        },
+        "13417": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "De'Zhaun",
+            "full_name": "De'Zhaun Stribling",
+            "id": 13417,
+            "last_name": "Stribling",
+            "player_id": "13417",
+            "position": "WR",
+            "search_first_name": "dezhaun",
+            "search_full_name": "dezhaunstribling",
+            "search_last_name": "stribling",
+            "search_rank": 202,
+            "status": "Active",
+            "team": "SF",
+            "years_exp": 0
+        },
+        "13420": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "WR"
+            ],
+            "first_name": "Bryce",
+            "full_name": "Bryce Lance",
+            "id": 13420,
+            "last_name": "Lance",
+            "player_id": "13420",
+            "position": "WR",
+            "search_first_name": "bryce",
+            "search_full_name": "brycelance",
+            "search_last_name": "lance",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "NO",
+            "years_exp": 0
+        },
+        "13421": {
+            "active": true,
+            "age": 22,
+            "fantasy_positions": [
+                "TE"
+            ],
+            "first_name": "Eli",
+            "full_name": "Eli Raridon",
+            "id": 13421,
+            "last_name": "Raridon",
+            "player_id": "13421",
+            "position": "TE",
+            "search_first_name": "eli",
+            "search_full_name": "eliraridon",
+            "search_last_name": "raridon",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "NE",
+            "years_exp": 0
+        },
+        "13423": {
+            "active": true,
+            "age": 23,
+            "fantasy_positions": [
+                "RB"
+            ],
+            "first_name": "Eli",
+            "full_name": "Eli Heidenreich",
+            "id": 13423,
+            "last_name": "Heidenreich",
+            "player_id": "13423",
+            "position": "RB",
+            "search_first_name": "eli",
+            "search_full_name": "eliheidenreich",
+            "search_last_name": "heidenreich",
+            "search_rank": 999,
+            "status": "Active",
+            "team": "PIT",
+            "years_exp": 0
+        }
+    },
+    "builtDraft": [
+        {
+            "round": 1,
+            "picks": [
+                {
+                    "user_id": "989213899293569024",
+                    "roster_id": 5,
+                    "is_traded": false,
+                    "owner_id": 5,
+                    "pick_round": 1,
+                    "pick_number": 1,
+                    "board_spot": 1,
+                    "player_id": null
+                },
+                {
+                    "user_id": "999040645685649408",
+                    "roster_id": 8,
+                    "is_traded": false,
+                    "owner_id": 8,
+                    "pick_round": 1,
+                    "pick_number": 2,
+                    "board_spot": 2,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521035584588267520",
+                    "roster_id": 1,
+                    "is_traded": false,
+                    "owner_id": 1,
+                    "pick_round": 1,
+                    "pick_number": 3,
+                    "board_spot": 3,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467766220007927808",
+                    "roster_id": 9,
+                    "is_traded": true,
+                    "owner_id": 6,
+                    "pick_round": 1,
+                    "pick_number": 4,
+                    "board_spot": 4,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521424042611961856",
+                    "roster_id": 2,
+                    "is_traded": false,
+                    "owner_id": 2,
+                    "pick_round": 1,
+                    "pick_number": 5,
+                    "board_spot": 5,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521485413219885056",
+                    "roster_id": 4,
+                    "is_traded": false,
+                    "owner_id": 4,
+                    "pick_round": 1,
+                    "pick_number": 6,
+                    "board_spot": 6,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325371992242946048",
+                    "roster_id": 11,
+                    "is_traded": true,
+                    "owner_id": 4,
+                    "pick_round": 1,
+                    "pick_number": 7,
+                    "board_spot": 7,
+                    "player_id": null
+                },
+                {
+                    "user_id": "665051007910236160",
+                    "roster_id": 6,
+                    "is_traded": true,
+                    "owner_id": 4,
+                    "pick_round": 1,
+                    "pick_number": 8,
+                    "board_spot": 8,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467132282604351488",
+                    "roster_id": 3,
+                    "is_traded": false,
+                    "owner_id": 3,
+                    "pick_round": 1,
+                    "pick_number": 9,
+                    "board_spot": 9,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325380343328686080",
+                    "roster_id": 10,
+                    "is_traded": true,
+                    "owner_id": 7,
+                    "pick_round": 1,
+                    "pick_number": 10,
+                    "board_spot": 10,
+                    "player_id": null
+                },
+                {
+                    "user_id": "560984104439771136",
+                    "roster_id": 12,
+                    "is_traded": true,
+                    "owner_id": 5,
+                    "pick_round": 1,
+                    "pick_number": 11,
+                    "board_spot": 11,
+                    "player_id": null
+                },
+                {
+                    "user_id": "464153930528452608",
+                    "roster_id": 7,
+                    "is_traded": true,
+                    "owner_id": 1,
+                    "pick_round": 1,
+                    "pick_number": 12,
+                    "board_spot": 12,
+                    "player_id": null
+                }
+            ]
+        },
+        {
+            "round": 2,
+            "picks": [
+                {
+                    "user_id": "989213899293569024",
+                    "roster_id": 5,
+                    "is_traded": false,
+                    "owner_id": 5,
+                    "pick_round": 2,
+                    "pick_number": 1,
+                    "board_spot": 1,
+                    "player_id": null
+                },
+                {
+                    "user_id": "999040645685649408",
+                    "roster_id": 8,
+                    "is_traded": false,
+                    "owner_id": 8,
+                    "pick_round": 2,
+                    "pick_number": 2,
+                    "board_spot": 2,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521035584588267520",
+                    "roster_id": 1,
+                    "is_traded": false,
+                    "owner_id": 1,
+                    "pick_round": 2,
+                    "pick_number": 3,
+                    "board_spot": 3,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467766220007927808",
+                    "roster_id": 9,
+                    "is_traded": false,
+                    "owner_id": 9,
+                    "pick_round": 2,
+                    "pick_number": 4,
+                    "board_spot": 4,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521424042611961856",
+                    "roster_id": 2,
+                    "is_traded": true,
+                    "owner_id": 6,
+                    "pick_round": 2,
+                    "pick_number": 5,
+                    "board_spot": 5,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521485413219885056",
+                    "roster_id": 4,
+                    "is_traded": true,
+                    "owner_id": 6,
+                    "pick_round": 2,
+                    "pick_number": 6,
+                    "board_spot": 6,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325371992242946048",
+                    "roster_id": 11,
+                    "is_traded": true,
+                    "owner_id": 7,
+                    "pick_round": 2,
+                    "pick_number": 7,
+                    "board_spot": 7,
+                    "player_id": null
+                },
+                {
+                    "user_id": "665051007910236160",
+                    "roster_id": 6,
+                    "is_traded": true,
+                    "owner_id": 9,
+                    "pick_round": 2,
+                    "pick_number": 8,
+                    "board_spot": 8,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467132282604351488",
+                    "roster_id": 3,
+                    "is_traded": true,
+                    "owner_id": 9,
+                    "pick_round": 2,
+                    "pick_number": 9,
+                    "board_spot": 9,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325380343328686080",
+                    "roster_id": 10,
+                    "is_traded": true,
+                    "owner_id": 2,
+                    "pick_round": 2,
+                    "pick_number": 10,
+                    "board_spot": 10,
+                    "player_id": null
+                },
+                {
+                    "user_id": "560984104439771136",
+                    "roster_id": 12,
+                    "is_traded": true,
+                    "owner_id": 6,
+                    "pick_round": 2,
+                    "pick_number": 11,
+                    "board_spot": 11,
+                    "player_id": null
+                },
+                {
+                    "user_id": "464153930528452608",
+                    "roster_id": 7,
+                    "is_traded": true,
+                    "owner_id": 1,
+                    "pick_round": 2,
+                    "pick_number": 12,
+                    "board_spot": 12,
+                    "player_id": null
+                }
+            ]
+        },
+        {
+            "round": 3,
+            "picks": [
+                {
+                    "user_id": "989213899293569024",
+                    "roster_id": 5,
+                    "is_traded": true,
+                    "owner_id": 7,
+                    "pick_round": 3,
+                    "pick_number": 1,
+                    "board_spot": 1,
+                    "player_id": null
+                },
+                {
+                    "user_id": "999040645685649408",
+                    "roster_id": 8,
+                    "is_traded": false,
+                    "owner_id": 8,
+                    "pick_round": 3,
+                    "pick_number": 2,
+                    "board_spot": 2,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521035584588267520",
+                    "roster_id": 1,
+                    "is_traded": false,
+                    "owner_id": 1,
+                    "pick_round": 3,
+                    "pick_number": 3,
+                    "board_spot": 3,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467766220007927808",
+                    "roster_id": 9,
+                    "is_traded": false,
+                    "owner_id": 9,
+                    "pick_round": 3,
+                    "pick_number": 4,
+                    "board_spot": 4,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521424042611961856",
+                    "roster_id": 2,
+                    "is_traded": false,
+                    "owner_id": 2,
+                    "pick_round": 3,
+                    "pick_number": 5,
+                    "board_spot": 5,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521485413219885056",
+                    "roster_id": 4,
+                    "is_traded": false,
+                    "owner_id": 4,
+                    "pick_round": 3,
+                    "pick_number": 6,
+                    "board_spot": 6,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325371992242946048",
+                    "roster_id": 11,
+                    "is_traded": true,
+                    "owner_id": 5,
+                    "pick_round": 3,
+                    "pick_number": 7,
+                    "board_spot": 7,
+                    "player_id": null
+                },
+                {
+                    "user_id": "665051007910236160",
+                    "roster_id": 6,
+                    "is_traded": false,
+                    "owner_id": 6,
+                    "pick_round": 3,
+                    "pick_number": 8,
+                    "board_spot": 8,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467132282604351488",
+                    "roster_id": 3,
+                    "is_traded": false,
+                    "owner_id": 3,
+                    "pick_round": 3,
+                    "pick_number": 9,
+                    "board_spot": 9,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325380343328686080",
+                    "roster_id": 10,
+                    "is_traded": false,
+                    "owner_id": 10,
+                    "pick_round": 3,
+                    "pick_number": 10,
+                    "board_spot": 10,
+                    "player_id": null
+                },
+                {
+                    "user_id": "560984104439771136",
+                    "roster_id": 12,
+                    "is_traded": true,
+                    "owner_id": 5,
+                    "pick_round": 3,
+                    "pick_number": 11,
+                    "board_spot": 11,
+                    "player_id": null
+                },
+                {
+                    "user_id": "464153930528452608",
+                    "roster_id": 7,
+                    "is_traded": true,
+                    "owner_id": 4,
+                    "pick_round": 3,
+                    "pick_number": 12,
+                    "board_spot": 12,
+                    "player_id": null
+                }
+            ]
+        },
+        {
+            "round": 4,
+            "picks": [
+                {
+                    "user_id": "989213899293569024",
+                    "roster_id": 5,
+                    "is_traded": false,
+                    "owner_id": 5,
+                    "pick_round": 4,
+                    "pick_number": 1,
+                    "board_spot": 1,
+                    "player_id": null
+                },
+                {
+                    "user_id": "999040645685649408",
+                    "roster_id": 8,
+                    "is_traded": false,
+                    "owner_id": 8,
+                    "pick_round": 4,
+                    "pick_number": 2,
+                    "board_spot": 2,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521035584588267520",
+                    "roster_id": 1,
+                    "is_traded": false,
+                    "owner_id": 1,
+                    "pick_round": 4,
+                    "pick_number": 3,
+                    "board_spot": 3,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467766220007927808",
+                    "roster_id": 9,
+                    "is_traded": true,
+                    "owner_id": 5,
+                    "pick_round": 4,
+                    "pick_number": 4,
+                    "board_spot": 4,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521424042611961856",
+                    "roster_id": 2,
+                    "is_traded": false,
+                    "owner_id": 2,
+                    "pick_round": 4,
+                    "pick_number": 5,
+                    "board_spot": 5,
+                    "player_id": null
+                },
+                {
+                    "user_id": "521485413219885056",
+                    "roster_id": 4,
+                    "is_traded": true,
+                    "owner_id": 12,
+                    "pick_round": 4,
+                    "pick_number": 6,
+                    "board_spot": 6,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325371992242946048",
+                    "roster_id": 11,
+                    "is_traded": false,
+                    "owner_id": 11,
+                    "pick_round": 4,
+                    "pick_number": 7,
+                    "board_spot": 7,
+                    "player_id": null
+                },
+                {
+                    "user_id": "665051007910236160",
+                    "roster_id": 6,
+                    "is_traded": false,
+                    "owner_id": 6,
+                    "pick_round": 4,
+                    "pick_number": 8,
+                    "board_spot": 8,
+                    "player_id": null
+                },
+                {
+                    "user_id": "467132282604351488",
+                    "roster_id": 3,
+                    "is_traded": true,
+                    "owner_id": 9,
+                    "pick_round": 4,
+                    "pick_number": 9,
+                    "board_spot": 9,
+                    "player_id": null
+                },
+                {
+                    "user_id": "325380343328686080",
+                    "roster_id": 10,
+                    "is_traded": false,
+                    "owner_id": 10,
+                    "pick_round": 4,
+                    "pick_number": 10,
+                    "board_spot": 10,
+                    "player_id": null
+                },
+                {
+                    "user_id": "560984104439771136",
+                    "roster_id": 12,
+                    "is_traded": false,
+                    "owner_id": 12,
+                    "pick_round": 4,
+                    "pick_number": 11,
+                    "board_spot": 11,
+                    "player_id": null
+                },
+                {
+                    "user_id": "464153930528452608",
+                    "roster_id": 7,
+                    "is_traded": false,
+                    "owner_id": 7,
+                    "pick_round": 4,
+                    "pick_number": 12,
+                    "board_spot": 12,
+                    "player_id": null
+                }
+            ]
+        }
+    ],
+    "draftType": "linear",
+    "livePicks": [
+        {
+            "draft_slot": 1,
+            "round": 1,
+            "player_id": "13287",
+            "pick_no": 1,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 2,
+            "round": 1,
+            "player_id": "13269",
+            "pick_no": 2,
+            "roster_id": 8
+        },
+        {
+            "draft_slot": 3,
+            "round": 1,
+            "player_id": "13279",
+            "pick_no": 3,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 4,
+            "round": 1,
+            "player_id": "13281",
+            "pick_no": 4,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 5,
+            "round": 1,
+            "player_id": "13294",
+            "pick_no": 5,
+            "roster_id": 2
+        },
+        {
+            "draft_slot": 6,
+            "round": 1,
+            "player_id": "13286",
+            "pick_no": 6,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 7,
+            "round": 1,
+            "player_id": "13298",
+            "pick_no": 7,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 8,
+            "round": 1,
+            "player_id": "13275",
+            "pick_no": 8,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 9,
+            "round": 1,
+            "player_id": "13345",
+            "pick_no": 9,
+            "roster_id": 3
+        },
+        {
+            "draft_slot": 10,
+            "round": 1,
+            "player_id": "13330",
+            "pick_no": 10,
+            "roster_id": 7
+        },
+        {
+            "draft_slot": 11,
+            "round": 1,
+            "player_id": "13276",
+            "pick_no": 11,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 12,
+            "round": 1,
+            "player_id": "13346",
+            "pick_no": 12,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 1,
+            "round": 2,
+            "player_id": "13349",
+            "pick_no": 13,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 2,
+            "round": 2,
+            "player_id": "13311",
+            "pick_no": 14,
+            "roster_id": 8
+        },
+        {
+            "draft_slot": 3,
+            "round": 2,
+            "player_id": "13288",
+            "pick_no": 15,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 4,
+            "round": 2,
+            "player_id": "13337",
+            "pick_no": 16,
+            "roster_id": 9
+        },
+        {
+            "draft_slot": 5,
+            "round": 2,
+            "player_id": "13320",
+            "pick_no": 17,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 6,
+            "round": 2,
+            "player_id": "13301",
+            "pick_no": 18,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 7,
+            "round": 2,
+            "player_id": "13285",
+            "pick_no": 19,
+            "roster_id": 7
+        },
+        {
+            "draft_slot": 8,
+            "round": 2,
+            "player_id": "13268",
+            "pick_no": 20,
+            "roster_id": 9
+        },
+        {
+            "draft_slot": 9,
+            "round": 2,
+            "player_id": "13353",
+            "pick_no": 21,
+            "roster_id": 9
+        },
+        {
+            "draft_slot": 10,
+            "round": 2,
+            "player_id": "13272",
+            "pick_no": 22,
+            "roster_id": 2
+        },
+        {
+            "draft_slot": 11,
+            "round": 2,
+            "player_id": "13417",
+            "pick_no": 23,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 12,
+            "round": 2,
+            "player_id": "13274",
+            "pick_no": 24,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 1,
+            "round": 3,
+            "player_id": "13402",
+            "pick_no": 25,
+            "roster_id": 7
+        },
+        {
+            "draft_slot": 2,
+            "round": 3,
+            "player_id": "13305",
+            "pick_no": 26,
+            "roster_id": 8
+        },
+        {
+            "draft_slot": 3,
+            "round": 3,
+            "player_id": "13405",
+            "pick_no": 27,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 4,
+            "round": 3,
+            "player_id": "13293",
+            "pick_no": 28,
+            "roster_id": 9
+        },
+        {
+            "draft_slot": 5,
+            "round": 3,
+            "player_id": "13317",
+            "pick_no": 29,
+            "roster_id": 2
+        },
+        {
+            "draft_slot": 6,
+            "round": 3,
+            "player_id": "13302",
+            "pick_no": 30,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 7,
+            "round": 3,
+            "player_id": "13347",
+            "pick_no": 31,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 8,
+            "round": 3,
+            "player_id": "13278",
+            "pick_no": 32,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 9,
+            "round": 3,
+            "player_id": "13380",
+            "pick_no": 33,
+            "roster_id": 3
+        },
+        {
+            "draft_slot": 10,
+            "round": 3,
+            "player_id": "13414",
+            "pick_no": 34,
+            "roster_id": 10
+        },
+        {
+            "draft_slot": 11,
+            "round": 3,
+            "player_id": "13289",
+            "pick_no": 35,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 12,
+            "round": 3,
+            "player_id": "13420",
+            "pick_no": 36,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 1,
+            "round": 4,
+            "player_id": "13296",
+            "pick_no": 37,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 2,
+            "round": 4,
+            "player_id": "13404",
+            "pick_no": 38,
+            "roster_id": 8
+        },
+        {
+            "draft_slot": 3,
+            "round": 4,
+            "player_id": "13421",
+            "pick_no": 39,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 4,
+            "round": 4,
+            "player_id": "13306",
+            "pick_no": 40,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 5,
+            "round": 4,
+            "player_id": "13319",
+            "pick_no": 41,
+            "roster_id": 2
+        },
+        {
+            "draft_slot": 6,
+            "round": 4,
+            "player_id": "13400",
+            "pick_no": 42,
+            "roster_id": 12
+        },
+        {
+            "draft_slot": 7,
+            "round": 4,
+            "player_id": "13338",
+            "pick_no": 43,
+            "roster_id": 11
+        },
+        {
+            "draft_slot": 8,
+            "round": 4,
+            "player_id": "13333",
+            "pick_no": 44,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 9,
+            "round": 4,
+            "player_id": "13303",
+            "pick_no": 45,
+            "roster_id": 9
+        },
+        {
+            "draft_slot": 10,
+            "round": 4,
+            "player_id": "13423",
+            "pick_no": 46,
+            "roster_id": 10
+        },
+        {
+            "draft_slot": 11,
+            "round": 4,
+            "player_id": "13348",
+            "pick_no": 47,
+            "roster_id": 12
+        },
+        {
+            "draft_slot": 12,
+            "round": 4,
+            "player_id": "13403",
+            "pick_no": 48,
+            "roster_id": 7
+        }
+    ],
+    "livePicksPartial": [
+        {
+            "draft_slot": 1,
+            "round": 1,
+            "player_id": "13287",
+            "pick_no": 1,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 2,
+            "round": 1,
+            "player_id": "13269",
+            "pick_no": 2,
+            "roster_id": 8
+        },
+        {
+            "draft_slot": 3,
+            "round": 1,
+            "player_id": "13279",
+            "pick_no": 3,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 4,
+            "round": 1,
+            "player_id": "13281",
+            "pick_no": 4,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 5,
+            "round": 1,
+            "player_id": "13294",
+            "pick_no": 5,
+            "roster_id": 2
+        },
+        {
+            "draft_slot": 6,
+            "round": 1,
+            "player_id": "13286",
+            "pick_no": 6,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 7,
+            "round": 1,
+            "player_id": "13298",
+            "pick_no": 7,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 8,
+            "round": 1,
+            "player_id": "13275",
+            "pick_no": 8,
+            "roster_id": 4
+        },
+        {
+            "draft_slot": 9,
+            "round": 1,
+            "player_id": "13345",
+            "pick_no": 9,
+            "roster_id": 3
+        },
+        {
+            "draft_slot": 10,
+            "round": 1,
+            "player_id": "13330",
+            "pick_no": 10,
+            "roster_id": 7
+        },
+        {
+            "draft_slot": 11,
+            "round": 1,
+            "player_id": "13276",
+            "pick_no": 11,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 12,
+            "round": 1,
+            "player_id": "13346",
+            "pick_no": 12,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 1,
+            "round": 2,
+            "player_id": "13349",
+            "pick_no": 13,
+            "roster_id": 5
+        },
+        {
+            "draft_slot": 2,
+            "round": 2,
+            "player_id": "13311",
+            "pick_no": 14,
+            "roster_id": 8
+        },
+        {
+            "draft_slot": 3,
+            "round": 2,
+            "player_id": "13288",
+            "pick_no": 15,
+            "roster_id": 1
+        },
+        {
+            "draft_slot": 4,
+            "round": 2,
+            "player_id": "13337",
+            "pick_no": 16,
+            "roster_id": 9
+        },
+        {
+            "draft_slot": 5,
+            "round": 2,
+            "player_id": "13320",
+            "pick_no": 17,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 6,
+            "round": 2,
+            "player_id": "13301",
+            "pick_no": 18,
+            "roster_id": 6
+        },
+        {
+            "draft_slot": 7,
+            "round": 2,
+            "player_id": "13285",
+            "pick_no": 19,
+            "roster_id": 7
+        },
+        {
+            "draft_slot": 8,
+            "round": 2,
+            "player_id": "13268",
+            "pick_no": 20,
+            "roster_id": 9
+        }
+    ],
+    "tradedPicks": [
+        {
+            "round": 2,
+            "roster_id": 2,
+            "owner_id": 6,
+            "previous_owner_id": 9
+        },
+        {
+            "round": 2,
+            "roster_id": 3,
+            "owner_id": 9,
+            "previous_owner_id": 3
+        },
+        {
+            "round": 4,
+            "roster_id": 3,
+            "owner_id": 9,
+            "previous_owner_id": 3
+        },
+        {
+            "round": 2,
+            "roster_id": 4,
+            "owner_id": 6,
+            "previous_owner_id": 4
+        },
+        {
+            "round": 4,
+            "roster_id": 4,
+            "owner_id": 12,
+            "previous_owner_id": 4
+        },
+        {
+            "round": 3,
+            "roster_id": 5,
+            "owner_id": 7,
+            "previous_owner_id": 5
+        },
+        {
+            "round": 1,
+            "roster_id": 6,
+            "owner_id": 4,
+            "previous_owner_id": 6
+        },
+        {
+            "round": 2,
+            "roster_id": 6,
+            "owner_id": 9,
+            "previous_owner_id": 6
+        },
+        {
+            "round": 1,
+            "roster_id": 7,
+            "owner_id": 1,
+            "previous_owner_id": 7
+        },
+        {
+            "round": 2,
+            "roster_id": 7,
+            "owner_id": 1,
+            "previous_owner_id": 7
+        },
+        {
+            "round": 3,
+            "roster_id": 7,
+            "owner_id": 4,
+            "previous_owner_id": 7
+        },
+        {
+            "round": 1,
+            "roster_id": 9,
+            "owner_id": 6,
+            "previous_owner_id": 9
+        },
+        {
+            "round": 4,
+            "roster_id": 9,
+            "owner_id": 5,
+            "previous_owner_id": 7
+        },
+        {
+            "round": 1,
+            "roster_id": 10,
+            "owner_id": 7,
+            "previous_owner_id": 10
+        },
+        {
+            "round": 2,
+            "roster_id": 10,
+            "owner_id": 2,
+            "previous_owner_id": 10
+        },
+        {
+            "round": 1,
+            "roster_id": 11,
+            "owner_id": 4,
+            "previous_owner_id": 1
+        },
+        {
+            "round": 2,
+            "roster_id": 11,
+            "owner_id": 7,
+            "previous_owner_id": 11
+        },
+        {
+            "round": 3,
+            "roster_id": 11,
+            "owner_id": 5,
+            "previous_owner_id": 7
+        },
+        {
+            "round": 1,
+            "roster_id": 12,
+            "owner_id": 5,
+            "previous_owner_id": 12
+        },
+        {
+            "round": 2,
+            "roster_id": 12,
+            "owner_id": 6,
+            "previous_owner_id": 12
+        },
+        {
+            "round": 3,
+            "roster_id": 12,
+            "owner_id": 5,
+            "previous_owner_id": 12
+        }
+    ]
+}
