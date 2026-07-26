@@ -65,7 +65,6 @@ describe('addPlayerToRoster', () => {
 
         expect(result.rosterPositions).toEqual(['QB', '1001', 'WR', 'FLX', 'BN']);
         expect(result.playerInfo['1001'].roster_text).toEqual('RB');
-        expect(result.playerInfo['1001'].in_lineup).toBe(true);
         expect(result.playerInfo['1001'].fantasy_positions).toEqual(['RB', 'FLX', 'SFLX']);
     });
 
@@ -86,7 +85,7 @@ describe('addPlayerToRoster', () => {
         const result = addPlayerToRoster({ player, rosterPositions, playerInfo });
 
         expect(result.rosterPositions).toEqual(rosterPositions);
-        expect(result.playerInfo['1001'].in_lineup).toBe(true);
+        expect(result.playerInfo['1001'].roster_text).toBeUndefined();
     });
 
     it('does not mutate its inputs', () => {
@@ -123,20 +122,23 @@ describe('addPlayerToRoster', () => {
 });
 
 describe('removePlayerFromLineup', () => {
-    it('restores the roster slot to the remembered roster_text and clears in_lineup', () => {
+    it('restores the roster slot to the remembered roster_text, so the player no longer occupies a lineup slot', () => {
         const playerInfo = {
-            1001: { ...makePlayer(), roster_text: 'RB', in_lineup: true },
+            1001: { ...makePlayer(), roster_text: 'RB' },
         };
         const rosterPositions = ['QB', '1001', 'WR', 'FLX', 'BN'];
         const result = removePlayerFromLineup({ id: '1001', i: 1, rosterPositions, playerInfo });
 
         expect(result.rosterPositions).toEqual(['QB', 'RB', 'WR', 'FLX', 'BN']);
-        expect(result.playerInfo['1001'].in_lineup).toBe(false);
+        // Lineup membership is derived (see rosterInfo.test.js's buildLineupSet
+        // coverage), not tracked on the player: the player id simply no longer
+        // appears among the roster positions.
+        expect(result.rosterPositions).not.toContain('1001');
     });
 
     it('does not mutate its inputs', () => {
         const playerInfo = {
-            1001: { ...makePlayer(), roster_text: 'RB', in_lineup: true },
+            1001: { ...makePlayer(), roster_text: 'RB' },
         };
         const rosterPositions = ['QB', '1001', 'WR', 'FLX', 'BN'];
         const clonedRosterPositions = structuredClone(rosterPositions);

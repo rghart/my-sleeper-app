@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import Button from './Button';
+import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
 const PlayerInfoItem = ({
     player,
     playerInfo,
+    rosterInfo,
+    lineupSet,
     addToRoster,
     searchData,
     updatePlayerId,
@@ -13,6 +16,9 @@ const PlayerInfoItem = ({
 }) => {
     const [editingPlayer, setEditingPlayer] = useState(false);
     const [searchValue, setSearchValue] = useState('');
+    const taken = isTaken(rosterInfo, player.player_id);
+    const rosteredByName = rosteredBy(rosterInfo, player.player_id);
+    const inLineup = isInLineup(lineupSet, player.player_id);
 
     const updatePlayerInfo = (newPlayerId) => {
         const newSearchData = { ...searchData };
@@ -39,7 +45,7 @@ const PlayerInfoItem = ({
             key={player.player_id}
             className={`single-player-item ${
                 Number(searchData.match_results[0][1]) <= 0 ? player.position : 'search-alert'
-            } ${player.is_taken ? '' : `${player.position}-available`}`}
+            } ${taken ? '' : `${player.position}-available`}`}
         >
             <div className="player-name" style={{ gridColumnStart: 1, gridColumnEnd: 4 }}>
                 {editingPlayer && (
@@ -125,7 +131,7 @@ const PlayerInfoItem = ({
                         <b>Team:</b>
                     </p>
                     <p className="team-name" style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                        {player.rostered_by ? player.rostered_by : 'Free Agent'}
+                        {rosteredByName ? rosteredByName : 'Free Agent'}
                     </p>
                 </div>
             </div>
@@ -178,10 +184,10 @@ const PlayerInfoItem = ({
                 ></div>
             </div>
             <div className="player-add-div">
-                {(player.rostered_by && player.rostered_by === myDisplayName) || !player.is_taken ? (
+                {(rosteredByName && rosteredByName === myDisplayName) || !taken ? (
                     <Button
-                        text={`${player.in_lineup ? 'Added' : 'Add'}`}
-                        isDisabled={player.in_lineup}
+                        text={`${inLineup ? 'Added' : 'Add'}`}
+                        isDisabled={inLineup}
                         btnStyle="player-add-button"
                         onClick={() => addToRoster(player)}
                     />

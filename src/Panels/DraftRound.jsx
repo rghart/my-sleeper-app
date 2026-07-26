@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import Button from '../Components/Button';
 import { applyManualPick } from '../lib/liveDraft.js';
+import { isTaken } from '../lib/rosterInfo.js';
 
-const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPlayersIdsList, onPickChange }) => {
+const DraftRound = ({ round, playerInfo, rosterInfo, rosterData, rankingPlayersIdsList, onPickChange }) => {
     const [showRound, setShowRound] = useState(true);
     const [showPickSelection, setShowPickSelection] = useState(false);
     const [currentManualPick, setCurrentManualPick] = useState();
@@ -14,16 +15,9 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
     };
 
     const updatePickSelection = async (playerID) => {
-        const { round: updatedRound, playerInfo: newPlayerInfo } = applyManualPick({
-            round,
-            playerInfo,
-            rosterData,
-            currentManualPick,
-            playerID,
-        });
+        const updatedRound = applyManualPick({ round, currentManualPick, playerID });
         onPickChange(updatedRound);
         setCurrentManualPick(null);
-        updatePlayerInfo('playerInfo', newPlayerInfo);
         setShowPickSelection(!showPickSelection);
         setSearchValue('');
     };
@@ -132,7 +126,7 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
                         )}
                         {searchValue.length < 2 &&
                             rankingPlayersIdsList
-                                .filter((result) => !playerInfo[result.match_results[0][0]].is_taken)
+                                .filter((result) => !isTaken(rosterInfo, result.match_results[0][0]))
                                 .map((data, i) => (
                                     <p
                                         className={`clickable-item draft-pick-rows ${

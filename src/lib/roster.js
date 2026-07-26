@@ -43,7 +43,6 @@ export function addPlayerToRoster({ player, rosterPositions, playerInfo }) {
         ...player,
         fantasy_positions: eligiblePositions,
         roster_text: rosterText,
-        in_lineup: true,
     };
 
     return {
@@ -58,8 +57,10 @@ export function addPlayerToRoster({ player, rosterPositions, playerInfo }) {
 
 /**
  * Pure version of `App.removeFromLineup`. Restores the roster slot at index
- * `i` to the player's remembered `roster_text`, and marks the player as no
- * longer in the lineup. Does not mutate any of its inputs.
+ * `i` to the player's remembered `roster_text`. Whether the player is still
+ * "in the lineup" is derived from `rosterPositions` (see `buildLineupSet` in
+ * `rosterInfo.js`), not tracked on the player object, so this only needs to
+ * update `rosterPositions`. Does not mutate any of its inputs.
  */
 export function removePlayerFromLineup({ id, i, rosterPositions, playerInfo }) {
     const newRosterPositions = [...rosterPositions];
@@ -67,12 +68,6 @@ export function removePlayerFromLineup({ id, i, rosterPositions, playerInfo }) {
 
     return {
         rosterPositions: newRosterPositions,
-        playerInfo: {
-            ...playerInfo,
-            [id]: {
-                ...playerInfo[id],
-                in_lineup: false,
-            },
-        },
+        playerInfo,
     };
 }

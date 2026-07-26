@@ -5,10 +5,9 @@ import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
-const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInfo, rankingPlayersIdsList }) => {
+const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList, updateDraftBoard }) => {
     const { currentDraft, rosterData } = leagueData;
     const draftPath = DRAFT + currentDraft.draft_id + '/';
-    const [liveDraft, setLiveDraft] = useState(currentDraft);
     const [isSyncing, setIsSyncing] = useState(false);
     const [currentDraftId, setCurrentDraftId] = useState(currentDraft.draft_id);
     const [DRAFT_PATH, setDraftPath] = useState(draftPath);
@@ -19,12 +18,9 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
     };
 
     const handlePickChange = (updatedRound) => {
-        setLiveDraft((previousLiveDraft) => ({
-            ...previousLiveDraft,
-            built_draft: previousLiveDraft.built_draft.map((round) =>
-                round.round === updatedRound.round ? updatedRound : round,
-            ),
-        }));
+        updateDraftBoard(
+            currentDraft.built_draft.map((round) => (round.round === updatedRound.round ? updatedRound : round)),
+        );
     };
 
     const getLiveDraft = async () => {
@@ -41,17 +37,13 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
                 console.error('Error:', error);
             });
 
-        const { liveDraft: newLiveDraft, playerInfo: newPlayerInfo } = syncLiveDraft({
-            liveDraft,
+        const newLiveDraft = syncLiveDraft({
+            liveDraft: { built_draft: currentDraft.built_draft },
             livePicks,
             tradedPicks,
-            playerInfo,
-            rosterData,
-            draftType: leagueData.currentDraft.type,
         });
 
-        updatePlayerInfo('playerInfo', newPlayerInfo, 'filterPlayers', '');
-        setLiveDraft(newLiveDraft);
+        updateDraftBoard(newLiveDraft.built_draft);
     };
 
     const getLiveDraftRef = useRef(getLiveDraft);
@@ -105,15 +97,15 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
                 />
             </div>
             <div className="player-grid">
-                {liveDraft.built_draft &&
-                    liveDraft.built_draft.map((round) => (
+                {currentDraft.built_draft &&
+                    currentDraft.built_draft.map((round) => (
                         <div key={round.round} className="draft-round-box">
                             <DraftRound
                                 round={round}
                                 playerInfo={playerInfo}
+                                rosterInfo={rosterInfo}
                                 rankingPlayersIdsList={rankingPlayersIdsList}
                                 rosterData={rosterData}
-                                updatePlayerInfo={updatePlayerInfo}
                                 onPickChange={handlePickChange}
                             />
                         </div>
