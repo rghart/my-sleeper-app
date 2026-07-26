@@ -217,11 +217,15 @@ class App extends React.Component {
             .catch((error) => {
                 console.error('Error:', error);
             });
-        leagueData.currentDraft = draftData;
+        // The fetch's own catch resolves to undefined on failure, and
+        // DraftPanel reads currentDraft.draft_id unconditionally - so
+        // currentDraft has to stay a real object even when the fetch fails,
+        // or the next render crashes. Same shape as the ADP bug (#101).
+        leagueData.currentDraft = draftData || { draft_id: draftId };
         this.setState({
             leagueData,
         });
-        if (draftData.draft_order) {
+        if (draftData && draftData.draft_order) {
             this.buildDraft(tradedDraftPicks);
         } else {
             this.setState({
