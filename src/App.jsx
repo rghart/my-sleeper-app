@@ -9,9 +9,10 @@ import { auth, googleProvider } from './firebase.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
 import { addPlayerToRoster, removePlayerFromLineup } from './lib/roster.js';
-import APP_DB_URLS, { SLEEPER_API_URLS } from './urls.js';
+import { resolveLeagueSeason, resolveMyDisplayName } from './lib/sleeper.js';
+import APP_DB_URLS, { SLEEPER_API_URLS, SLEEPER_USER_ID } from './urls.js';
 const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
-const { LEAGUE, ALL_LEAGUES_ACTIVE_YEAR, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
+const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
 
 class App extends React.Component {
     state = {
@@ -29,6 +30,8 @@ class App extends React.Component {
         liveDraft: [],
         signedIn: false,
         signedInEmail: null,
+        season: null,
+        myDisplayName: null,
     };
 
     componentDidMount() {
@@ -106,14 +109,29 @@ class App extends React.Component {
         this.getLeagueData();
     };
 
-    getLeagueData = () => {
+    getLeagueSeason = async () => {
+        return await fetch(NFL_STATE)
+            .then(this.checkErrors)
+            .then((response) => response.json())
+            .then((nflState) => resolveLeagueSeason(nflState))
+            .catch((error) => {
+                console.error('Error fetching NFL state, falling back to current calendar year:', error);
+                return String(new Date().getFullYear());
+            });
+    };
+
+    getLeagueData = async () => {
         const leagueID = this.state.leagueID;
         const LEAGUE_PATH = LEAGUE + leagueID + '/';
+        const season = this.state.season ? this.state.season : await this.getLeagueSeason();
+        if (!this.state.season) {
+            this.setState({ season });
+        }
         const urls = [
             LEAGUE_PATH + ROSTERS,
             LEAGUE_PATH + SLEEPER_USERS,
             LEAGUE_PATH,
-            ALL_LEAGUES_ACTIVE_YEAR,
+            USER_LEAGUES(season),
             LEAGUE_PATH + DRAFTS,
         ];
         const requests = urls.map(async (url) => {
@@ -136,6 +154,7 @@ class App extends React.Component {
                         leagueData: leagueData,
                         isLoading: false,
                         loadingMessage: 'Loading league panel...',
+                        myDisplayName: resolveMyDisplayName(leagueData.managerData, SLEEPER_USER_ID),
                         rosterPositions: leagueData.currentLeague.roster_positions
                             .filter((pos) => pos !== 'BN')
                             .map((pos) => {
@@ -348,6 +367,7 @@ class App extends React.Component {
             leagueID,
             signedIn,
             signedInEmail,
+            myDisplayName,
         } = this.state;
         if (isLoading && loadingMessage === 'Initial load...') {
             return <div className="loader"></div>;
@@ -390,6 +410,7 @@ class App extends React.Component {
                             updatePlayerId={this.updatePlayerId}
                             notFoundPlayers={notFoundPlayers}
                             rankingPlayersIdsList={rankingPlayersIdsList}
+                            myDisplayName={myDisplayName}
                         />
                         <LeaguePanel
                             leagueData={leagueData}

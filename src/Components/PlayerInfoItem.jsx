@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import Button from './Button';
 
-const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePlayerId, isNewRankList, adpData }) => {
+const PlayerInfoItem = ({
+    player,
+    playerInfo,
+    addToRoster,
+    searchData,
+    updatePlayerId,
+    isNewRankList,
+    adpData,
+    myDisplayName,
+}) => {
     const [editingPlayer, setEditingPlayer] = useState(false);
     const [searchValue, setSearchValue] = useState('');
 
@@ -169,7 +178,7 @@ const PlayerInfoItem = ({ player, playerInfo, addToRoster, searchData, updatePla
                 ></div>
             </div>
             <div className="player-add-div">
-                {(player.rostered_by && player.rostered_by === 'ryangh') || !player.is_taken ? (
+                {(player.rostered_by && player.rostered_by === myDisplayName) || !player.is_taken ? (
                     <Button
                         text={`${player.in_lineup ? 'Added' : 'Add'}`}
                         isDisabled={player.in_lineup}
