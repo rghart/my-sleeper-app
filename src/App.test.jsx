@@ -24,12 +24,15 @@ vi.mock('./firebase.js', () => ({
     googleProvider: {},
 }));
 
+const authMockState = vi.hoisted(() => ({ unsubscribe: null }));
+
 vi.mock('firebase/auth', () => ({
     onAuthStateChanged: vi.fn((auth, callback) => {
         // Simplest path: report an already-signed-in (anonymous) user
         // immediately, so App skips the signInAnonymously branch entirely.
         callback({ uid: 'test-uid', isAnonymous: true });
-        return () => {};
+        authMockState.unsubscribe = vi.fn();
+        return authMockState.unsubscribe;
     }),
     signInAnonymously: vi.fn().mockResolvedValue({ user: { uid: 'test-uid', isAnonymous: true } }),
     signInWithPopup: vi.fn().mockResolvedValue({}),
@@ -214,5 +217,19 @@ describe('App', () => {
         } finally {
             process.off('unhandledRejection', recordRejection);
         }
+    });
+
+    it('unsubscribes from auth state changes on unmount', async () => {
+        global.fetch = vi.fn(mockFetch);
+
+        const { unmount } = render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+        expect(authMockState.unsubscribe).toEqual(expect.any(Function));
+        expect(authMockState.unsubscribe).not.toHaveBeenCalled();
+
+        unmount();
+
+        expect(authMockState.unsubscribe).toHaveBeenCalledTimes(1);
     });
 });
