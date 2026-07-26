@@ -182,13 +182,17 @@ const RanksPanel = ({
     useEffect(() => {
         const getADP = async () => {
             const updateResponse = await fetchRequest(DLF_ADP + (await auth.currentUser.getIdToken(true)), 'GET');
-            const lastResponse = await updateResponse.json().then((data) => data);
-            if (updateResponse && updateResponse.ok) {
-                setADP(lastResponse);
-                console.log(updateResponse.status);
-            } else {
-                console.log(updateResponse.status);
+            // The guard has to come before the body is read: fetchRequest
+            // resolves to undefined whenever its own catch swallows an error,
+            // and checkErrors throws on any non-ok response, so every failure
+            // arrives here as undefined. Reading .json() first threw a
+            // TypeError out of this effect instead.
+            if (!updateResponse || !updateResponse.ok) {
+                console.error('Error: could not load ADP data, continuing without it');
+                return;
             }
+            setADP(await updateResponse.json());
+            console.log(updateResponse.status);
         };
         getADP();
     }, []);

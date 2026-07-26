@@ -53,8 +53,8 @@ function mockFetch(url) {
     }
     if (url.includes('dlf_adp')) {
         // RanksPanel fetches this on mount regardless of the App-level flow
-        // under test; give it a harmless response so it doesn't produce an
-        // unhandled rejection.
+        // under test; give it a successful response so it stays out of the way.
+        // The failing case is exercised deliberately in its own test below.
         return jsonResponse({});
     }
     if (url.includes('state/nfl')) {
@@ -182,5 +182,37 @@ describe('App', () => {
         await waitFor(() => expect(screen.getAllByText('Jeremiyah Love').length).toBeGreaterThan(0));
 
         expect(within(round3).queryByText('Tom Brady')).toBeTruthy();
+    });
+
+    it('survives an ADP request that fails', async () => {
+        // `RanksPanel.getADP` called `updateResponse.json()` before checking the
+        // response, and `App.fetchRequest` returns undefined whenever its own
+        // catch swallows an error - which includes any non-ok response, since
+        // checkErrors throws on those. So a failing ADP request threw a
+        // TypeError out of an async effect: ADP silently never loaded, and the
+        // rejection went unhandled.
+        const rejections = [];
+        const recordRejection = (reason) => rejections.push(reason);
+        process.on('unhandledRejection', recordRejection);
+
+        try {
+            global.fetch = vi.fn((url) => {
+                if (url.includes('dlf_adp')) {
+                    return Promise.reject(new Error('ADP service unavailable'));
+                }
+                return mockFetch(url);
+            });
+
+            render(<App />);
+
+            // The rest of the app must still come up: a failed ADP lookup costs
+            // the ADP column, nothing else.
+            await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(rejections).toEqual([]);
+        } finally {
+            process.off('unhandledRejection', recordRejection);
+        }
     });
 });
