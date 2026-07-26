@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import App from './App';
 import rosterFlagsFixture from './lib/__fixtures__/roster-flags-2026.json';
 import realDraftFixture from './lib/__fixtures__/real-draft-2026.json';
@@ -35,7 +36,7 @@ vi.mock('firebase/auth', () => ({
     signOut: vi.fn().mockResolvedValue({}),
 }));
 
-const { rosterDataRaw, managerData, playerInfo } = rosterFlagsFixture;
+const { rosterDataRaw, managerData, playerInfo, livePicksPartial } = rosterFlagsFixture;
 const { currentDraft: draftSettings, tradedDraftPicks } = realDraftFixture;
 
 const LEAGUE_ID = '1312088290526003200';
@@ -131,5 +132,55 @@ describe('App', () => {
         for (const pick of traded) {
             expect(pick.textContent).toMatch(/^\S+ via \S+$/);
         }
+    });
+
+    it('keeps a manual pick made while a sync tick is in flight', async () => {
+        // Reproduces #96. `getLiveDraft` awaits two fetches and then builds the
+        // new board from the `currentDraft` its closure captured, so anything
+        // written to the board during those awaits is overwritten.
+        //
+        // Only the live-picks fetch is gated, and only so the manual pick can be
+        // placed inside the window - every other fetch still resolves instantly.
+        // This is control over the interleaving, not added latency: real latency
+        // is what hid #98, and against the live app this window measured ~50ms,
+        // which is precisely why the bug is easy to hit and hard to notice.
+        let releaseLivePicks;
+        const livePicksGate = new Promise((resolve) => {
+            releaseLivePicks = resolve;
+        });
+        global.fetch = vi.fn((url) => {
+            if (url.includes(`draft/${DRAFT_ID}/picks/`)) {
+                return livePicksGate.then(() => jsonResponse(structuredClone(livePicksPartial)));
+            }
+            return mockFetch(url);
+        });
+
+        const user = userEvent.setup();
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+        // livePicksPartial covers rounds 1 and 2.1-2.8, so 3.1 is a slot the
+        // server has no pick for - the mid-draft case where a manager pencils in
+        // a pick the sync can't legitimately overwrite.
+        const manualPickBox = screen.getByText('3.1').closest('.draft-pick');
+
+        await user.click(screen.getByRole('button', { name: 'Update' }));
+
+        await user.click(manualPickBox);
+        await user.type(screen.getByPlaceholderText('Start typing player name to search'), 'Brady');
+        await user.click(await screen.findByText(/Tom Brady/));
+
+        // The pick is on the board before the sync resolves; that is what makes
+        // the assertion after the release meaningful rather than vacuous.
+        const round3 = manualPickBox.closest('.draft-picks-box');
+        expect(within(round3).getByText('Tom Brady')).toBeTruthy();
+
+        releaseLivePicks();
+
+        // The sync landing is the event under test, so wait on its own result
+        // rather than on a timer: Jeremiyah Love is live pick 1.1.
+        await waitFor(() => expect(screen.getAllByText('Jeremiyah Love').length).toBeGreaterThan(0));
+
+        expect(within(round3).queryByText('Tom Brady')).toBeTruthy();
     });
 });

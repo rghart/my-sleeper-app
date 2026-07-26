@@ -324,13 +324,18 @@ class App extends React.Component {
         });
     };
 
-    updateDraftBoard = (built_draft) => {
+    // Takes a reducer rather than a finished board on purpose. Callers compute
+    // the next board from an awaited fetch, so passing a value means computing
+    // it from whatever the caller's closure captured - and a manual pick made
+    // during those awaits is then silently overwritten. Composing against
+    // prevState instead is what makes the sync and a manual pick coexist.
+    updateDraftBoard = (buildNextDraftBoard) => {
         this.setState((prevState) => ({
             leagueData: {
                 ...prevState.leagueData,
                 currentDraft: {
                     ...prevState.leagueData.currentDraft,
-                    built_draft,
+                    built_draft: buildNextDraftBoard(prevState.leagueData.currentDraft.built_draft),
                 },
             },
         }));
