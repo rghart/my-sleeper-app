@@ -54,10 +54,19 @@ export function buildRosterInfo({ rosterData, builtDraft }) {
     return rosterInfo;
 }
 
+/**
+ * Whether a player is on a roster or occupies a draft pick. A player id that
+ * isn't in the map - a free agent, or an id the player DB doesn't know - is
+ * untaken rather than an error.
+ */
 export function isTaken(rosterInfo, playerId) {
     return rosterInfo.get(playerId)?.is_taken ?? false;
 }
 
+/**
+ * The display name of the manager who holds a player, or null when nobody
+ * does. Tolerates an unknown player id for the same reason as `isTaken`.
+ */
 export function rosteredBy(rosterInfo, playerId) {
     return rosterInfo.get(playerId)?.rostered_by ?? null;
 }
@@ -73,6 +82,10 @@ export function buildLineupSet(rosterPositions) {
     return new Set(rosterPositions.filter((entry) => /^\d+$/.test(entry)));
 }
 
+/**
+ * Whether a player currently fills one of the lineup slots built by
+ * `buildLineupSet`.
+ */
 export function isInLineup(lineupSet, playerId) {
     return lineupSet.has(playerId);
 }

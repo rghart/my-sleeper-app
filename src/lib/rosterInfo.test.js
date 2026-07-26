@@ -8,6 +8,11 @@ import {
     memoizeRosterInfo,
     rosteredBy,
 } from './rosterInfo.js';
+// The board transformations are deliberately imported from the real module rather
+// than reimplemented here: the flags are only correct if they are derived from the
+// board the production code actually produces, so these tests drive the same
+// functions DraftPanel and DraftRound call.
+import { applyLivePicks, applyManualPick, syncLiveDraft } from './liveDraft.js';
 import fixtureInputs from './__fixtures__/roster-flags-2026.json';
 import golden from './__fixtures__/golden-roster-flags.json';
 
@@ -34,16 +39,17 @@ const flagsFrom = (rosterInfo, ids, lineupSet = new Set()) =>
 
 const decoratedFor = (fx) => decorateRosters({ rosterData: fx.rosterDataRaw, managerData: fx.managerData });
 
-// A board with every pick filled in from livePicks, which is what the sync
-// produces. Mirrors applyLivePicks' round/board_spot matching.
-const fillBoard = (builtDraft, livePicks) => {
-    const board = builtDraft.map((round) => ({ ...round, picks: round.picks.map((p) => ({ ...p })) }));
-    livePicks.forEach(({ round, draft_slot, player_id }) => {
-        const pick = board[round - 1].picks.find((p) => p.board_spot === draft_slot);
-        pick.player_id = player_id;
-        pick.picked = true;
-    });
-    return board;
+// A board with picks filled in, exactly as the sync produces it.
+const fillBoard = (builtDraft, livePicks) => applyLivePicks({ builtDraft, livePicks });
+
+// Assigns (or clears, with a null playerID) a player on one pick and splices the
+// updated round back into the board, which is the composition DraftRound and
+// DraftPanel.handlePickChange perform between them.
+const assignPick = (board, roundNumber, pickNumber, playerID) => {
+    const round = board.find((r) => r.round === roundNumber);
+    const currentManualPick = round.picks.find((p) => p.pick_number === pickNumber);
+    const updatedRound = applyManualPick({ round, currentManualPick, playerID });
+    return board.map((r) => (r.round === updatedRound.round ? updatedRound : r));
 };
 
 describe('decorateRosters', () => {
@@ -223,19 +229,22 @@ describe('memoizeRosterInfo', () => {
 // The two stale-flag bugs the redesign is meant to eliminate. Both fail against
 // the pre-refactor code, which only ever SET flags and never cleared them; the
 // captured golden records that wrong output alongside these expectations.
+//
+// Both drive the real board transformations - applyManualPick for the assignment
+// and syncLiveDraft for the re-sync - so they cover the sites the bugs were
+// reported against, not just buildRosterInfo's derivation from a hand-built board.
 describe('stale-flag regressions', () => {
     it('drops a displaced free agent when another player takes their pick', () => {
         const fx = load();
         const rosterData = decoratedFor(fx);
-        const board = fillBoard(fx.builtDraft, fx.livePicks);
-        const target = board[0].picks.find((p) => p.pick_number === 5);
+        const synced = fillBoard(fx.builtDraft, fx.livePicks);
 
-        target.player_id = '13307';
-        expect(isTaken(buildRosterInfo({ rosterData, builtDraft: board }), '13307')).toBe(true);
+        const withKlein = assignPick(synced, 1, 5, '13307');
+        expect(isTaken(buildRosterInfo({ rosterData, builtDraft: withKlein }), '13307')).toBe(true);
 
         // 9499 displaces 13307 on the same pick
-        target.player_id = '9499';
-        const after = buildRosterInfo({ rosterData, builtDraft: board });
+        const displaced = assignPick(withKlein, 1, 5, '9499');
+        const after = buildRosterInfo({ rosterData, builtDraft: displaced });
         expect(isTaken(after, '9499')).toBe(true);
         expect(isTaken(after, '13307')).toBe(false);
         expect(rosteredBy(after, '13307')).toBeNull();
@@ -247,12 +256,21 @@ describe('stale-flag regressions', () => {
     it('drops a manually assigned free agent once a re-sync removes them from the board', () => {
         const fx = load();
         const rosterData = decoratedFor(fx);
-        const board = fillBoard(fx.builtDraft, fx.livePicks);
-        board[0].picks.find((p) => p.pick_number === 5).player_id = '13307';
-        expect(isTaken(buildRosterInfo({ rosterData, builtDraft: board }), '13307')).toBe(true);
+        const synced = fillBoard(fx.builtDraft, fx.livePicks);
 
-        // re-sync restores the real board; 13307 is on no pick and no roster
-        const resynced = fillBoard(fx.builtDraft, fx.livePicks);
+        const withKlein = assignPick(synced, 1, 5, '13307');
+        expect(isTaken(buildRosterInfo({ rosterData, builtDraft: withKlein }), '13307')).toBe(true);
+
+        // Re-sync the board that still carries the manual pick, the way clicking
+        // Update does. The live picks put 13294 back on the slot, leaving 13307 on
+        // no pick and no roster.
+        const resynced = syncLiveDraft({
+            liveDraft: { built_draft: withKlein },
+            livePicks: fx.livePicks,
+            tradedPicks: fx.tradedPicks,
+        }).built_draft;
+        expect(resynced.flatMap((r) => r.picks).some((p) => p.player_id === '13307')).toBe(false);
+
         const after = buildRosterInfo({ rosterData, builtDraft: resynced });
         expect(isTaken(after, '13307')).toBe(false);
         expect(rosteredBy(after, '13307')).toBeNull();
