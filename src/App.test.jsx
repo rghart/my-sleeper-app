@@ -219,6 +219,38 @@ describe('App', () => {
         }
     });
 
+    it('survives a draft request that fails', async () => {
+        // getSpecificDraft's own catch resolves draftData to undefined on a
+        // failed fetch, and DraftPanel reads currentDraft.draft_id
+        // unconditionally to render its "Draft ID" input - so this only
+        // passes if currentDraft fell back to a real object instead of
+        // crashing the render.
+        const rejections = [];
+        const recordRejection = (reason) => rejections.push(reason);
+        process.on('unhandledRejection', recordRejection);
+
+        try {
+            global.fetch = vi.fn((url) => {
+                if (url.includes(`draft/${DRAFT_ID}/traded_picks/`)) {
+                    return mockFetch(url);
+                }
+                if (url.includes(`draft/${DRAFT_ID}`)) {
+                    return Promise.reject(new Error('Draft service unavailable'));
+                }
+                return mockFetch(url);
+            });
+
+            render(<App />);
+
+            expect(await screen.findByDisplayValue(DRAFT_ID, {}, { timeout: 5000 })).toBeTruthy();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(rejections).toEqual([]);
+        } finally {
+            process.off('unhandledRejection', recordRejection);
+        }
+    });
+
     it('unsubscribes from auth state changes on unmount', async () => {
         global.fetch = vi.fn(mockFetch);
 
