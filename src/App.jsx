@@ -22,12 +22,10 @@ class App extends React.Component {
         isLoading: true,
         loadingMessage: 'Initial load...',
         rankingPlayersIdsList: [],
-        isTyping: false,
         leagueID: '1312088290526003200',
         rosterPositions: [],
         notFoundPlayers: [],
         lastUpdate: null,
-        liveDraft: [],
         signedIn: false,
         signedInEmail: null,
         season: null,
@@ -282,7 +280,6 @@ class App extends React.Component {
             isLoading: false,
             loadingMessage: '',
             notFoundPlayers: notFoundPlayers,
-            searchText: '',
         });
     };
 
