@@ -20,6 +20,7 @@ const RanksPanel = ({
     addToRoster,
     updatePlayerId,
     notFoundPlayers,
+    myDisplayName,
 }) => {
     const defaultSelector = 'default';
     const defaultSelectorObj = {
@@ -160,13 +161,13 @@ const RanksPanel = ({
             !showTaken &&
             showMyPlayers &&
             (!playerInfo[rankingPlayers.match_results[0][0]].is_taken ||
-                playerInfo[rankingPlayers.match_results[0][0]].rostered_by === 'ryangh')
+                playerInfo[rankingPlayers.match_results[0][0]].rostered_by === myDisplayName)
         ) {
             return true;
         } else if (
             showTaken &&
             !showMyPlayers &&
-            playerInfo[rankingPlayers.match_results[0][0]].rostered_by !== 'ryangh'
+            playerInfo[rankingPlayers.match_results[0][0]].rostered_by !== myDisplayName
         ) {
             return true;
         } else if (!showMyPlayers && !showTaken && !playerInfo[rankingPlayers.match_results[0][0]].is_taken) {
@@ -418,6 +419,7 @@ const RanksPanel = ({
                                     updatePlayerId={updatePlayerId}
                                     searchData={results}
                                     adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
+                                    myDisplayName={myDisplayName}
                                 />
                             ))}
                         {notFoundPlayers.map((item, index) => (
