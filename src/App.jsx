@@ -19,7 +19,6 @@ class App extends React.Component {
     state = {
         playerInfo: {},
         leagueData: [],
-        tradedDraftPicks: [],
         isLoading: true,
         loadingMessage: 'Initial load...',
         rankingPlayersIdsList: [],
@@ -194,13 +193,16 @@ class App extends React.Component {
             .catch((error) => {
                 console.error('Error:', error);
             });
-        this.setState({
-            tradedDraftPicks: tradedPicks,
-        });
-        this.getSpecificDraft();
+        // Handed straight down the chain rather than round-tripped through state:
+        // setState batches inside an async context, so buildDraft could read the
+        // previous value and render every pick under its original roster with no
+        // "via <manager>" attribution. Production only got away with it because
+        // getSpecificDraft awaits another fetch first, which happened to give React
+        // time to flush.
+        this.getSpecificDraft(tradedPicks);
     };
 
-    getSpecificDraft = async () => {
+    getSpecificDraft = async (tradedDraftPicks) => {
         const { leagueData } = this.state;
         const draftId = leagueData.currentLeagueDrafts[0].draft_id;
         const DRAFT_PATH = DRAFT + draftId;
@@ -215,7 +217,7 @@ class App extends React.Component {
             leagueData,
         });
         if (draftData.draft_order) {
-            this.buildDraft();
+            this.buildDraft(tradedDraftPicks);
         } else {
             this.setState({
                 loadingMessage: '',
@@ -304,8 +306,8 @@ class App extends React.Component {
         });
     };
 
-    buildDraft = () => {
-        const { leagueData, tradedDraftPicks } = this.state;
+    buildDraft = (tradedDraftPicks) => {
+        const { leagueData } = this.state;
         const { currentDraft, rosterData } = leagueData;
         const { built_draft, player_pool } = buildDraftRounds({ currentDraft, rosterData, tradedDraftPicks });
         const newLeagueData = {

@@ -109,4 +109,27 @@ describe('App', () => {
         const ryanghMentions = await screen.findAllByText('ryangh', {}, { timeout: 5000 });
         expect(ryanghMentions.length).toBeGreaterThan(0);
     });
+
+    it('applies every traded pick to the board', async () => {
+        global.fetch = vi.fn(mockFetch);
+
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+        // These mocked fetches resolve immediately, which is the whole point: it
+        // leaves React no window to flush a setState between getTradedDraftPicks
+        // and buildDraft. When the traded picks were round-tripped through state,
+        // buildDraft read the previous value and none of them landed.
+        //
+        // A traded pick also reads two different rosters - the current owner via
+        // pick.owner_id and the original holder via pick.roster_id - so the
+        // "<owner> via <originator>" text covers a lookup the assertion above
+        // never touches.
+        const owners = [...document.querySelectorAll('p.draft-pick')];
+        const traded = owners.filter((pick) => pick.textContent.includes(' via '));
+        expect(traded).toHaveLength(tradedDraftPicks.length);
+        for (const pick of traded) {
+            expect(pick.textContent).toMatch(/^\S+ via \S+$/);
+        }
+    });
 });
