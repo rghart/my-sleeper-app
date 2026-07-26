@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Button from '../Components/Button';
 import DraftRound from './DraftRound';
 import { SLEEPER_API_URLS } from '../urls';
+import { syncLiveDraft } from '../lib/liveDraft.js';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
 const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInfo, rankingPlayersIdsList }) => {
@@ -17,68 +18,40 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
         setDraftPath(DRAFT + val + '/');
     };
 
+    const handlePickChange = (updatedRound) => {
+        setLiveDraft((previousLiveDraft) => ({
+            ...previousLiveDraft,
+            built_draft: previousLiveDraft.built_draft.map((round) =>
+                round.round === updatedRound.round ? updatedRound : round,
+            ),
+        }));
+    };
+
     const getLiveDraft = async () => {
-        const newPlayerInfo = playerInfo;
-        const liveDraftData = await fetch(DRAFT_PATH + PICKS)
+        const livePicks = await fetch(DRAFT_PATH + PICKS)
             .then((response) => response.json())
             .then((data) => data)
             .catch((error) => {
                 console.error('Error:', error);
             });
-        let newLiveDraft = liveDraft;
-        await liveDraftData.forEach((livePick) => {
-            const { draft_slot: draftSlot } = livePick;
-            const round = livePick.round - 1;
-            const pickIndex = newLiveDraft.built_draft[round].picks.findIndex((pick) => pick.board_spot === draftSlot);
-            const pick = newLiveDraft.built_draft[round].picks[pickIndex];
-            pick.player_id = livePick.player_id;
-            pick.picked = true;
-            newPlayerInfo[livePick.player_id].is_taken = true;
-            newPlayerInfo[livePick.player_id].rostered_by = rosterData.find(
-                (roster) => pick.owner_id === roster.roster_id,
-            ).manager_display_name;
-            newLiveDraft.built_draft[round].picks[pickIndex] = pick;
-        });
-        updatePlayerInfo('playerInfo', { ...newPlayerInfo }, 'filterPlayers', '');
-        newLiveDraft = await getTradedDraftPicks(newLiveDraft);
-
-        if (leagueData.currentDraft.type === 'snake') {
-            await newLiveDraft.built_draft.forEach((round) => {
-                if (round.round % 2 === 0) {
-                    if (round.picks[0].board_spot === 1) {
-                        round.picks.reverse();
-                    }
-                    round.picks.sort((a, b) => a.pick_number - b.pick_number);
-                }
-            });
-        }
-
-        setLiveDraft({ ...newLiveDraft });
-    };
-
-    const getTradedDraftPicks = async (newLiveDraft) => {
-        const { built_draft: builtDraft } = newLiveDraft;
         const tradedPicks = await fetch(DRAFT_PATH + TRADED_PICKS)
             .then((response) => response.json())
             .then((data) => data)
             .catch((error) => {
                 console.error('Error:', error);
             });
-        console.log(tradedPicks);
 
-        tradedPicks.forEach((tradedPick) => {
-            let { round } = tradedPick;
-            round -= 1;
-            const { picks } = builtDraft[round];
-            const pickIndex = picks.findIndex((pick) => pick.roster_id === tradedPick.roster_id);
-            Object.assign(picks[pickIndex], {
-                owner_id: tradedPick.owner_id,
-                is_traded: true,
-            });
-            builtDraft[round].picks = picks;
+        const { liveDraft: newLiveDraft, playerInfo: newPlayerInfo } = syncLiveDraft({
+            liveDraft,
+            livePicks,
+            tradedPicks,
+            playerInfo,
+            rosterData,
+            draftType: leagueData.currentDraft.type,
         });
-        newLiveDraft.built_draft = builtDraft;
-        return newLiveDraft;
+
+        updatePlayerInfo('playerInfo', newPlayerInfo, 'filterPlayers', '');
+        setLiveDraft(newLiveDraft);
     };
 
     const getLiveDraftRef = useRef(getLiveDraft);
@@ -141,6 +114,7 @@ const DraftPanel = ({ leagueData, playerInfo, updateParentState: updatePlayerInf
                                 rankingPlayersIdsList={rankingPlayersIdsList}
                                 rosterData={rosterData}
                                 updatePlayerInfo={updatePlayerInfo}
+                                onPickChange={handlePickChange}
                             />
                         </div>
                     ))}

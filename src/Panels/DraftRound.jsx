@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Button from '../Components/Button';
+import { applyManualPick } from '../lib/liveDraft.js';
 
-const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPlayersIdsList }) => {
+const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPlayersIdsList, onPickChange }) => {
     const [showRound, setShowRound] = useState(true);
     const [showPickSelection, setShowPickSelection] = useState(false);
     const [currentManualPick, setCurrentManualPick] = useState();
@@ -13,20 +14,16 @@ const DraftRound = ({ round, playerInfo, rosterData, updatePlayerInfo, rankingPl
     };
 
     const updatePickSelection = async (playerID) => {
-        round.picks[round.picks.findIndex((pick) => pick.pick_number === currentManualPick.pick_number)].player_id =
-            playerID;
-        const newPlayerInfo = playerInfo;
-        if (playerID) {
-            newPlayerInfo[playerID].is_taken = true;
-            newPlayerInfo[playerID].rostered_by = rosterData.find(
-                (roster) => currentManualPick.owner_id === roster.roster_id,
-            ).manager_display_name;
-        } else {
-            newPlayerInfo[currentManualPick.player_id].is_taken = false;
-            newPlayerInfo[currentManualPick.player_id].rostered_by = null;
-        }
+        const { round: updatedRound, playerInfo: newPlayerInfo } = applyManualPick({
+            round,
+            playerInfo,
+            rosterData,
+            currentManualPick,
+            playerID,
+        });
+        onPickChange(updatedRound);
         setCurrentManualPick(null);
-        updatePlayerInfo('playerInfo', { ...newPlayerInfo });
+        updatePlayerInfo('playerInfo', newPlayerInfo);
         setShowPickSelection(!showPickSelection);
         setSearchValue('');
     };
