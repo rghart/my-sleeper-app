@@ -15,7 +15,7 @@ const RanksPanel = ({
     playerInfo,
     rosterInfo,
     lineupSet,
-    updateFilter,
+    updateRankingPlayersIdsList,
     startLoad,
     fetchRequest,
     checkErrors,
@@ -53,7 +53,7 @@ const RanksPanel = ({
     });
 
     const startSearch = () => {
-        updateFilter('rankingPlayersIdsList', []);
+        updateRankingPlayersIdsList([]);
         setCurrentListVal(defaultSelector);
         setIsNewRankList(true);
         startLoad('Loading search panel...', searchText);
@@ -133,9 +133,9 @@ const RanksPanel = ({
         setIsNewRankList(false);
         setCurrentListVal(newListName);
         if (newListName !== defaultSelector) {
-            updateFilter('rankingPlayersIdsList', allRankLists[newListName].rank_list);
+            updateRankingPlayersIdsList(allRankLists[newListName].rank_list);
         } else {
-            updateFilter('rankingPlayersIdsList', []);
+            updateRankingPlayersIdsList([]);
         }
     };
 

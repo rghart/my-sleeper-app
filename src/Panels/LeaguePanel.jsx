@@ -6,7 +6,7 @@ const LeaguePanel = ({
     leagueData,
     playerInfo,
     rosterInfo,
-    updateParentState,
+    updateLeagueID,
     rosterPositions,
     leagueID,
     loadingMessage,
@@ -15,9 +15,6 @@ const LeaguePanel = ({
     updateDraftBoard,
 }) => {
     const [leaguePanel, setLeaguePanel] = useState('draft');
-    const updateLeagueID = (value) => {
-        updateParentState('leagueID', value, 'getLeagueData', 'Loading league panel...');
-    };
 
     return (
         <div className="panel league-panel">

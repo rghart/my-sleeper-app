@@ -246,14 +246,18 @@ class App extends React.Component {
         });
     };
 
-    updateParentState = (state, value, callback, loadingMessage) => {
+    updateLeagueID = (leagueID) => {
         this.setState(
             {
-                [state]: value,
-                loadingMessage,
+                leagueID,
+                loadingMessage: 'Loading league panel...',
             },
-            this[callback],
+            this.getLeagueData,
         );
+    };
+
+    updateRankingPlayersIdsList = (rankingPlayersIdsList) => {
+        this.setState({ rankingPlayersIdsList });
     };
 
     startLoad = (loadMessage, searchText) => {
@@ -419,7 +423,7 @@ class App extends React.Component {
                             signedIn={signedIn}
                             playerInfo={playerInfo}
                             rosterInfo={rosterInfo}
-                            updateFilter={this.updateParentState}
+                            updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
                             startLoad={this.startLoad}
                             fetchRequest={this.fetchRequest}
                             checkErrors={this.checkErrors}
@@ -433,7 +437,7 @@ class App extends React.Component {
                         <LeaguePanel
                             leagueData={leagueData}
                             leagueID={leagueID}
-                            updateParentState={this.updateParentState}
+                            updateLeagueID={this.updateLeagueID}
                             rankingPlayersIdsList={rankingPlayersIdsList}
                             rosterPositions={rosterPositions}
                             playerInfo={playerInfo}
