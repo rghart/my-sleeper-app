@@ -9,7 +9,7 @@ interface Props {
     isDisabled: boolean;
 }
 
-export const Button = ({ text, onClick, btnStyle = 'primary', isDisabled = false }: Props): JSX.Element => {
+export const Button = ({ text, onClick, btnStyle = 'primary', isDisabled = false }: Props): React.JSX.Element => {
     const btnClass = classNames(btnStyle, {
         disabled: isDisabled,
     });
