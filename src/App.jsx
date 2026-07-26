@@ -37,7 +37,7 @@ class App extends React.Component {
     selectRosterInfo = memoizeRosterInfo();
 
     componentDidMount() {
-        onAuthStateChanged(auth, (user) => {
+        this.unsubscribeAuth = onAuthStateChanged(auth, (user) => {
             if (user) {
                 const { playerInfo } = this.state;
                 const { currentUser } = auth;
@@ -55,6 +55,11 @@ class App extends React.Component {
             }
         });
     }
+
+    componentWillUnmount() {
+        this.unsubscribeAuth();
+    }
+
     // TODO clean up and pull out helper functions and search function into separate file(s)
     checkErrors = (response) => {
         if (!response.ok) {
