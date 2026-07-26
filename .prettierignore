@@ -2,3 +2,8 @@ build/
 coverage/
 package-lock.json
 node_modules/
+
+# Characterization fixtures captured verbatim from the running app. Their exact
+# bytes are the record of what the pre-refactor code produced, so they are not
+# reformatted.
+src/lib/__fixtures__/

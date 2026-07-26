@@ -136,9 +136,7 @@ const RanksPanel = ({
     };
 
     const updateFilters = (filterName, filter) => {
-        const newFilters = filters;
-        newFilters[filterName] = filter;
-        setFilters({ ...newFilters });
+        setFilters({ ...filters, [filterName]: filter });
     };
 
     const filterPlayers = (rankingPlayers) => {

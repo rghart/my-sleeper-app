@@ -1,0 +1,1016 @@
+{
+  "linear": {
+    "built_draft": [
+      {
+        "round": 1,
+        "picks": [
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": false,
+            "owner_id": 5,
+            "pick_round": 1,
+            "pick_number": 1,
+            "board_spot": 1,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 1,
+            "pick_number": 2,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 1,
+            "pick_number": 3,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 1,
+            "pick_number": 4,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": false,
+            "owner_id": 2,
+            "pick_round": 1,
+            "pick_number": 5,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": false,
+            "owner_id": 4,
+            "pick_round": 1,
+            "pick_number": 6,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": true,
+            "owner_id": 4,
+            "pick_round": 1,
+            "pick_number": 7,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": true,
+            "owner_id": 4,
+            "pick_round": 1,
+            "pick_number": 8,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": false,
+            "owner_id": 3,
+            "pick_round": 1,
+            "pick_number": 9,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": true,
+            "owner_id": 7,
+            "pick_round": 1,
+            "pick_number": 10,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 1,
+            "pick_number": 11,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": true,
+            "owner_id": 1,
+            "pick_round": 1,
+            "pick_number": 12,
+            "board_spot": 12,
+            "player_id": null
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "picks": [
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": false,
+            "owner_id": 5,
+            "pick_round": 2,
+            "pick_number": 1,
+            "board_spot": 1,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 2,
+            "pick_number": 2,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 2,
+            "pick_number": 3,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": false,
+            "owner_id": 9,
+            "pick_round": 2,
+            "pick_number": 4,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 2,
+            "pick_number": 5,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 2,
+            "pick_number": 6,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": true,
+            "owner_id": 7,
+            "pick_round": 2,
+            "pick_number": 7,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": true,
+            "owner_id": 9,
+            "pick_round": 2,
+            "pick_number": 8,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": true,
+            "owner_id": 9,
+            "pick_round": 2,
+            "pick_number": 9,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": true,
+            "owner_id": 2,
+            "pick_round": 2,
+            "pick_number": 10,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 2,
+            "pick_number": 11,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": true,
+            "owner_id": 1,
+            "pick_round": 2,
+            "pick_number": 12,
+            "board_spot": 12,
+            "player_id": null
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "picks": [
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": true,
+            "owner_id": 7,
+            "pick_round": 3,
+            "pick_number": 1,
+            "board_spot": 1,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 3,
+            "pick_number": 2,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 3,
+            "pick_number": 3,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": false,
+            "owner_id": 9,
+            "pick_round": 3,
+            "pick_number": 4,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": false,
+            "owner_id": 2,
+            "pick_round": 3,
+            "pick_number": 5,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": false,
+            "owner_id": 4,
+            "pick_round": 3,
+            "pick_number": 6,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 3,
+            "pick_number": 7,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": false,
+            "owner_id": 6,
+            "pick_round": 3,
+            "pick_number": 8,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": false,
+            "owner_id": 3,
+            "pick_round": 3,
+            "pick_number": 9,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": false,
+            "owner_id": 10,
+            "pick_round": 3,
+            "pick_number": 10,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 3,
+            "pick_number": 11,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": true,
+            "owner_id": 4,
+            "pick_round": 3,
+            "pick_number": 12,
+            "board_spot": 12,
+            "player_id": null
+          }
+        ]
+      },
+      {
+        "round": 4,
+        "picks": [
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": false,
+            "owner_id": 5,
+            "pick_round": 4,
+            "pick_number": 1,
+            "board_spot": 1,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 4,
+            "pick_number": 2,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 4,
+            "pick_number": 3,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 4,
+            "pick_number": 4,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": false,
+            "owner_id": 2,
+            "pick_round": 4,
+            "pick_number": 5,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": true,
+            "owner_id": 12,
+            "pick_round": 4,
+            "pick_number": 6,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": false,
+            "owner_id": 11,
+            "pick_round": 4,
+            "pick_number": 7,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": false,
+            "owner_id": 6,
+            "pick_round": 4,
+            "pick_number": 8,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": true,
+            "owner_id": 9,
+            "pick_round": 4,
+            "pick_number": 9,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": false,
+            "owner_id": 10,
+            "pick_round": 4,
+            "pick_number": 10,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": false,
+            "owner_id": 12,
+            "pick_round": 4,
+            "pick_number": 11,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": false,
+            "owner_id": 7,
+            "pick_round": 4,
+            "pick_number": 12,
+            "board_spot": 12,
+            "player_id": null
+          }
+        ]
+      }
+    ],
+    "player_pool": "Rookie"
+  },
+  "snake": {
+    "built_draft": [
+      {
+        "round": 1,
+        "picks": [
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": false,
+            "owner_id": 5,
+            "pick_round": 1,
+            "pick_number": 1,
+            "board_spot": 1,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 1,
+            "pick_number": 2,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 1,
+            "pick_number": 3,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 1,
+            "pick_number": 4,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": false,
+            "owner_id": 2,
+            "pick_round": 1,
+            "pick_number": 5,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": false,
+            "owner_id": 4,
+            "pick_round": 1,
+            "pick_number": 6,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": true,
+            "owner_id": 4,
+            "pick_round": 1,
+            "pick_number": 7,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": true,
+            "owner_id": 4,
+            "pick_round": 1,
+            "pick_number": 8,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": false,
+            "owner_id": 3,
+            "pick_round": 1,
+            "pick_number": 9,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": true,
+            "owner_id": 7,
+            "pick_round": 1,
+            "pick_number": 10,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 1,
+            "pick_number": 11,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": true,
+            "owner_id": 1,
+            "pick_round": 1,
+            "pick_number": 12,
+            "board_spot": 12,
+            "player_id": null
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "picks": [
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": true,
+            "owner_id": 1,
+            "pick_round": 2,
+            "pick_number": 1,
+            "board_spot": 12,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 2,
+            "pick_number": 2,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": true,
+            "owner_id": 2,
+            "pick_round": 2,
+            "pick_number": 3,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": true,
+            "owner_id": 9,
+            "pick_round": 2,
+            "pick_number": 4,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": true,
+            "owner_id": 9,
+            "pick_round": 2,
+            "pick_number": 5,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": true,
+            "owner_id": 7,
+            "pick_round": 2,
+            "pick_number": 6,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 2,
+            "pick_number": 7,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": true,
+            "owner_id": 6,
+            "pick_round": 2,
+            "pick_number": 8,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": false,
+            "owner_id": 9,
+            "pick_round": 2,
+            "pick_number": 9,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 2,
+            "pick_number": 10,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 2,
+            "pick_number": 11,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": false,
+            "owner_id": 5,
+            "pick_round": 2,
+            "pick_number": 12,
+            "board_spot": 1,
+            "player_id": null
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "picks": [
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": true,
+            "owner_id": 7,
+            "pick_round": 3,
+            "pick_number": 1,
+            "board_spot": 1,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 3,
+            "pick_number": 2,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 3,
+            "pick_number": 3,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": false,
+            "owner_id": 9,
+            "pick_round": 3,
+            "pick_number": 4,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": false,
+            "owner_id": 2,
+            "pick_round": 3,
+            "pick_number": 5,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": false,
+            "owner_id": 4,
+            "pick_round": 3,
+            "pick_number": 6,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 3,
+            "pick_number": 7,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": false,
+            "owner_id": 6,
+            "pick_round": 3,
+            "pick_number": 8,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": false,
+            "owner_id": 3,
+            "pick_round": 3,
+            "pick_number": 9,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": false,
+            "owner_id": 10,
+            "pick_round": 3,
+            "pick_number": 10,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 3,
+            "pick_number": 11,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": true,
+            "owner_id": 4,
+            "pick_round": 3,
+            "pick_number": 12,
+            "board_spot": 12,
+            "player_id": null
+          }
+        ]
+      },
+      {
+        "round": 4,
+        "picks": [
+          {
+            "user_id": "464153930528452608",
+            "roster_id": 7,
+            "is_traded": false,
+            "owner_id": 7,
+            "pick_round": 4,
+            "pick_number": 1,
+            "board_spot": 12,
+            "player_id": null
+          },
+          {
+            "user_id": "560984104439771136",
+            "roster_id": 12,
+            "is_traded": false,
+            "owner_id": 12,
+            "pick_round": 4,
+            "pick_number": 2,
+            "board_spot": 11,
+            "player_id": null
+          },
+          {
+            "user_id": "325380343328686080",
+            "roster_id": 10,
+            "is_traded": false,
+            "owner_id": 10,
+            "pick_round": 4,
+            "pick_number": 3,
+            "board_spot": 10,
+            "player_id": null
+          },
+          {
+            "user_id": "467132282604351488",
+            "roster_id": 3,
+            "is_traded": true,
+            "owner_id": 9,
+            "pick_round": 4,
+            "pick_number": 4,
+            "board_spot": 9,
+            "player_id": null
+          },
+          {
+            "user_id": "665051007910236160",
+            "roster_id": 6,
+            "is_traded": false,
+            "owner_id": 6,
+            "pick_round": 4,
+            "pick_number": 5,
+            "board_spot": 8,
+            "player_id": null
+          },
+          {
+            "user_id": "325371992242946048",
+            "roster_id": 11,
+            "is_traded": false,
+            "owner_id": 11,
+            "pick_round": 4,
+            "pick_number": 6,
+            "board_spot": 7,
+            "player_id": null
+          },
+          {
+            "user_id": "521485413219885056",
+            "roster_id": 4,
+            "is_traded": true,
+            "owner_id": 12,
+            "pick_round": 4,
+            "pick_number": 7,
+            "board_spot": 6,
+            "player_id": null
+          },
+          {
+            "user_id": "521424042611961856",
+            "roster_id": 2,
+            "is_traded": false,
+            "owner_id": 2,
+            "pick_round": 4,
+            "pick_number": 8,
+            "board_spot": 5,
+            "player_id": null
+          },
+          {
+            "user_id": "467766220007927808",
+            "roster_id": 9,
+            "is_traded": true,
+            "owner_id": 5,
+            "pick_round": 4,
+            "pick_number": 9,
+            "board_spot": 4,
+            "player_id": null
+          },
+          {
+            "user_id": "521035584588267520",
+            "roster_id": 1,
+            "is_traded": false,
+            "owner_id": 1,
+            "pick_round": 4,
+            "pick_number": 10,
+            "board_spot": 3,
+            "player_id": null
+          },
+          {
+            "user_id": "999040645685649408",
+            "roster_id": 8,
+            "is_traded": false,
+            "owner_id": 8,
+            "pick_round": 4,
+            "pick_number": 11,
+            "board_spot": 2,
+            "player_id": null
+          },
+          {
+            "user_id": "989213899293569024",
+            "roster_id": 5,
+            "is_traded": false,
+            "owner_id": 5,
+            "pick_round": 4,
+            "pick_number": 12,
+            "board_spot": 1,
+            "player_id": null
+          }
+        ]
+      }
+    ],
+    "player_pool": "Rookie"
+  },
+  "playerPool": {
+    "veteran": "Veteran",
+    "allPlayers": "All players"
+  }
+}

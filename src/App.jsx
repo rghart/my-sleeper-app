@@ -7,6 +7,8 @@ import RanksPanel from './Panels/RanksPanel';
 import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth, googleProvider } from './firebase.js';
 import createRankings from './helpers.js';
+import { buildDraftRounds } from './lib/draft.js';
+import { addPlayerToRoster, removePlayerFromLineup } from './lib/roster.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from './urls.js';
 const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
 const { LEAGUE, ALL_LEAGUES_ACTIVE_YEAR, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
@@ -266,117 +268,50 @@ class App extends React.Component {
     updatePlayerId = (searchData, deleting) => {
         const { rankingPlayersIdsList } = this.state;
         const currentIdIndex = rankingPlayersIdsList.findIndex((obj) => obj.ranking === searchData.ranking);
+        let newRankingPlayersIdsList;
         if (deleting) {
-            rankingPlayersIdsList.splice(currentIdIndex, 1);
-            rankingPlayersIdsList.forEach((rankList, i) => (rankList.ranking = i + 1));
+            newRankingPlayersIdsList = rankingPlayersIdsList
+                .filter((_, i) => i !== currentIdIndex)
+                .map((rankList, i) => ({ ...rankList, ranking: i + 1 }));
         } else {
-            rankingPlayersIdsList.splice(currentIdIndex, 1, searchData);
+            newRankingPlayersIdsList = [...rankingPlayersIdsList];
+            newRankingPlayersIdsList.splice(currentIdIndex, 1, searchData);
         }
-        this.setState({ rankingPlayersIdsList: rankingPlayersIdsList });
+        this.setState({ rankingPlayersIdsList: newRankingPlayersIdsList });
     };
 
     addToRoster = (player) => {
         const { rosterPositions, playerInfo } = this.state;
-        if (player.position === 'TE' || player.position === 'RB' || player.position === 'WR') {
-            player.fantasy_positions.push('FLX');
-            player.fantasy_positions.push('SFLX');
-        } else if (player.position === 'QB') {
-            player.fantasy_positions.push('SFLX');
-        }
-
-        for (let i = 0; i < player.fantasy_positions.length; i++) {
-            const includesPosition = rosterPositions.includes(player.fantasy_positions[i]);
-            if (includesPosition) {
-                const positionIndex = rosterPositions.indexOf(player.fantasy_positions[i]);
-                player.roster_text = player.fantasy_positions[i];
-                rosterPositions.splice(positionIndex, 1, player.player_id);
-                break;
-            }
-        }
-        player.in_lineup = true;
-        playerInfo[player.player_id] = player;
+        const updated = addPlayerToRoster({ player, rosterPositions, playerInfo });
         this.setState({
-            playerInfo,
-            rosterPositions,
+            playerInfo: updated.playerInfo,
+            rosterPositions: updated.rosterPositions,
         });
     };
 
     removeFromLineup = (id, i) => {
         const { rosterPositions, playerInfo } = this.state;
-        rosterPositions.splice(i, 1, playerInfo[id].roster_text);
-        playerInfo[id].in_lineup = false;
+        const updated = removePlayerFromLineup({ id, i, rosterPositions, playerInfo });
         this.setState({
-            playerInfo,
-            rosterPositions,
+            playerInfo: updated.playerInfo,
+            rosterPositions: updated.rosterPositions,
         });
     };
 
     buildDraft = () => {
         const { leagueData, tradedDraftPicks } = this.state;
-        const { currentDraft } = leagueData;
-        const { settings } = currentDraft;
-        let draftType = '';
-        switch (settings.player_type) {
-            case 1:
-                draftType = 'Rookie';
-                break;
-            case 2:
-                draftType = 'Veteran';
-                break;
-            default:
-                draftType = 'All players';
-                break;
-        }
-        const createPickOrder = (round) => {
-            const pickOrder = [];
-            for (const [key, value] of Object.entries(currentDraft.slot_to_roster_id)) {
-                const userID = leagueData.rosterData.find((roster) => roster.roster_id === value)
-                    ? leagueData.rosterData.find((roster) => roster.roster_id === value).owner_id
-                    : null;
-                const obj = {
-                    user_id: userID,
-                    roster_id: value,
-                    is_traded: false,
-                    owner_id: value,
-                    pick_round: round,
-                    pick_number: Number(key),
-                    board_spot: Number(key),
-                    player_id: null,
-                };
-                pickOrder.push(obj);
-            }
-            pickOrder.sort((a, b) => a.pick_number - b.pick_number);
-            if (currentDraft.type === 'snake' && round % 2 === 0) {
-                pickOrder.reverse();
-                pickOrder.forEach((pick, i) => {
-                    pick.pick_number = i + 1;
-                    return pick;
-                });
-            }
-
-            return pickOrder;
+        const { currentDraft, rosterData } = leagueData;
+        const { built_draft, player_pool } = buildDraftRounds({ currentDraft, rosterData, tradedDraftPicks });
+        const newLeagueData = {
+            ...leagueData,
+            currentDraft: {
+                ...currentDraft,
+                built_draft,
+                player_pool,
+            },
         };
-
-        const draftRounds = [];
-        for (let i = 0; i < settings.rounds; i++) {
-            const round = {};
-            round.round = settings.rounds - i;
-            round.picks = createPickOrder(round.round);
-            draftRounds.unshift(round);
-        }
-        tradedDraftPicks.forEach((tradedPick) => {
-            const draftRoundIndex = draftRounds[tradedPick.round - 1].picks.findIndex(
-                (pick) => pick.roster_id === tradedPick.roster_id,
-            );
-            Object.assign(draftRounds[tradedPick.round - 1].picks[draftRoundIndex], {
-                owner_id: tradedPick.owner_id,
-                is_traded: true,
-            });
-        });
-        leagueData.currentDraft.built_draft = draftRounds;
-        leagueData.currentDraft.player_pool = draftType;
         this.setState({
-            leagueData,
+            leagueData: newLeagueData,
             loadingMessage: '',
         });
     };
