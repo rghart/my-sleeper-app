@@ -5,12 +5,14 @@ import Dropdown from '../Components/Dropdown';
 const LeaguePanel = ({
     leagueData,
     playerInfo,
+    rosterInfo,
     updateParentState,
     rosterPositions,
     leagueID,
     loadingMessage,
     removeFromLineup,
     rankingPlayersIdsList,
+    updateDraftBoard,
 }) => {
     const [leaguePanel, setLeaguePanel] = useState('draft');
     const updateLeagueID = (value) => {
@@ -135,8 +137,9 @@ const LeaguePanel = ({
                         <DraftPanel
                             leagueData={leagueData}
                             playerInfo={playerInfo}
-                            updateParentState={updateParentState}
+                            rosterInfo={rosterInfo}
                             rankingPlayersIdsList={rankingPlayersIdsList}
+                            updateDraftBoard={updateDraftBoard}
                         />
                     )}
                 </>

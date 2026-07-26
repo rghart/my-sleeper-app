@@ -6,12 +6,15 @@ import Dropdown from '../Components/Dropdown';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Button from '../Components/Button';
+import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
 
 const RanksPanel = ({
     loadingMessage,
     signedIn,
     playerInfo,
+    rosterInfo,
+    lineupSet,
     updateFilter,
     startLoad,
     fetchRequest,
@@ -157,20 +160,17 @@ const RanksPanel = ({
             return false;
         }
 
+        const playerId = rankingPlayers.match_results[0][0];
+
         if (
             !showTaken &&
             showMyPlayers &&
-            (!playerInfo[rankingPlayers.match_results[0][0]].is_taken ||
-                playerInfo[rankingPlayers.match_results[0][0]].rostered_by === myDisplayName)
+            (!isTaken(rosterInfo, playerId) || rosteredBy(rosterInfo, playerId) === myDisplayName)
         ) {
             return true;
-        } else if (
-            showTaken &&
-            !showMyPlayers &&
-            playerInfo[rankingPlayers.match_results[0][0]].rostered_by !== myDisplayName
-        ) {
+        } else if (showTaken && !showMyPlayers && rosteredBy(rosterInfo, playerId) !== myDisplayName) {
             return true;
-        } else if (!showMyPlayers && !showTaken && !playerInfo[rankingPlayers.match_results[0][0]].is_taken) {
+        } else if (!showMyPlayers && !showTaken && !isTaken(rosterInfo, playerId)) {
             return true;
         } else if (showTaken && showMyPlayers) {
             return true;
@@ -414,6 +414,8 @@ const RanksPanel = ({
                                     key={`${results.match_results[0]}${i}`}
                                     player={playerInfo[results.match_results[0][0]]}
                                     playerInfo={playerInfo}
+                                    rosterInfo={rosterInfo}
+                                    lineupSet={lineupSet}
                                     isNewRankList={isNewRankList}
                                     addToRoster={addToRoster}
                                     updatePlayerId={updatePlayerId}

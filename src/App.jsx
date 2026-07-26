@@ -9,6 +9,7 @@ import { auth, googleProvider } from './firebase.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
 import { addPlayerToRoster, removePlayerFromLineup } from './lib/roster.js';
+import { buildLineupSet, decorateRosters, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveLeagueSeason, resolveMyDisplayName } from './lib/sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS, SLEEPER_USER_ID } from './urls.js';
 const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
@@ -33,6 +34,8 @@ class App extends React.Component {
         season: null,
         myDisplayName: null,
     };
+
+    selectRosterInfo = memoizeRosterInfo();
 
     componentDidMount() {
         onAuthStateChanged(auth, (user) => {
@@ -148,7 +151,11 @@ class App extends React.Component {
                     leagueData.leagueIds,
                     leagueData.currentLeagueDrafts,
                 ] = data;
-                this.markTakenPlayers(leagueData.rosterData, leagueData.managerData);
+                leagueData.rosterData = decorateRosters({
+                    rosterData: leagueData.rosterData,
+                    managerData: leagueData.managerData,
+                });
+                this.warnAboutMissingRosterPlayers(leagueData.rosterData);
                 this.setState(
                     {
                         leagueData: leagueData,
@@ -216,39 +223,19 @@ class App extends React.Component {
         }
     };
 
-    markTakenPlayers = (rosterData, managerData) => {
-        const playerObject = this.state.playerInfo;
-        if (this.state.rankingPlayersIdsList) {
-            Object.keys(playerObject).forEach((i) => {
-                if (playerObject[i]) {
-                    playerObject[i].is_taken = false;
-                    playerObject[i].rostered_by = null;
-                    playerObject[i].in_lineup = false;
+    // Diagnostic carried over from the old markTakenPlayers: a roster player id
+    // that isn't in the player DB is usually a retired player that was removed
+    // from it. Purely informational - it doesn't affect what gets rendered.
+    warnAboutMissingRosterPlayers = (rosterData) => {
+        const { playerInfo } = this.state;
+        rosterData.forEach((roster) => {
+            (roster.players || []).forEach((player) => {
+                if (!playerInfo[player]) {
+                    console.warn(
+                        `Can't find player ID ${player} - may be a retired player that was removed from the database`,
+                    );
                 }
             });
-        }
-        rosterData.forEach((roster) => {
-            const currentManagerId = roster.owner_id;
-            const currentManagerData = managerData.find((manager) => manager.user_id === currentManagerId);
-            roster.manager_display_name = currentManagerData
-                ? currentManagerData.display_name
-                : 'Unassigned' + ' ' + roster.roster_id;
-            roster.avatar = currentManagerData ? currentManagerData.avatar : null;
-            if (roster.players) {
-                roster.players.forEach((player) => {
-                    if (playerObject[player]) {
-                        playerObject[player].is_taken = true;
-                        playerObject[player].rostered_by = roster.manager_display_name;
-                    } else {
-                        console.warn(
-                            `Can't find player ID ${player} - may be a retired player that was removed from the database`,
-                        );
-                    }
-                });
-            }
-        });
-        this.setState({
-            playerInfo: playerObject,
         });
     };
 
@@ -335,6 +322,18 @@ class App extends React.Component {
         });
     };
 
+    updateDraftBoard = (built_draft) => {
+        this.setState((prevState) => ({
+            leagueData: {
+                ...prevState.leagueData,
+                currentDraft: {
+                    ...prevState.leagueData.currentDraft,
+                    built_draft,
+                },
+            },
+        }));
+    };
+
     googleSignIn = () => {
         signInWithPopup(auth, googleProvider).catch((error) => {
             console.log(error);
@@ -372,6 +371,11 @@ class App extends React.Component {
         if (isLoading && loadingMessage === 'Initial load...') {
             return <div className="loader"></div>;
         } else {
+            const rosterInfo = this.selectRosterInfo({
+                rosterData: leagueData.rosterData,
+                builtDraft: leagueData.currentDraft?.built_draft,
+            });
+            const lineupSet = buildLineupSet(rosterPositions);
             return (
                 <div>
                     <div
@@ -402,6 +406,7 @@ class App extends React.Component {
                             loadingMessage={loadingMessage}
                             signedIn={signedIn}
                             playerInfo={playerInfo}
+                            rosterInfo={rosterInfo}
                             updateFilter={this.updateParentState}
                             startLoad={this.startLoad}
                             fetchRequest={this.fetchRequest}
@@ -411,6 +416,7 @@ class App extends React.Component {
                             notFoundPlayers={notFoundPlayers}
                             rankingPlayersIdsList={rankingPlayersIdsList}
                             myDisplayName={myDisplayName}
+                            lineupSet={lineupSet}
                         />
                         <LeaguePanel
                             leagueData={leagueData}
@@ -419,8 +425,10 @@ class App extends React.Component {
                             rankingPlayersIdsList={rankingPlayersIdsList}
                             rosterPositions={rosterPositions}
                             playerInfo={playerInfo}
+                            rosterInfo={rosterInfo}
                             loadingMessage={loadingMessage}
                             removeFromLineup={this.removeFromLineup}
+                            updateDraftBoard={this.updateDraftBoard}
                         />
                     </div>
                 </div>
