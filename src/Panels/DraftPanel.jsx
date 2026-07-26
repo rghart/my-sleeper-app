@@ -18,8 +18,8 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
     };
 
     const handlePickChange = (updatedRound) => {
-        updateDraftBoard(
-            currentDraft.built_draft.map((round) => (round.round === updatedRound.round ? updatedRound : round)),
+        updateDraftBoard((builtDraft) =>
+            builtDraft.map((round) => (round.round === updatedRound.round ? updatedRound : round)),
         );
     };
 
@@ -37,13 +37,13 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                 console.error('Error:', error);
             });
 
-        const newLiveDraft = syncLiveDraft({
-            liveDraft: { built_draft: currentDraft.built_draft },
-            livePicks,
-            tradedPicks,
-        });
-
-        updateDraftBoard(newLiveDraft.built_draft);
+        // Applied against the board as it stands when the update runs, not the
+        // one this closure captured before the two awaits above: a manual pick
+        // assigned while they were in flight would otherwise be discarded.
+        updateDraftBoard(
+            (builtDraft) =>
+                syncLiveDraft({ liveDraft: { built_draft: builtDraft }, livePicks, tradedPicks }).built_draft,
+        );
     };
 
     const getLiveDraftRef = useRef(getLiveDraft);
