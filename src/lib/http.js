@@ -5,7 +5,12 @@
  */
 export function checkErrors(response) {
     if (!response.ok) {
-        throw new Error(response.statusText, response.status);
+        // The status goes in the message, not in a second argument. Error's
+        // second parameter is an options object (`{ cause }`), so passing a
+        // number there discarded it silently - and the status is often the
+        // only thing distinguishing a 404 from a 500 in the logged output,
+        // since statusText is routinely empty over HTTP/2.
+        throw new Error(response.status ? `${response.status} ${response.statusText}` : response.statusText);
     }
     return response;
 }

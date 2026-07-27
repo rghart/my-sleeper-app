@@ -57,4 +57,17 @@ describe('Header', () => {
             new Date(LAST_UPDATE).toString(),
         );
     });
+
+    it('shows no timestamp line at all until there is a timestamp', () => {
+        // lastUpdate starts null and its request is deliberately not awaited,
+        // so this state is on screen during every load. `new Date(null)` is the
+        // epoch, which rendered as a confident "Wed Dec 31 1969".
+        renderHeader({ lastUpdate: null });
+
+        expect(screen.queryByText(/Latest player DB update attempt:/)).toBeNull();
+        expect(screen.queryByText(/1969/)).toBeNull();
+        // The rest of the header still renders - the missing timestamp costs
+        // one line, not the sign-in control.
+        expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+    });
 });

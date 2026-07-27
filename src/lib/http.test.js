@@ -19,6 +19,25 @@ describe('checkErrors', () => {
         expect(() => checkErrors({ ok: false, status: 404, statusText: 'Not Found' })).toThrow('Not Found');
     });
 
+    it('puts the status in the message, where the catch handlers will log it', () => {
+        // It used to be passed as Error's second argument, which is an options
+        // object - so it was discarded and every failure logged the same way.
+        expect(() => checkErrors({ ok: false, status: 500, statusText: 'Internal Server Error' })).toThrow(
+            '500 Internal Server Error',
+        );
+    });
+
+    it('omits a missing status rather than printing "undefined"', () => {
+        // statusText is routinely empty over HTTP/2 and some responses carry no
+        // status at all; neither should produce a message with undefined in it.
+        try {
+            checkErrors({ ok: false, statusText: 'Gateway Timeout' });
+            throw new Error('checkErrors did not throw');
+        } catch (error) {
+            expect(error.message).toBe('Gateway Timeout');
+        }
+    });
+
     it('treats any falsy ok as a failure, not just an explicit false', () => {
         expect(() => checkErrors({ ok: undefined, statusText: 'Gateway Timeout' })).toThrow();
     });
