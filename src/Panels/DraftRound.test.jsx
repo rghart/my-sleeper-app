@@ -87,7 +87,7 @@ describe('DraftRound with a player missing from the player database', () => {
     });
 
     it('renders the fallback outside the full-text/abbr-text pair', () => {
-        // `full-text` is display:none in portrait, where `abbr-text` replaces
+        // `full-text` is display:none below 640px, where `abbr-text` replaces
         // it. The first cut of this fix put the fallback in a `full-text` span,
         // which rendered a blank cell on a phone - caught in the browser, not
         // here, because jsdom applies no stylesheet and getByText found it

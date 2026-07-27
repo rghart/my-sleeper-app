@@ -238,7 +238,9 @@
     display: none;
 }
 
-@media all and (orientation: portrait) {
+/* This is a width breakpoint, not an orientation check: below 640px
+   (Tailwind's `sm`), abbreviate names; at 640px and up, show full names. */
+@media all and (max-width: 639px) {
     .abbr-text {
         display: inline-block;
         text-overflow: ellipsis;

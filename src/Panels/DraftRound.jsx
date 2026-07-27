@@ -97,11 +97,11 @@ const DraftRound = ({ round, playerInfo, rosterInfo, rosterData, rankingPlayersI
                                                 </>
                                             ) : (
                                                 // Deliberately not `full-text`: that class is
-                                                // display:none in portrait, where `abbr-text`
-                                                // takes over. There is no abbreviated form of
-                                                // an unresolved id, so an unclassed span is
-                                                // what keeps the cell from going blank on a
-                                                // phone.
+                                                // display:none below the narrow-width breakpoint,
+                                                // where `abbr-text` takes over. There is no
+                                                // abbreviated form of an unresolved id, so an
+                                                // unclassed span is what keeps the cell from
+                                                // going blank on a phone.
                                                 <span style={{ paddingRight: 3 + 'px' }}>
                                                     {`Unknown player ${pick.player_id}`}
                                                 </span>
