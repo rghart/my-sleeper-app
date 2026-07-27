@@ -65,7 +65,10 @@ describe('addPlayerToRoster', () => {
 
         expect(result.rosterPositions).toEqual(['QB', '1001', 'WR', 'FLX', 'BN']);
         expect(result.playerInfo['1001'].roster_text).toEqual('RB');
-        expect(result.playerInfo['1001'].fantasy_positions).toEqual(['RB', 'FLX', 'SFLX']);
+        // The eligible positions are computed to find the slot, but not written
+        // back onto the player: nothing reads the extended list, and
+        // getEligiblePositions re-derives it on demand.
+        expect(result.playerInfo['1001'].fantasy_positions).toEqual(['RB']);
     });
 
     it('falls back to FLX slot when the primary position slot is unavailable', () => {
@@ -103,21 +106,34 @@ describe('addPlayerToRoster', () => {
         expect(playerInfo).toEqual(clonedPlayerInfo);
     });
 
-    it('does not duplicate fantasy_positions entries when the player is added twice in a row', () => {
+    it('leaves the player database entry untouched apart from roster_text', () => {
+        // The whole point of dropping the write-back: adding a player to a
+        // lineup must not rewrite the shared player database with derived
+        // values. roster_text is the last remaining write, and goes next.
         const player = makePlayer();
-        const rosterPositions = ['QB', 'RB', 'WR', 'FLX', 'BN'];
-        const first = addPlayerToRoster({ player, rosterPositions, playerInfo: {} });
+        const playerInfo = { 1001: player };
+        const result = addPlayerToRoster({ player, rosterPositions: ['QB', 'RB', 'BN'], playerInfo });
 
-        // Second call simulates re-adding using the already-updated player/playerInfo,
-        // as would happen if addToRoster were invoked again for the same player.
+        const { roster_text, ...rest } = result.playerInfo['1001'];
+        expect(roster_text).toEqual('RB');
+        expect(rest).toEqual(player);
+    });
+
+    it('assigns the same slot whether or not a previous add cached anything on the player', () => {
+        // getEligiblePositions is idempotent, which is what made the cache
+        // pointless: a second add computes the same eligible list from the
+        // player's real position and picks the same slot.
+        const player = makePlayer();
+        const first = addPlayerToRoster({ player, rosterPositions: ['QB', 'RB', 'WR', 'FLX', 'BN'], playerInfo: {} });
+
         const second = addPlayerToRoster({
             player: first.playerInfo['1001'],
-            rosterPositions: first.rosterPositions,
+            rosterPositions: ['QB', 'RB', 'WR', 'FLX', 'BN'],
             playerInfo: first.playerInfo,
         });
 
-        expect(second.playerInfo['1001'].fantasy_positions).toEqual(['RB', 'FLX', 'SFLX']);
-        expect(second.playerInfo['1001'].fantasy_positions.length).toBe(3);
+        expect(second.rosterPositions).toEqual(first.rosterPositions);
+        expect(second.playerInfo['1001'].roster_text).toEqual('RB');
     });
 });
 
