@@ -1,6 +1,7 @@
 import React from 'react';
 import './App.css';
 import './loader.css';
+import ErrorBanner from './Components/ErrorBanner';
 import Header from './Components/Header';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
@@ -29,6 +30,8 @@ import { SLEEPER_USER_ID } from './urls.js';
 // startLoad and then comparing against that same literal coming back down as a
 // prop. The panels now receive a plain boolean and no longer share a
 // vocabulary with App at all, so these names stay private to this file.
+const LEAGUE_LOAD_FAILED = "Couldn't load your league data. The Sleeper API may be unavailable.";
+
 const LOADING = {
     NONE: 'none',
     INITIAL: 'initial',
@@ -39,7 +42,8 @@ const LOADING = {
 class App extends React.Component {
     state = {
         playerInfo: {},
-        leagueData: [],
+        leagueData: {},
+        loadError: null,
         loading: LOADING.INITIAL,
         rankingPlayersIdsList: [],
         leagueID: '1312088290526003200',
@@ -105,7 +109,12 @@ class App extends React.Component {
         const season = this.state.season || (await fetchLeagueSeason());
         const leagueData = await fetchLeagueBundle({ leagueID: this.state.leagueID, season });
         if (!leagueData) {
-            this.setState({ season, loading: LOADING.NONE });
+            // Both panels read league data unconditionally - LeaguePanel goes
+            // straight for currentLeague.name - so there is nothing to render
+            // them from and no partial view worth showing. Before this the app
+            // fell through to a render with leagueData still empty and threw,
+            // leaving a blank page.
+            this.setState({ season, loading: LOADING.NONE, loadError: LEAGUE_LOAD_FAILED });
             return;
         }
 
@@ -113,6 +122,7 @@ class App extends React.Component {
         this.setState({
             season,
             leagueData,
+            loadError: null,
             loading: LOADING.LEAGUE_PANEL,
             myDisplayName: resolveMyDisplayName(leagueData.managerData, SLEEPER_USER_ID),
             rosterSlots: toRosterSlots(leagueData.currentLeague.roster_positions),
@@ -167,6 +177,14 @@ class App extends React.Component {
                 }
             });
         });
+    };
+
+    // Retries only the league load, not the whole app: the player database is
+    // already in memory and is not what failed. The full-page loader comes back
+    // because both panels are hidden while there is no league data, so there is
+    // nowhere for a panel-level spinner to appear.
+    retryLeagueLoad = () => {
+        this.setState({ loadError: null, loading: LOADING.INITIAL }, () => this.loadLeague(this.state.playerInfo));
     };
 
     updateLeagueID = (leagueID) => {
@@ -268,6 +286,7 @@ class App extends React.Component {
             leagueData,
             notFoundPlayers,
             leagueID,
+            loadError,
             signedIn,
             signedInEmail,
             myDisplayName,
@@ -289,34 +308,37 @@ class App extends React.Component {
                         onSignIn={this.googleSignIn}
                         onSignOut={this.signOut}
                     />
-                    <div className="main-container">
-                        <RanksPanel
-                            isLoading={loading === LOADING.RANKS_PANEL}
-                            signedIn={signedIn}
-                            playerInfo={playerInfo}
-                            rosterInfo={rosterInfo}
-                            updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
-                            startLoad={this.startLoad}
-                            addToRoster={this.addToRoster}
-                            updatePlayerId={this.updatePlayerId}
-                            notFoundPlayers={notFoundPlayers}
-                            rankingPlayersIdsList={rankingPlayersIdsList}
-                            myDisplayName={myDisplayName}
-                            lineupSet={lineupSet}
-                        />
-                        <LeaguePanel
-                            leagueData={leagueData}
-                            leagueID={leagueID}
-                            updateLeagueID={this.updateLeagueID}
-                            rankingPlayersIdsList={rankingPlayersIdsList}
-                            rosterSlots={rosterSlots}
-                            playerInfo={playerInfo}
-                            rosterInfo={rosterInfo}
-                            isLoading={loading === LOADING.LEAGUE_PANEL}
-                            removeFromLineup={this.removeFromLineup}
-                            updateDraftBoard={this.updateDraftBoard}
-                        />
-                    </div>
+                    {loadError ? <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} /> : null}
+                    {!loadError && leagueData.currentLeague ? (
+                        <div className="main-container">
+                            <RanksPanel
+                                isLoading={loading === LOADING.RANKS_PANEL}
+                                signedIn={signedIn}
+                                playerInfo={playerInfo}
+                                rosterInfo={rosterInfo}
+                                updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
+                                startLoad={this.startLoad}
+                                addToRoster={this.addToRoster}
+                                updatePlayerId={this.updatePlayerId}
+                                notFoundPlayers={notFoundPlayers}
+                                rankingPlayersIdsList={rankingPlayersIdsList}
+                                myDisplayName={myDisplayName}
+                                lineupSet={lineupSet}
+                            />
+                            <LeaguePanel
+                                leagueData={leagueData}
+                                leagueID={leagueID}
+                                updateLeagueID={this.updateLeagueID}
+                                rankingPlayersIdsList={rankingPlayersIdsList}
+                                rosterSlots={rosterSlots}
+                                playerInfo={playerInfo}
+                                rosterInfo={rosterInfo}
+                                isLoading={loading === LOADING.LEAGUE_PANEL}
+                                removeFromLineup={this.removeFromLineup}
+                                updateDraftBoard={this.updateDraftBoard}
+                            />
+                        </div>
+                    ) : null}
                 </div>
             );
         }
