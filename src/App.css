@@ -31,7 +31,7 @@
 
 .panel {
     padding: 5px 15px 15px 15px;
-    background-color: #283245;
+    background-color: #1b2530;
     border-radius: 10px;
     height: 100%;
     margin: 8px 3px 3px 3px;
@@ -62,7 +62,7 @@
 }
 
 .single-player-item {
-    border: 2px solid #4b576b;
+    border: 2px solid #2c3846;
     display: grid;
     grid-template-columns: 2fr 1fr;
     padding: 5px;
@@ -130,9 +130,9 @@
 
 .dropdown {
     background: transparent;
-    caret-color: #ddd;
-    color: #fff;
-    border: 2px solid #4b576b;
+    caret-color: #8fa3b8;
+    color: #e8edf2;
+    border: 2px solid #2c3846;
     border-radius: 10px;
     margin-top: 8px;
     width: 85%;
@@ -149,9 +149,9 @@
     margin-top: 8px;
     margin-right: 3px;
     background: transparent;
-    caret-color: #ddd;
-    color: #fff;
-    border: 2px solid #4b576b;
+    caret-color: #8fa3b8;
+    color: #e8edf2;
+    border: 2px solid #2c3846;
     border-radius: 10px;
     height: 100px;
     width: 85%;
@@ -161,15 +161,15 @@
     margin-top: 1px;
     margin-bottom: 16px;
     background: transparent;
-    caret-color: #ddd;
-    color: #fff;
-    border: 2px solid #4b576b;
+    caret-color: #8fa3b8;
+    color: #e8edf2;
+    border: 2px solid #2c3846;
     border-radius: 10px;
     margin: 0;
 }
 
 .radio-label {
-    border: 1px solid #a3bbd3;
+    border: 1px solid #8fa3b8;
     border-radius: 22px;
     padding: 6px;
     cursor: pointer;
@@ -179,10 +179,6 @@
 
 .radioPad {
     display: none;
-}
-
-.checked {
-    background-color: #00ceb8;
 }
 
 .lineup-position {
@@ -208,7 +204,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: #e8edf2;
     height: 20px;
     width: 20px;
 }
@@ -241,7 +237,7 @@
 
 .draft-pick-rows {
     display: flex;
-    border: 2px solid #a3bbd3;
+    border: 2px solid #8fa3b8;
     border-radius: 6px;
     margin-bottom: 3px;
     width: 95%;
@@ -250,7 +246,7 @@
 
 .draft-pick-rows:hover {
     display: flex;
-    border: 2px solid #00d8a7;
+    border: 2px solid #8fa3b8;
     border-radius: 6px;
     margin-bottom: 3px;
     width: 95%;
@@ -273,14 +269,14 @@
 .round-number {
     margin: 0;
     padding: 5px 15px 2px 25px;
-    background-color: #283245;
+    background-color: #1b2530;
     position: sticky;
     top: 0;
 }
 
 .custom-horizontal-select {
     display: flex;
-    border: 1px solid #a3bbd3;
+    border: 1px solid #8fa3b8;
     border-radius: 22px;
     width: 100%;
     max-width: 85%;
@@ -312,8 +308,13 @@
     margin-top: 3px;
 }
 
+/* Selection reads through contrast and elevation, never hue: the teal these
+   two carried was byte-identical to the RB position colour. */
+.checked,
 .custom-horizontal-select .custom-horizontal-select-item.selected {
-    background-color: #00ceb8;
+    background-color: #2c3846;
+    color: #e8edf2;
+    border: 1px solid #8fa3b8;
     transition: all 0.1s ease;
 }
 

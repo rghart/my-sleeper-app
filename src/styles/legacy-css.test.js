@@ -20,7 +20,14 @@ const APP_CSS = resolve(process.cwd(), 'src/App.css');
 // 427 lines before the redesign started; 381 after the dead CRA rules went;
 // 345 with ErrorBanner converted; 340 once the shell replaced .main-container;
 // 326 once Header's .title and .latest-update went with it.
-const MAX_LINES = 326;
+//
+// 328 after the palette flip, and this is the one time the ceiling has gone
+// UP. Selection used to be a teal fill that was byte-identical to the RB
+// position colour; replacing it with contrast and elevation costs two extra
+// declarations. Raising the ceiling for a deliberate, explained reason is the
+// ratchet doing its job - the thing it exists to stop is growth nobody
+// noticed.
+const MAX_LINES = 328;
 
 const CONVERTED = ['error-banner', 'warning-banner', 'main-container', 'latest-update', '.title {'];
 
@@ -36,5 +43,23 @@ describe('App.css drain', () => {
 
     it.each(CONVERTED)('has no rules left for the converted %s', (selector) => {
         expect(css).not.toContain(selector);
+    });
+});
+
+// The rule the palette derives from: saturation is reserved for data. The old
+// UI chrome broke it in the worst possible way - selected filters and the
+// selected panel tab were filled with #00ceb8, which is byte-identical to the
+// RB position colour, and rows hovered to #00d8a7 next door to it. Both are
+// gone; this is what stops them coming back as "just a highlight".
+describe('position colours are not reused as chrome', () => {
+    const CHROME_SHEETS = ['src/App.css', 'src/Components/Button/Button.css', 'src/index.css'];
+
+    it.each(CHROME_SHEETS)('%s does not fill anything with the RB colour', (sheet) => {
+        const contents = readFileSync(resolve(process.cwd(), sheet), 'utf8').toLowerCase();
+
+        // The position palette itself is written in rgb() in App.css, so the
+        // hex spelling appearing anywhere means something borrowed the hue.
+        expect(contents).not.toContain('#00ceb8');
+        expect(contents).not.toContain('#00d8a7');
     });
 });
