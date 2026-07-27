@@ -45,6 +45,12 @@ const { currentDraft: draftSettings, tradedDraftPicks } = realDraftFixture;
 const LEAGUE_ID = '1312088290526003200';
 const OTHER_LEAGUE_ID = '9999999999999999999';
 const DRAFT_ID = 'draft123';
+const OTHER_DRAFT_ID = 'draftOther';
+
+// On roster 1 (mine) in the first league, dropped from every roster in the
+// second - so switching leagues must change this player's attribution from
+// 'ryangh' to 'Free Agent'.
+const SWAPPED_PLAYER = { id: '13274', name: 'Germie Bernard' };
 
 const jsonResponse = (data) => Promise.resolve({ ok: true, statusText: 'OK', json: () => Promise.resolve(data) });
 
@@ -64,16 +70,27 @@ function mockFetch(url) {
     if (url.includes('state/nfl')) {
         return jsonResponse({ league_season: '2026' });
     }
-    // Both leagues are served the same fixture data; only the id differs. The
-    // second one exists so the league dropdown has somewhere to switch to.
+    // The second league exists so the dropdown has somewhere to switch to. Its
+    // rosters are the same fixture with SWAPPED_PLAYER dropped from every
+    // roster, so that player's attribution differs between the two leagues -
+    // which is what makes a switch observable in the ranks panel rather than
+    // only on the draft board.
     if (/league\/\d+\/rosters\//.test(url)) {
-        return jsonResponse(structuredClone(rosterDataRaw));
+        const rosters = structuredClone(rosterDataRaw);
+        if (url.includes(OTHER_LEAGUE_ID)) {
+            rosters.forEach((roster) => {
+                if (roster.players) {
+                    roster.players = roster.players.filter((id) => id !== SWAPPED_PLAYER.id);
+                }
+            });
+        }
+        return jsonResponse(rosters);
     }
     if (/league\/\d+\/users\//.test(url)) {
         return jsonResponse(structuredClone(managerData));
     }
     if (/league\/\d+\/drafts\//.test(url)) {
-        return jsonResponse([{ draft_id: DRAFT_ID }]);
+        return jsonResponse([{ draft_id: url.includes(OTHER_LEAGUE_ID) ? OTHER_DRAFT_ID : DRAFT_ID }]);
     }
     if (url.includes('leagues/nfl/')) {
         return jsonResponse([
@@ -88,13 +105,13 @@ function mockFetch(url) {
             roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'BN', 'BN'],
         });
     }
-    if (url.includes(`draft/${DRAFT_ID}/traded_picks/`)) {
+    if (/draft\/[\w]+\/traded_picks\//.test(url)) {
         return jsonResponse(structuredClone(tradedDraftPicks));
     }
-    if (url.includes(`draft/${DRAFT_ID}`)) {
+    if (/draft\/[\w]+$/.test(url)) {
         return jsonResponse({
             ...structuredClone(draftSettings),
-            draft_id: DRAFT_ID,
+            draft_id: url.includes(OTHER_DRAFT_ID) ? OTHER_DRAFT_ID : DRAFT_ID,
             season: '2026',
             status: 'drafting',
             draft_order: {},
@@ -322,6 +339,71 @@ describe('App', () => {
 
         await waitFor(() => expect(container.querySelector('.league-panel .panel-loader')).toBeNull());
         expect(screen.getAllByText('ryangh').length).toBeGreaterThan(0);
+    });
+
+    it('recomputes roster attribution in the ranks panel after a league switch', async () => {
+        // Characterization test, written before touching anything: getLeagueData
+        // ends with a spread of rankingPlayersIdsList into a new array whose
+        // only purpose is to force a re-render. It looks vestigial - the flags
+        // are derived from leagueData.rosterData now, which changes identity on
+        // a switch - but nothing covered this path, so the question could not
+        // be answered by reading. This test answers it either way.
+        global.fetch = vi.fn(mockFetch);
+
+        const user = userEvent.setup();
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+        await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), `1. ${SWAPPED_PLAYER.name}`);
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        const attribution = async () => {
+            const item = (await screen.findByText(SWAPPED_PLAYER.name)).closest('.single-player-item');
+            return item.querySelector('.team-name').textContent;
+        };
+
+        expect(await attribution()).toBe('ryangh');
+
+        await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
+
+        // The second league has this player on nobody's roster, so the derived
+        // flags must follow the new league rather than keeping the stale name.
+        await waitFor(async () => expect(await attribution()).toBe('Free Agent'));
+    });
+
+    it('checks rosters against a player database that has actually loaded', async () => {
+        // warnAboutMissingRosterPlayers used to read this.state.playerInfo,
+        // written by the setState immediately before the call. With
+        // instantly-resolving fetches that setState has not flushed, so the
+        // check ran against an empty database and warned about every player in
+        // the league - another instance of the read-before-flush class (#96,
+        // #98). playerInfo is threaded through as an argument now.
+        const warnings = [];
+        vi.spyOn(console, 'warn').mockImplementation((message) => {
+            if (String(message).includes("Can't find player ID")) {
+                warnings.push(message);
+            }
+        });
+
+        try {
+            global.fetch = vi.fn(mockFetch);
+            render(<App />);
+            await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+            // Derived from the fixture rather than hardcoded: it is trimmed, so
+            // some roster players are legitimately absent from the player DB.
+            const rosterPlayerIds = rosterDataRaw.flatMap((roster) => roster.players || []);
+            const known = new Set(Object.keys(playerInfo));
+            const legitimatelyMissing = rosterPlayerIds.filter((id) => !known.has(id));
+
+            // The assertion only means something if the fixture actually knows
+            // about some roster players - otherwise both the correct and the
+            // stale read would produce the same count.
+            expect(legitimatelyMissing.length).toBeLessThan(rosterPlayerIds.length);
+            expect(warnings).toHaveLength(legitimatelyMissing.length);
+        } finally {
+            vi.restoreAllMocks();
+        }
     });
 
     it('unsubscribes from auth state changes on unmount', async () => {
