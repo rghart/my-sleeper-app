@@ -43,56 +43,75 @@ const DraftRound = ({ round, playerInfo, rosterInfo, rosterData, rankingPlayersI
                     <h4 className="round-number clickable-item" onClick={() => setShowRound(!showRound)}>
                         Round {round.round}
                     </h4>
-                    {round.picks.map((pick) => (
-                        <div
-                            key={pick.pick_number}
-                            className={`draft-pick clickable-item ${!showRound ? 'is-hidden' : null}`}
-                            onClick={() => manualPickSelection(pick)}
-                        >
-                            <p className="pick-string">{`${round.round}.${pick.pick_number}`}</p>
-                            <div className="player-info-item draft-pick-rows">
-                                <div style={{ display: 'flex' }}>
-                                    <img
-                                        className="avatar"
-                                        src={`https://sleepercdn.com/avatars/thumbs/${
-                                            rosterData.find((roster) => roster.roster_id === pick.owner_id)?.avatar
-                                        }`}
-                                        alt="Users avatar"
-                                    />
-                                    <p className="draft-pick">
-                                        {pick.owner_id
-                                            ? rosterData.find((roster) => roster.roster_id === pick.owner_id)
-                                                  ?.manager_display_name
-                                            : 'Pick owner missing'}
-                                        {pick.is_traded && pick.roster_id !== pick.owner_id
-                                            ? ` via ${
-                                                  rosterData.find((roster) => roster.roster_id === pick.roster_id)
+                    {round.picks.map((pick) => {
+                        // The player database is a snapshot and a drafted player
+                        // can be absent from it. The className below already
+                        // allowed for that; the four reads under it did not, so
+                        // one unknown id threw on `.full_name` and took the whole
+                        // board down. Render the id itself rather than a blank
+                        // cell - that is what makes the gap diagnosable, and it
+                        // matches warnAboutMissingRosterPlayers, which logs the
+                        // same situation on the roster side.
+                        const player = playerInfo[pick.player_id];
+                        return (
+                            <div
+                                key={pick.pick_number}
+                                className={`draft-pick clickable-item ${!showRound ? 'is-hidden' : null}`}
+                                onClick={() => manualPickSelection(pick)}
+                            >
+                                <p className="pick-string">{`${round.round}.${pick.pick_number}`}</p>
+                                <div className="player-info-item draft-pick-rows">
+                                    <div style={{ display: 'flex' }}>
+                                        <img
+                                            className="avatar"
+                                            src={`https://sleepercdn.com/avatars/thumbs/${
+                                                rosterData.find((roster) => roster.roster_id === pick.owner_id)?.avatar
+                                            }`}
+                                            alt="Users avatar"
+                                        />
+                                        <p className="draft-pick">
+                                            {pick.owner_id
+                                                ? rosterData.find((roster) => roster.roster_id === pick.owner_id)
                                                       ?.manager_display_name
-                                              }`
-                                            : null}
-                                    </p>
-                                </div>
-                                {pick.player_id && (
-                                    <div
-                                        className={`${
-                                            playerInfo[pick.player_id] ? playerInfo[pick.player_id].position : null
-                                        } draft-pick-details`}
-                                    >
-                                        <span className="full-text" style={{ paddingRight: 3 + 'px' }}>
-                                            {playerInfo[pick.player_id].full_name}
-                                        </span>
-                                        <span className="abbr-text" style={{ paddingRight: 3 + 'px' }}>
-                                            {`${playerInfo[pick.player_id].first_name.split('')[0]}.${
-                                                playerInfo[pick.player_id].last_name
-                                            }`}{' '}
-                                        </span>
-                                        <p>{playerInfo[pick.player_id].team}</p>
-                                        <p>{playerInfo[pick.player_id].position}</p>
+                                                : 'Pick owner missing'}
+                                            {pick.is_traded && pick.roster_id !== pick.owner_id
+                                                ? ` via ${
+                                                      rosterData.find((roster) => roster.roster_id === pick.roster_id)
+                                                          ?.manager_display_name
+                                                  }`
+                                                : null}
+                                        </p>
                                     </div>
-                                )}
+                                    {pick.player_id && (
+                                        <div className={`${player ? player.position : null} draft-pick-details`}>
+                                            {player ? (
+                                                <>
+                                                    <span className="full-text" style={{ paddingRight: 3 + 'px' }}>
+                                                        {player.full_name}
+                                                    </span>
+                                                    <span className="abbr-text" style={{ paddingRight: 3 + 'px' }}>
+                                                        {`${player.first_name.split('')[0]}.${player.last_name}`}{' '}
+                                                    </span>
+                                                    <p>{player.team}</p>
+                                                    <p>{player.position}</p>
+                                                </>
+                                            ) : (
+                                                // Deliberately not `full-text`: that class is
+                                                // display:none in portrait, where `abbr-text`
+                                                // takes over. There is no abbreviated form of
+                                                // an unresolved id, so an unclassed span is
+                                                // what keeps the cell from going blank on a
+                                                // phone.
+                                                <span style={{ paddingRight: 3 + 'px' }}>
+                                                    {`Unknown player ${pick.player_id}`}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
             {showPickSelection && (

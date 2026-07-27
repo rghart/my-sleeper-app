@@ -56,6 +56,66 @@ const openPickModal = async (user, pickLabel) => {
     return screen.getByText(/^Manually select pick/).closest('div').parentElement;
 };
 
+// The player database is a snapshot - it is fetched wholesale and its last
+// update attempt reads Nov 2022 - so a drafted player can simply not be in it.
+// DraftRound already allowed for that when choosing the position className and
+// then read `.full_name` off the same lookup unconditionally on the next line,
+// so one unknown id threw and took the entire board down, not just that cell.
+describe('DraftRound with a player missing from the player database', () => {
+    const UNKNOWN_ID = '99999999';
+
+    const roundWithUnknownPick = () => ({
+        ...round,
+        picks: round.picks.map((pick, i) => (i === 0 ? { ...pick, player_id: UNKNOWN_ID, picked: true } : pick)),
+    });
+
+    it('renders the rest of the board instead of throwing', () => {
+        expect(playerInfo[UNKNOWN_ID]).toBeUndefined();
+
+        renderRound({ round: roundWithUnknownPick() });
+
+        // Every pick slot still rendered - the failure mode was the whole
+        // component throwing, so the count is the assertion that matters.
+        expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBe(round.picks.length);
+        expect(screen.getByText(`Round ${round.round}`)).toBeInTheDocument();
+    });
+
+    it('shows the unresolved player id so the gap is diagnosable', () => {
+        renderRound({ round: roundWithUnknownPick() });
+
+        expect(screen.getByText(`Unknown player ${UNKNOWN_ID}`)).toBeInTheDocument();
+    });
+
+    it('renders the fallback outside the full-text/abbr-text pair', () => {
+        // `full-text` is display:none in portrait, where `abbr-text` replaces
+        // it. The first cut of this fix put the fallback in a `full-text` span,
+        // which rendered a blank cell on a phone - caught in the browser, not
+        // here, because jsdom applies no stylesheet and getByText found it
+        // regardless.
+        renderRound({ round: roundWithUnknownPick() });
+
+        const fallback = screen.getByText(`Unknown player ${UNKNOWN_ID}`);
+        expect(fallback.className).toBe('');
+    });
+
+    it('still renders known players on the same round normally', () => {
+        const knownId = Object.keys(playerInfo)[0];
+        const mixed = {
+            ...round,
+            picks: round.picks.map((pick, i) => {
+                if (i === 0) return { ...pick, player_id: UNKNOWN_ID, picked: true };
+                if (i === 1) return { ...pick, player_id: knownId, picked: true };
+                return pick;
+            }),
+        };
+
+        renderRound({ round: mixed });
+
+        expect(screen.getByText(`Unknown player ${UNKNOWN_ID}`)).toBeInTheDocument();
+        expect(screen.getByText(playerInfo[knownId].full_name)).toBeInTheDocument();
+    });
+});
+
 describe('DraftRound manual pick selection', () => {
     let user;
 
