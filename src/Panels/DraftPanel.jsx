@@ -106,7 +106,7 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                 <p>Status: {currentDraft.status}</p>
                 <Button
                     text={!isSyncing ? 'Sync draft' : 'Stop sync'}
-                    btnStyle={`primary-large ${isSyncing ? 'active' : null}`}
+                    btnStyle={isSyncing ? 'primary-large active' : 'primary-large'}
                     onClick={() => setIsSyncing(!isSyncing)}
                 />
             </div>

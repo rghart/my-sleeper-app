@@ -79,9 +79,9 @@ describe('LeaguePanel', () => {
     });
 
     it('shows only the loader while the league panel is loading', () => {
-        const { container } = renderPanel({ isLoading: true });
+        renderPanel({ isLoading: true });
 
-        expect(container.querySelector('.panel-loader')).toBeTruthy();
+        expect(screen.queryByRole('progressbar', { name: 'Loading' })).toBeTruthy();
         expect(screen.queryByText('Test League')).toBeNull();
         expect(draftPanelShowing()).toBe(false);
     });

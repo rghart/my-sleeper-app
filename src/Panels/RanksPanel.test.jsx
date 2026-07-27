@@ -78,9 +78,9 @@ const visiblePlayers = () =>
 
 describe('RanksPanel loading', () => {
     it('shows only the loader while the ranks panel is loading', () => {
-        const { container } = renderPanel({ isLoading: true });
+        renderPanel({ isLoading: true });
 
-        expect(container.querySelector('.panel-loader')).toBeTruthy();
+        expect(screen.queryByRole('progressbar', { name: 'Loading' })).toBeTruthy();
         expect(screen.queryByText(FREE_AGENT.name)).toBeNull();
     });
 
