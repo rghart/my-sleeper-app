@@ -1,11 +1,10 @@
 import React from 'react';
 import './App.css';
 import './loader.css';
-import Button from './Components/Button';
+import Header from './Components/Header';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
-import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth, googleProvider } from './firebase.js';
+import { currentUserIdentity, observeAuthState, signInAnonymous, signInWithGoogle, signOutUser } from './lib/auth.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
 import {
@@ -71,21 +70,17 @@ class App extends React.Component {
     selectRosterInfo = memoizeRosterInfo();
 
     componentDidMount() {
-        this.unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        this.unsubscribeAuth = observeAuthState((user) => {
             if (user) {
                 const { playerInfo } = this.state;
-                const { currentUser } = auth;
-                this.setState({
-                    signedIn: !currentUser.isAnonymous,
-                    signedInEmail: currentUser.email ? currentUser.email : null,
-                });
+                this.setState(currentUserIdentity());
                 if (playerInfo && Object.keys(playerInfo).length === 0) {
                     this.loadEverything();
                 } else {
                     this.loadLeague(playerInfo);
                 }
             } else {
-                signInAnonymously(auth).catch((err) => console.error('Error:', err));
+                signInAnonymous();
             }
         });
     }
@@ -276,23 +271,16 @@ class App extends React.Component {
         }));
     };
 
-    googleSignIn = () => {
-        signInWithPopup(auth, googleProvider).catch((error) => {
-            console.log(error);
-        });
-    };
+    googleSignIn = () => signInWithGoogle();
 
-    signOut = () => {
-        firebaseSignOut(auth)
-            .then(() => {
-                this.setState({
-                    rankingPlayersIdsList: [],
-                });
-                console.log('Sign-out successful.');
-            })
-            .catch((error) => {
-                console.error('Sign-out failed:', error);
-            });
+    // The rank list is per signed-in user, so it has to go with them. Cleared
+    // only on a sign-out that actually succeeded - a failed one leaves the user
+    // signed in, and dropping their list under them would be worse than the
+    // failure.
+    signOut = async () => {
+        if (await signOutUser()) {
+            this.setState({ rankingPlayersIdsList: [] });
+        }
     };
 
     render() {
@@ -319,29 +307,13 @@ class App extends React.Component {
             const lineupSet = buildLineupSet(rosterPositions);
             return (
                 <div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            padding: `${0}px ${3}px`,
-                        }}
-                    >
-                        <h1 className="title">Sleeper Team Assistant</h1>
-                        {signedIn ? (
-                            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
-                                <p className="latest-update">
-                                    <i>{signedInEmail}</i>
-                                </p>
-                                <Button text="Sign out" onClick={this.signOut} btnStyle="primary" />
-                            </div>
-                        ) : (
-                            <Button text="Sign in" onClick={this.googleSignIn} btnStyle="primary" />
-                        )}
-                    </div>
-                    <p className="latest-update">
-                        <i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i>
-                    </p>
+                    <Header
+                        signedIn={signedIn}
+                        signedInEmail={signedInEmail}
+                        lastUpdate={lastUpdate}
+                        onSignIn={this.googleSignIn}
+                        onSignOut={this.signOut}
+                    />
                     <div className="main-container">
                         <RanksPanel
                             isLoading={loading === LOADING.RANKS_PANEL}
