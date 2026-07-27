@@ -18,10 +18,11 @@ import { resolve } from 'path';
 const APP_CSS = resolve(process.cwd(), 'src/App.css');
 
 // 427 lines before the redesign started; 381 after the dead CRA rules went;
-// 345 with ErrorBanner converted; 340 once the shell replaced .main-container.
-const MAX_LINES = 340;
+// 345 with ErrorBanner converted; 340 once the shell replaced .main-container;
+// 326 once Header's .title and .latest-update went with it.
+const MAX_LINES = 326;
 
-const CONVERTED = ['error-banner', 'warning-banner', 'main-container'];
+const CONVERTED = ['error-banner', 'warning-banner', 'main-container', 'latest-update', '.title {'];
 
 describe('App.css drain', () => {
     const css = readFileSync(APP_CSS, 'utf8');

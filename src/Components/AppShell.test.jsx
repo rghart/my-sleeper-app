@@ -80,6 +80,21 @@ describe('AppShell', () => {
         expect(screen.queryByTestId('aside-content')).toBeNull();
     });
 
+    it('honours a defaultSectionId override when the hash is empty', () => {
+        renderShell({ defaultSectionId: 'lineup' });
+
+        expect(screen.getByTestId('section-content')).toHaveTextContent('lineup');
+        expect(screen.getByRole('button', { name: 'Lineup' })).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('lets an existing hash win over a defaultSectionId override', () => {
+        window.location.hash = '#/ranks';
+
+        renderShell({ defaultSectionId: 'lineup' });
+
+        expect(screen.getByTestId('section-content')).toHaveTextContent('ranks');
+    });
+
     it('does not render the leagueBar for a global-scope section', () => {
         // No real global section exists yet - this fixture is the only thing
         // holding the cross-league decision up: a section with scope

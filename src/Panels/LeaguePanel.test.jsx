@@ -37,7 +37,6 @@ const ROSTER_SLOTS = [
 ];
 
 function renderPanel(overrides = {}) {
-    const updateLeagueID = vi.fn();
     const removeFromLineup = vi.fn();
     const props = {
         leagueData: {
@@ -57,9 +56,7 @@ function renderPanel(overrides = {}) {
         },
         playerInfo: lineupPlayerInfo,
         rosterInfo,
-        updateLeagueID,
         rosterSlots: ROSTER_SLOTS,
-        leagueID: LEAGUE_ID,
         isLoading: false,
         removeFromLineup,
         rankingPlayersIdsList: [],
@@ -68,7 +65,7 @@ function renderPanel(overrides = {}) {
         ...overrides,
     };
     const { container } = render(<LeaguePanel {...props} />);
-    return { updateLeagueID, removeFromLineup, container };
+    return { removeFromLineup, container };
 }
 
 const draftPanelShowing = () => screen.queryByRole('button', { name: 'Sync draft' }) !== null;
@@ -138,15 +135,5 @@ describe('LeaguePanel', () => {
         // The index alone identifies the slot now - the player id was only ever
         // needed to look roster_text back off the player.
         expect(removeFromLineup).toHaveBeenCalledWith(1);
-    });
-
-    it('reports a league change up by league id', async () => {
-        const { updateLeagueID } = renderPanel();
-
-        await user.selectOptions(screen.getByRole('combobox'), OTHER_LEAGUE_ID);
-
-        // The dropdown shows names but has to report ids: switching leagues by
-        // display name would break the moment two leagues shared one.
-        expect(updateLeagueID).toHaveBeenCalledWith(OTHER_LEAGUE_ID);
     });
 });

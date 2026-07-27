@@ -8,7 +8,7 @@ import { DEFAULT_SECTION_ID } from '../sections.js';
 // the panel.
 const SECTIONS_WITH_ASIDE = ['draft', 'lineup'];
 
-const AppShell = ({ sections, renderSection, renderAside, leagueBar }) => {
+const AppShell = ({ sections, renderSection, renderAside, leagueBar, defaultSectionId = DEFAULT_SECTION_ID }) => {
     // Memoised because the hook subscribes to `hashchange` against these: a
     // fresh array every render would tear the listener down and rebuild it on
     // every render.
@@ -17,8 +17,9 @@ const AppShell = ({ sections, renderSection, renderAside, leagueBar }) => {
     // The default only applies if the caller actually has that section. A
     // sections list without it - a test fixture, or a future shell that opens
     // somewhere else - falls back to its own first entry rather than to an id
-    // it does not contain.
-    const fallbackId = sectionIds.includes(DEFAULT_SECTION_ID) ? DEFAULT_SECTION_ID : sectionIds[0];
+    // it does not contain. The hash still wins over this whenever it names a
+    // real section - see useHashRoute.
+    const fallbackId = sectionIds.includes(defaultSectionId) ? defaultSectionId : sectionIds[0];
 
     const [activeId, goTo] = useHashRoute(sectionIds, fallbackId);
 

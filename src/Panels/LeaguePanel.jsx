@@ -1,13 +1,10 @@
 import DraftPanel from './DraftPanel';
-import Dropdown from '../Components/Dropdown';
 
 const LeaguePanel = ({
     leagueData,
     playerInfo,
     rosterInfo,
-    updateLeagueID,
     rosterSlots,
-    leagueID,
     isLoading,
     removeFromLineup,
     rankingPlayersIdsList,
@@ -20,18 +17,6 @@ const LeaguePanel = ({
                 <div className="panel-loader"></div>
             ) : (
                 <>
-                    <div className="league-grid">
-                        <p>
-                            <b>{leagueData.currentLeague.name}</b>
-                        </p>
-                        <Dropdown currentValue={leagueID} updateCurrentValue={updateLeagueID}>
-                            {leagueData.leagueIds.map((league) => (
-                                <option key={league.league_id} value={league.league_id}>
-                                    {league.name}
-                                </option>
-                            ))}
-                        </Dropdown>
-                    </div>
                     {view === 'weekly' && (
                         <div className="roster-positions">
                             {rosterSlots.map((slot, i) => {

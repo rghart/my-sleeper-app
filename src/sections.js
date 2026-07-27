@@ -12,3 +12,9 @@ export const SECTIONS = [
 ];
 
 export const DEFAULT_SECTION_ID = 'draft';
+
+// Which section a fresh load should open on, based on where the current
+// league's draft stands. A completed draft has nothing left to do on the
+// draft board, so the lineup is the more useful landing spot; anything else
+// (including no draft data yet) opens on the draft.
+export const defaultSectionFor = (draftStatus) => (draftStatus === 'complete' ? 'lineup' : 'draft');
