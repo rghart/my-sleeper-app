@@ -621,6 +621,95 @@ describe('App', () => {
         expect(screen.queryByText(/ via /)).toBeNull();
     });
 
+    it('shows a warning notice when the traded-picks request fails but the board builds', async () => {
+        global.fetch = vi.fn((url) => {
+            if (/draft\/[\w]+\/traded_picks\//.test(url)) {
+                return Promise.reject(new Error('simulated traded_picks failure'));
+            }
+            return mockFetch(url);
+        });
+
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+        expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBeGreaterThan(0);
+        expect(await screen.findByRole('status', {}, { timeout: 5000 })).toHaveTextContent(
+            "Couldn't load traded draft picks",
+        );
+    });
+
+    it('does not show the traded-picks notice on a fully successful load', async () => {
+        global.fetch = vi.fn(mockFetch);
+
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+        expect(screen.queryByRole('status')).toBeNull();
+    });
+
+    it('does not show the traded-picks notice when the board could not be built at all', async () => {
+        // A draft response missing `settings` means canBuild is false, so a
+        // failed traded-picks request alongside it would just be noise on top
+        // of an already-empty board.
+        global.fetch = vi.fn((url) => {
+            if (/draft\/[\w]+\/traded_picks\//.test(url)) {
+                return Promise.reject(new Error('simulated traded_picks failure'));
+            }
+            if (/draft\/[\w]+$/.test(url)) {
+                const copy = {
+                    ...structuredClone(draftSettings),
+                    draft_id: DRAFT_ID,
+                    season: '2026',
+                    status: 'drafting',
+                    draft_order: {},
+                };
+                delete copy.settings;
+                return jsonResponse(copy);
+            }
+            return mockFetch(url);
+        });
+
+        // Scoped to the <b> header: the panel tab is also called "Draft".
+        render(<App />);
+        await screen.findByText(/Draft$/, { selector: 'b' }, { timeout: 5000 });
+
+        expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBe(0);
+        expect(screen.queryByRole('status')).toBeNull();
+    });
+
+    it('retries only the draft load and clears the notice when Retry succeeds', async () => {
+        let failTradedPicks = true;
+        global.fetch = vi.fn((url) => {
+            if (failTradedPicks && /draft\/[\w]+\/traded_picks\//.test(url)) {
+                return Promise.reject(new Error('simulated traded_picks failure'));
+            }
+            return mockFetch(url);
+        });
+
+        const user = userEvent.setup();
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findByRole('status', {}, { timeout: 5000 });
+
+        const playerDbRequestsBefore = global.fetch.mock.calls.filter((call) =>
+            call[0].includes('legacy/players'),
+        ).length;
+        const rostersRequestsBefore = global.fetch.mock.calls.filter((call) => call[0].includes('/rosters/')).length;
+
+        failTradedPicks = false;
+        await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+        await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+        expect(screen.getAllByText(/ via /).length).toBeGreaterThan(0);
+
+        expect(global.fetch.mock.calls.filter((call) => call[0].includes('legacy/players')).length).toBe(
+            playerDbRequestsBefore,
+        );
+        expect(global.fetch.mock.calls.filter((call) => call[0].includes('/rosters/')).length).toBe(
+            rostersRequestsBefore,
+        );
+    });
+
     it('unsubscribes from auth state changes on unmount', async () => {
         global.fetch = vi.fn(mockFetch);
 
