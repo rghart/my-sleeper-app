@@ -45,8 +45,11 @@ const rankingPlayersIdsList = [rankEntry(FREE_AGENT.id, 1), rankEntry(OTHERS_PLA
 
 function renderPanel(overrides = {}) {
     // signedIn stays false so the saved-rank-lists effect takes its else
-    // branch and no global fetch is needed; ADP resolves empty so the panel
-    // renders without an ADP column. Neither touches the filter path.
+    // branch and never fetches. The ADP request still fires on mount and now
+    // goes through the real fetchRequest, so it needs a stubbed global fetch
+    // rather than an injected mock - which is closer to production than the
+    // hand-written stand-in it replaces.
+    global.fetch = vi.fn(() => Promise.resolve({ ok: true, statusText: 'OK', json: () => Promise.resolve({}) }));
     const props = {
         isLoading: false,
         signedIn: false,
@@ -55,8 +58,6 @@ function renderPanel(overrides = {}) {
         lineupSet: new Set(),
         updateRankingPlayersIdsList: vi.fn(),
         startLoad: vi.fn(),
-        fetchRequest: vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) }),
-        checkErrors: vi.fn((response) => response),
         rankingPlayersIdsList,
         addToRoster: vi.fn(),
         updatePlayerId: vi.fn(),

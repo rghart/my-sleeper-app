@@ -7,6 +7,7 @@ import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Button from '../Components/Button';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
+import { checkErrors, fetchRequest } from '../lib/http.js';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
 
 const RanksPanel = ({
@@ -17,8 +18,6 @@ const RanksPanel = ({
     lineupSet,
     updateRankingPlayersIdsList,
     startLoad,
-    fetchRequest,
-    checkErrors,
     rankingPlayersIdsList,
     addToRoster,
     updatePlayerId,
@@ -239,7 +238,7 @@ const RanksPanel = ({
             setAllListsVals([defaultSelector]);
             setRankListType('new');
         }
-    }, [checkErrors, signedIn]);
+    }, [signedIn]);
 
     return (
         <div className="panel search-panel">
