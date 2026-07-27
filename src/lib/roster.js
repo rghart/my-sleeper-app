@@ -19,54 +19,57 @@ export function getEligiblePositions(player) {
 }
 
 /**
- * Pure version of `App.addToRoster`. Finds the first open roster slot that
- * matches one of the player's eligible positions, and returns new
- * `rosterPositions`/`playerInfo` objects reflecting the assignment. Does not
- * mutate any of its inputs.
+ * Builds the lineup from Sleeper's `roster_positions`: one slot per startable
+ * position, bench slots dropped, labels shortened for display.
  *
- * Deliberately does not write the computed eligible positions back onto the
- * player. `getEligiblePositions` derives them from the player's real position
- * every time and is idempotent, so caching them bought nothing - and nothing
- * ever read the extended list. It was one of the last two writes into the
- * shared player database.
+ * A slot keeps its label for its whole life and tracks its occupant
+ * separately. The previous shape was a single array holding *either* a label
+ * or a player id at each index, so filling a slot overwrote its label - which
+ * is why the label had to be remembered as `roster_text` on the player, in the
+ * shared player database. Nothing needs remembering now.
  */
-export function addPlayerToRoster({ player, rosterPositions, playerInfo }) {
-    const eligiblePositions = getEligiblePositions(player);
-    let newRosterPositions = rosterPositions;
-    let rosterText = player.roster_text;
-
-    for (let i = 0; i < eligiblePositions.length; i++) {
-        const positionIndex = rosterPositions.indexOf(eligiblePositions[i]);
-        if (positionIndex !== -1) {
-            rosterText = eligiblePositions[i];
-            newRosterPositions = [...rosterPositions];
-            newRosterPositions.splice(positionIndex, 1, player.player_id);
-            break;
-        }
-    }
-
-    return {
-        rosterPositions: newRosterPositions,
-        playerInfo: {
-            ...playerInfo,
-            [player.player_id]: { ...player, roster_text: rosterText },
-        },
-    };
+export function toRosterSlots(rosterPositions) {
+    return rosterPositions
+        .filter((pos) => pos !== 'BN')
+        .map((pos) => {
+            if (pos === 'SUPER_FLEX') {
+                return { label: 'SFLX', playerId: null };
+            } else if (pos === 'FLEX') {
+                return { label: 'FLX', playerId: null };
+            }
+            return { label: pos, playerId: null };
+        });
 }
 
 /**
- * Pure version of `App.removeFromLineup`. Restores the roster slot at index
- * `i` to the player's remembered `roster_text`. Whether the player is still
- * "in the lineup" is derived from `rosterPositions` (see `buildLineupSet` in
- * `rosterInfo.js`), not tracked on the player object, so this only needs to
- * update `rosterPositions`. Does not mutate any of its inputs.
+ * Pure version of `App.addToRoster`. Fills the first open slot whose label is
+ * one of the player's eligible positions. Returns new slots; the player
+ * database is neither an input nor an output, because assigning a player to a
+ * lineup slot is a fact about the slot, not about the player.
  */
-export function removePlayerFromLineup({ id, i, rosterPositions, playerInfo }) {
-    const newRosterPositions = [...rosterPositions];
-    newRosterPositions.splice(i, 1, playerInfo[id].roster_text);
+export function addPlayerToRoster({ player, rosterSlots }) {
+    const eligiblePositions = getEligiblePositions(player);
 
-    return {
-        rosterPositions: newRosterPositions,
-        playerInfo,
-    };
+    for (const eligiblePosition of eligiblePositions) {
+        const slotIndex = rosterSlots.findIndex((slot) => slot.playerId === null && slot.label === eligiblePosition);
+        if (slotIndex !== -1) {
+            const newSlots = [...rosterSlots];
+            newSlots[slotIndex] = { ...newSlots[slotIndex], playerId: player.player_id };
+            return { rosterSlots: newSlots };
+        }
+    }
+
+    return { rosterSlots };
+}
+
+/**
+ * Pure version of `App.removeFromLineup`. Empties the slot at index `i`. It
+ * needs neither the player id nor the player database: the slot already knows
+ * its own label, so there is nothing to look up and nothing to restore.
+ */
+export function removePlayerFromLineup({ i, rosterSlots }) {
+    const newSlots = [...rosterSlots];
+    newSlots[i] = { ...newSlots[i], playerId: null };
+
+    return { rosterSlots: newSlots };
 }
