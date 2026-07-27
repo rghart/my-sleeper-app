@@ -539,6 +539,88 @@ describe('App', () => {
         expect(screen.queryByRole('alert')).toBeNull();
     });
 
+    // loadDraft's guard used to check `draft_order`, a field buildDraftRounds
+    // never reads. Everything the builder actually dereferences went unchecked,
+    // so a malformed or partly-failed draft response threw inside loadDraft -
+    // and because nothing catches it, the setState that clears the loader never
+    // ran and the app sat on the LEAGUE_PANEL spinner forever. These assert on
+    // what reaches the screen, since "it threw" and "it hung" look identical
+    // from a unit test of the builder alone.
+    describe('a draft response the board cannot be built from', () => {
+        const without = (key) => (draft) => {
+            const copy = { ...draft };
+            delete copy[key];
+            return copy;
+        };
+
+        const draftOverride = (transform) =>
+            vi.fn((url) => {
+                if (/draft\/[\w]+$/.test(url)) {
+                    return jsonResponse(
+                        transform({
+                            ...structuredClone(draftSettings),
+                            draft_id: DRAFT_ID,
+                            season: '2026',
+                            status: 'drafting',
+                            draft_order: {},
+                        }),
+                    );
+                }
+                return mockFetch(url);
+            });
+
+        const renderAndSettle = async () => {
+            render(<App />);
+            // The draft header renders from currentDraft regardless of whether a
+            // board could be built, so it is the signal that the load chain ran
+            // to completion rather than throwing partway.
+            // Scoped to the <b> header: the panel tab is also called "Draft".
+            return await screen.findByText(/Draft$/, { selector: 'b' }, { timeout: 5000 });
+        };
+
+        it('renders the panels when the draft response has no settings', async () => {
+            global.fetch = draftOverride(without('settings'));
+
+            await renderAndSettle();
+
+            expect(screen.getByDisplayValue(DRAFT_ID)).toBeInTheDocument();
+            // No board, but a live app rather than a permanent loader.
+            expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBe(0);
+        });
+
+        it('renders the panels when the draft response has no slot_to_roster_id', async () => {
+            global.fetch = draftOverride(without('slot_to_roster_id'));
+
+            await renderAndSettle();
+
+            expect(screen.getByDisplayValue(DRAFT_ID)).toBeInTheDocument();
+            expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBe(0);
+        });
+    });
+
+    it('builds the board without trades when the traded-picks request fails', async () => {
+        // fetchTradedDraftPicks resolves to undefined on failure and
+        // buildDraftRounds forEaches over it, so this used to throw inside
+        // loadDraft and hang the app on the loader. Trades are an overlay on a
+        // board that renders fine without them.
+        global.fetch = vi.fn((url) => {
+            if (/draft\/[\w]+\/traded_picks\//.test(url)) {
+                return Promise.reject(new Error('simulated traded_picks failure'));
+            }
+            return mockFetch(url);
+        });
+
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+
+        // The board is fully built...
+        expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBeGreaterThan(0);
+        // ...and carries no trade attribution, since that is what failed. The
+        // successful case asserts the opposite in 'applies every traded pick to
+        // the board' above, so this is not vacuous.
+        expect(screen.queryByText(/ via /)).toBeNull();
+    });
+
     it('unsubscribes from auth state changes on unmount', async () => {
         global.fetch = vi.fn(mockFetch);
 
