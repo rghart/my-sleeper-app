@@ -56,6 +56,12 @@ function gatedFetch() {
     return { fetchMock, release: () => release() };
 }
 
+// A fixed base time plus a live-paced pick_timer (well under the 900s
+// live/slow boundary in draftClock.js) so the default fixture keeps the same
+// 3s poll cadence every pre-existing test in this file already assumes.
+// Tests that care about a slower cadence override `currentDraft` directly.
+const DRAFT_BASE_TIME = Date.UTC(2026, 6, 27, 12, 0, 0);
+
 function renderPanel(overrides = {}) {
     const updateDraftBoard = vi.fn();
     const props = {
@@ -65,6 +71,9 @@ function renderPanel(overrides = {}) {
                 season: '2026',
                 player_pool: 'Rookie',
                 status: 'drafting',
+                start_time: DRAFT_BASE_TIME,
+                last_picked: null,
+                settings: { pick_timer: 30 },
                 built_draft: builtDraft,
             },
             rosterData,
@@ -316,5 +325,67 @@ describe('DraftPanel', () => {
         expect(urlsFetched().length).toBeGreaterThan(0);
         expect(urlsFetched().every((url) => url.includes('other456'))).toBe(true);
         expect(urlsFetched().some((url) => url.includes(DRAFT_ID))).toBe(false);
+    });
+
+    // pollIntervalMs (src/lib/draftClock.js) is unit-tested in isolation;
+    // what needs proving here is that DraftPanel actually reads it off
+    // currentDraft rather than the hard-coded 3000ms the loop used to carry,
+    // for both paces the real leagues use. Asserting on fetch call counts
+    // after advancing time - not on the timer id - is what actually shows
+    // the cadence, since a wrong interval still schedules *a* timer.
+    it('polls a live-paced draft every 3s', async () => {
+        renderPanel({
+            leagueData: {
+                currentDraft: {
+                    draft_id: DRAFT_ID,
+                    season: '2026',
+                    player_pool: 'Rookie',
+                    status: 'drafting',
+                    start_time: DRAFT_BASE_TIME,
+                    last_picked: null,
+                    settings: { pick_timer: 30 },
+                    built_draft: builtDraft,
+                },
+                rosterData,
+            },
+        });
+
+        await click(button('Sync draft'));
+        expect(global.fetch.mock.calls.length).toBe(2); // one tick: two requests
+
+        await settle(3000);
+        expect(global.fetch.mock.calls.length).toBe(4); // a second tick landed
+
+        await settle(3000);
+        expect(global.fetch.mock.calls.length).toBe(6); // and a third
+    });
+
+    it('polls a slow (24h dynasty) draft every 30s, not every 3s', async () => {
+        renderPanel({
+            leagueData: {
+                currentDraft: {
+                    draft_id: DRAFT_ID,
+                    season: '2026',
+                    player_pool: 'Rookie',
+                    status: 'drafting',
+                    start_time: DRAFT_BASE_TIME,
+                    last_picked: null,
+                    settings: { pick_timer: 86400 },
+                    built_draft: builtDraft,
+                },
+                rosterData,
+            },
+        });
+
+        await click(button('Sync draft'));
+        expect(global.fetch.mock.calls.length).toBe(2); // one tick: two requests
+
+        await settle(3000);
+        // A live cadence would have landed a second tick by now; a slow one
+        // must not have.
+        expect(global.fetch.mock.calls.length).toBe(2);
+
+        await settle(27000); // total 30s since the first tick
+        expect(global.fetch.mock.calls.length).toBe(4); // now the second tick lands
     });
 });

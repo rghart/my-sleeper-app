@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import Button from '../Components/Button';
 import DraftRound from './DraftRound';
+import PickClock from '../Components/PickClock';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
+import { pollIntervalMs } from '../lib/draftClock.js';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
 const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList, updateDraftBoard }) => {
@@ -65,6 +67,15 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
         getLiveDraftRef.current = getLiveDraft;
     });
 
+    // Read through a ref, same as getLiveDraftRef above: the poll effect
+    // below only re-runs on isSyncing, so a stale closure over currentDraft
+    // would keep polling at whatever cadence was current the moment sync
+    // was switched on, rather than following the draft's own pace.
+    const currentDraftRef = useRef(currentDraft);
+    useEffect(() => {
+        currentDraftRef.current = currentDraft;
+    });
+
     useEffect(() => {
         if (!isSyncing) {
             return;
@@ -78,7 +89,7 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
             if (cancelled) {
                 return;
             }
-            timer = setTimeout(poll, 3000);
+            timer = setTimeout(poll, pollIntervalMs(currentDraftRef.current));
         };
         poll();
         return () => {
@@ -104,6 +115,7 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                     <b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b>
                 </p>
                 <p>Status: {currentDraft.status}</p>
+                <PickClock draft={currentDraft} />
                 <Button
                     text={!isSyncing ? 'Sync draft' : 'Stop sync'}
                     btnStyle={isSyncing ? 'primary-large active' : 'primary-large'}
