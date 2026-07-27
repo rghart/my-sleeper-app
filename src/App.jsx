@@ -15,12 +15,27 @@ import APP_DB_URLS, { SLEEPER_API_URLS, SLEEPER_USER_ID } from './urls.js';
 const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
 
+// What, if anything, is currently loading. These states are mutually exclusive
+// - at most one thing loads at a time - which is why this is one field rather
+// than a set of independent booleans that could contradict each other.
+//
+// This replaces a string that three components compared against magic
+// literals, with RanksPanel passing 'Loading search panel...' *up* through
+// startLoad and then comparing against that same literal coming back down as a
+// prop. The panels now receive a plain boolean and no longer share a
+// vocabulary with App at all, so these names stay private to this file.
+const LOADING = {
+    NONE: 'none',
+    INITIAL: 'initial',
+    LEAGUE_PANEL: 'leaguePanel',
+    RANKS_PANEL: 'ranksPanel',
+};
+
 class App extends React.Component {
     state = {
         playerInfo: {},
         leagueData: [],
-        isLoading: true,
-        loadingMessage: 'Initial load...',
+        loading: LOADING.INITIAL,
         rankingPlayersIdsList: [],
         leagueID: '1312088290526003200',
         rosterPositions: [],
@@ -161,8 +176,7 @@ class App extends React.Component {
                 this.setState(
                     {
                         leagueData: leagueData,
-                        isLoading: false,
-                        loadingMessage: 'Loading league panel...',
+                        loading: LOADING.LEAGUE_PANEL,
                         myDisplayName: resolveMyDisplayName(leagueData.managerData, SLEEPER_USER_ID),
                         rosterPositions: leagueData.currentLeague.roster_positions
                             .filter((pos) => pos !== 'BN')
@@ -227,7 +241,7 @@ class App extends React.Component {
             this.buildDraft(tradedDraftPicks);
         } else {
             this.setState({
-                loadingMessage: '',
+                loading: LOADING.NONE,
             });
         }
     };
@@ -252,7 +266,7 @@ class App extends React.Component {
         this.setState(
             {
                 leagueID,
-                loadingMessage: 'Loading league panel...',
+                loading: LOADING.LEAGUE_PANEL,
             },
             this.getLeagueData,
         );
@@ -262,10 +276,13 @@ class App extends React.Component {
         this.setState({ rankingPlayersIdsList });
     };
 
-    startLoad = (loadMessage, searchText) => {
+    // The caller no longer names the loading state it wants: there was only
+    // ever one caller and it always asked for the ranks panel, so the message
+    // it passed just travelled back down to it as a prop.
+    startLoad = (searchText) => {
         this.setState(
             {
-                loadingMessage: loadMessage,
+                loading: LOADING.RANKS_PANEL,
             },
             () => setTimeout(() => this.updateRankings(searchText), 0),
         );
@@ -277,8 +294,7 @@ class App extends React.Component {
 
         this.setState({
             rankingPlayersIdsList: searchResultsArray,
-            isLoading: false,
-            loadingMessage: '',
+            loading: LOADING.NONE,
             notFoundPlayers: notFoundPlayers,
         });
     };
@@ -330,7 +346,7 @@ class App extends React.Component {
         };
         this.setState({
             leagueData: newLeagueData,
-            loadingMessage: '',
+            loading: LOADING.NONE,
         });
     };
 
@@ -373,9 +389,8 @@ class App extends React.Component {
     render() {
         const {
             playerInfo,
-            isLoading,
             lastUpdate,
-            loadingMessage,
+            loading,
             rankingPlayersIdsList,
             rosterPositions,
             leagueData,
@@ -385,7 +400,7 @@ class App extends React.Component {
             signedInEmail,
             myDisplayName,
         } = this.state;
-        if (isLoading && loadingMessage === 'Initial load...') {
+        if (loading === LOADING.INITIAL) {
             return <div className="loader"></div>;
         } else {
             const rosterInfo = this.selectRosterInfo({
@@ -420,7 +435,7 @@ class App extends React.Component {
                     </p>
                     <div className="main-container">
                         <RanksPanel
-                            loadingMessage={loadingMessage}
+                            isLoading={loading === LOADING.RANKS_PANEL}
                             signedIn={signedIn}
                             playerInfo={playerInfo}
                             rosterInfo={rosterInfo}
@@ -443,7 +458,7 @@ class App extends React.Component {
                             rosterPositions={rosterPositions}
                             playerInfo={playerInfo}
                             rosterInfo={rosterInfo}
-                            loadingMessage={loadingMessage}
+                            isLoading={loading === LOADING.LEAGUE_PANEL}
                             removeFromLineup={this.removeFromLineup}
                             updateDraftBoard={this.updateDraftBoard}
                         />

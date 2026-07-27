@@ -10,7 +10,7 @@ import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
 
 const RanksPanel = ({
-    loadingMessage,
+    isLoading,
     signedIn,
     playerInfo,
     rosterInfo,
@@ -56,7 +56,7 @@ const RanksPanel = ({
         updateRankingPlayersIdsList([]);
         setCurrentListVal(defaultSelector);
         setIsNewRankList(true);
-        startLoad('Loading search panel...', searchText);
+        startLoad(searchText);
         setSearchText('');
     };
 
@@ -243,7 +243,7 @@ const RanksPanel = ({
 
     return (
         <div className="panel search-panel">
-            {loadingMessage === 'Loading search panel...' ? (
+            {isLoading ? (
                 <div className="panel-loader"></div>
             ) : (
                 <>

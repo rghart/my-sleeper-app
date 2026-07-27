@@ -55,7 +55,7 @@ function renderPanel(overrides = {}) {
         updateLeagueID,
         rosterPositions: ROSTER_POSITIONS,
         leagueID: LEAGUE_ID,
-        loadingMessage: '',
+        isLoading: false,
         removeFromLineup,
         rankingPlayersIdsList: [],
         updateDraftBoard: vi.fn(),
@@ -76,7 +76,7 @@ describe('LeaguePanel', () => {
     });
 
     it('shows only the loader while the league panel is loading', () => {
-        const { container } = renderPanel({ loadingMessage: 'Loading league panel...' });
+        const { container } = renderPanel({ isLoading: true });
 
         expect(container.querySelector('.panel-loader')).toBeTruthy();
         expect(screen.queryByText('Test League')).toBeNull();

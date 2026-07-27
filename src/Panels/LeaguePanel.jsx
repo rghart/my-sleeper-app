@@ -9,7 +9,7 @@ const LeaguePanel = ({
     updateLeagueID,
     rosterPositions,
     leagueID,
-    loadingMessage,
+    isLoading,
     removeFromLineup,
     rankingPlayersIdsList,
     updateDraftBoard,
@@ -18,7 +18,7 @@ const LeaguePanel = ({
 
     return (
         <div className="panel league-panel">
-            {loadingMessage === 'Loading league panel...' ? (
+            {isLoading ? (
                 <div className="panel-loader"></div>
             ) : (
                 <>
