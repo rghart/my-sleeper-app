@@ -452,10 +452,10 @@ describe('App', () => {
             return mockFetch(url);
         });
 
-        const { container } = render(<App />);
+        render(<App />);
         await screen.findByRole('alert', {}, { timeout: 5000 });
 
-        expect(container.querySelector('.main-container')).toBeNull();
+        expect(screen.queryByRole('main')).toBeNull();
         expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull();
     });
 
@@ -480,7 +480,7 @@ describe('App', () => {
         await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
 
         await screen.findByRole('alert', {}, { timeout: 5000 });
-        expect(document.querySelector('.main-container')).toBeNull();
+        expect(screen.queryByRole('main')).toBeNull();
     });
 
     it('recovers when Retry succeeds', async () => {

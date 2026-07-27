@@ -5,10 +5,10 @@ import LeaguePanel from './LeaguePanel';
 import { buildRosterInfo, decorateRosters } from '../lib/rosterInfo.js';
 import rosterFlagsFixture from '../lib/__fixtures__/roster-flags-2026.json';
 
-// LeaguePanel is a router: it owns which of the two sub-panels is showing, and
-// the weekly lineup is the only view rendered nowhere else. App.test.jsx never
-// leaves the draft tab, so the weekly branch and the tab switch itself had no
-// coverage at all.
+// LeaguePanel no longer owns which sub-panel is showing - a `view` prop
+// selects it, and AppShell (via App) is what changes that prop. The weekly
+// lineup is the only view rendered nowhere else, and App.test.jsx never
+// leaves the draft tab, so the weekly branch had no coverage at all.
 
 const { rosterDataRaw, managerData, playerInfo, builtDraft } = rosterFlagsFixture;
 
@@ -64,6 +64,7 @@ function renderPanel(overrides = {}) {
         removeFromLineup,
         rankingPlayersIdsList: [],
         updateDraftBoard: vi.fn(),
+        view: 'draft',
         ...overrides,
     };
     const { container } = render(<LeaguePanel {...props} />);
@@ -88,33 +89,22 @@ describe('LeaguePanel', () => {
         expect(draftPanelShowing()).toBe(false);
     });
 
-    it('opens on the draft tab', () => {
-        renderPanel();
+    it('shows the draft panel when view is draft', () => {
+        renderPanel({ view: 'draft' });
 
         expect(draftPanelShowing()).toBe(true);
         expect(screen.queryByText(STARTER.name)).toBeNull();
     });
 
-    it('swaps the draft panel for the weekly lineup and back', async () => {
-        renderPanel();
+    it('shows the weekly lineup when view is weekly', () => {
+        renderPanel({ view: 'weekly' });
 
-        await user.click(screen.getByText('Weekly'));
         expect(draftPanelShowing()).toBe(false);
         expect(screen.getAllByText(STARTER.name).length).toBeGreaterThan(0);
-
-        // Switching back matters as much as switching away: the board used to
-        // live in DraftPanel's own state, so a round trip through Weekly lost
-        // every pick. It is App's state now, but the round trip is the thing
-        // that exposed it.
-        await user.click(screen.getByText('Draft'));
-        expect(draftPanelShowing()).toBe(true);
-        expect(screen.queryByText(STARTER.name)).toBeNull();
     });
 
-    it('renders filled lineup slots as players and empty ones as bare position labels', async () => {
-        const { container } = renderPanel();
-
-        await user.click(screen.getByText('Weekly'));
+    it('renders filled lineup slots as players and empty ones as bare position labels', () => {
+        const { container } = renderPanel({ view: 'weekly' });
 
         const slots = [...container.querySelectorAll('.lineup-position')];
         expect(slots).toHaveLength(ROSTER_SLOTS.length);
@@ -134,9 +124,8 @@ describe('LeaguePanel', () => {
     });
 
     it('removes a player from the lineup by slot index, and ignores clicks on empty slots', async () => {
-        const { removeFromLineup, container } = renderPanel();
+        const { removeFromLineup, container } = renderPanel({ view: 'weekly' });
 
-        await user.click(screen.getByText('Weekly'));
         const slots = [...container.querySelectorAll('.lineup-position')];
 
         await user.click(slots[0]);
