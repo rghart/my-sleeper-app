@@ -21,8 +21,14 @@ export function getEligiblePositions(player) {
 /**
  * Pure version of `App.addToRoster`. Finds the first open roster slot that
  * matches one of the player's eligible positions, and returns new
- * `rosterPositions`/`playerInfo`/`player` objects reflecting the assignment.
- * Does not mutate any of its inputs.
+ * `rosterPositions`/`playerInfo` objects reflecting the assignment. Does not
+ * mutate any of its inputs.
+ *
+ * Deliberately does not write the computed eligible positions back onto the
+ * player. `getEligiblePositions` derives them from the player's real position
+ * every time and is idempotent, so caching them bought nothing - and nothing
+ * ever read the extended list. It was one of the last two writes into the
+ * shared player database.
  */
 export function addPlayerToRoster({ player, rosterPositions, playerInfo }) {
     const eligiblePositions = getEligiblePositions(player);
@@ -39,19 +45,12 @@ export function addPlayerToRoster({ player, rosterPositions, playerInfo }) {
         }
     }
 
-    const newPlayer = {
-        ...player,
-        fantasy_positions: eligiblePositions,
-        roster_text: rosterText,
-    };
-
     return {
         rosterPositions: newRosterPositions,
         playerInfo: {
             ...playerInfo,
-            [player.player_id]: newPlayer,
+            [player.player_id]: { ...player, roster_text: rosterText },
         },
-        player: newPlayer,
     };
 }
 
