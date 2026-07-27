@@ -27,9 +27,19 @@ const Header = ({ signedIn, signedInEmail, lastUpdate, onSignIn, onSignOut }) =>
                     <Button text="Sign in" onClick={onSignIn} btnStyle="primary" />
                 )}
             </div>
-            <p className="latest-update">
-                <i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i>
-            </p>
+            {/*
+                Rendered only once there is a timestamp. `lastUpdate` starts as
+                null and the request for it is deliberately not awaited, so
+                this used to spend the first moments of every load showing
+                `new Date(null).toString()` - "Wed Dec 31 1969". It also stays
+                hidden if that request fails, which is honest: an absent line
+                beats a confidently wrong date.
+            */}
+            {lastUpdate ? (
+                <p className="latest-update">
+                    <i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i>
+                </p>
+            ) : null}
         </>
     );
 };
