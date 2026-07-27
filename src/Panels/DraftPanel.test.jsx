@@ -207,6 +207,102 @@ describe('DraftPanel', () => {
         expect(next.find((round) => round.round === 2)).toBe(builtDraft.find((round) => round.round === 2));
     });
 
+    // Both live-sync fetches swallow their failure and resolve to undefined, and
+    // syncLiveDraft's helpers forEach over the result - so before the guard in
+    // getLiveDraft either failure threw `Cannot read properties of undefined
+    // (reading 'forEach')`. That fires on the 3-second poll as well as the
+    // button, so a single blip mid-draft killed the board and the poll kept
+    // running. What matters is not just that nothing throws, but that the half
+    // that succeeded still reaches the board: bailing out entirely would also
+    // stop the crash while quietly dropping a live pick.
+    //
+    // These run against a board with the trades stripped back out. The shared
+    // builtDraft fixture already has all 21 traded picks applied, so asserting
+    // an owner_id the fixture ships with passes whether or not applyTradedPicks
+    // ever ran.
+    const pristineBoard = () =>
+        builtDraft.map((round) => ({
+            ...round,
+            picks: round.picks.map((pick) => ({ ...pick, is_traded: false, owner_id: pick.roster_id })),
+        }));
+
+    const failing = (shouldFail) =>
+        vi.fn((url) => (shouldFail(url) ? Promise.reject(new Error('network blip')) : instantFetch(url)));
+
+    const livePicksFail = (url) => url.includes('picks/') && !url.includes('traded_picks');
+
+    it('still applies traded picks when the live-picks request fails', async () => {
+        global.fetch = failing(livePicksFail);
+        const { updateDraftBoard } = renderPanel();
+
+        await click(button('Update'));
+        await settle(0);
+
+        expect(updateDraftBoard).toHaveBeenCalledTimes(1);
+        const next = updateDraftBoard.mock.calls[0][0](pristineBoard());
+
+        // Round 2 / roster 2 goes to owner 6 in the tradedPicks fixture, and
+        // starts at owner 2 on the pristine board.
+        const traded = next.find((round) => round.round === 2).picks.find((pick) => pick.roster_id === 2);
+        expect(traded.owner_id).toBe(6);
+        expect(traded.is_traded).toBe(true);
+        // No live picks landed, and the board was not blanked to compensate.
+        expect(next.find((round) => round.round === 1).picks.every((pick) => pick.player_id === null)).toBe(true);
+        expect(next.flatMap((round) => round.picks).length).toBe(builtDraft.flatMap((round) => round.picks).length);
+    });
+
+    it('still applies live picks when the traded-picks request fails', async () => {
+        global.fetch = failing((url) => url.includes('traded_picks'));
+        const { updateDraftBoard } = renderPanel();
+
+        await click(button('Update'));
+        await settle(0);
+
+        expect(updateDraftBoard).toHaveBeenCalledTimes(1);
+        const next = updateDraftBoard.mock.calls[0][0](pristineBoard());
+
+        const firstPick = next.find((round) => round.round === 1).picks.find((pick) => pick.board_spot === 1);
+        expect(firstPick.player_id).toBe('13287');
+        expect(firstPick.picked).toBe(true);
+        // Nothing claimed a trade off the back of a failed request.
+        expect(next.every((round) => round.picks.every((pick) => !pick.is_traded))).toBe(true);
+    });
+
+    it('keeps polling after a failed sync rather than dying on the first blip', async () => {
+        let calls = 0;
+        // Fails the first live-picks request only; the poll must survive it and
+        // recover on a later tick.
+        global.fetch = vi.fn((url) => {
+            if (livePicksFail(url)) {
+                calls += 1;
+                if (calls === 1) {
+                    return Promise.reject(new Error('network blip'));
+                }
+            }
+            return instantFetch(url);
+        });
+        const { updateDraftBoard } = renderPanel();
+
+        await click(button('Sync draft'));
+        await settle(0);
+        await settle(3000);
+        await settle(3000);
+
+        expect(updateDraftBoard.mock.calls.length).toBeGreaterThanOrEqual(3);
+
+        // Every reducer has to be applied, in order, starting with the one from
+        // the failed tick. updateDraftBoard is a mock here and never invokes
+        // what it is handed, so asserting only on the last tick's reducer would
+        // pass even with the guard removed - the throw would simply never
+        // happen. App's real updateDraftBoard is a setState updater and does
+        // invoke it, so folding them is what reproduces the live-draft path.
+        const board = updateDraftBoard.mock.calls.reduce((acc, [reducer]) => reducer(acc), pristineBoard());
+
+        expect(board.find((round) => round.round === 1).picks.find((pick) => pick.board_spot === 1).player_id).toBe(
+            '13287',
+        );
+    });
+
     it('syncs against the draft id typed into the input rather than the original one', async () => {
         renderPanel();
 

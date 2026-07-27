@@ -37,12 +37,26 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                 console.error('Error:', error);
             });
 
-        // Applied against the board as it stands when the update runs, not the
-        // one this closure captured before the two awaits above: a manual pick
-        // assigned while they were in flight would otherwise be discarded.
+        // Both fetches resolve to undefined on failure, and syncLiveDraft's
+        // helpers forEach over their lists unguarded - so an unsubstituted
+        // failure threw and took the board down. That is worse here than
+        // anywhere else in the app: this runs on the 3-second poll during a
+        // live draft, so one network blip killed the board and the poll kept
+        // firing into the wreckage.
+        //
+        // Substituting an empty list rather than bailing out is deliberate. It
+        // makes the failed half a no-op - applyLivePicks fills picks in and
+        // applyTradedPicks only ever sets owner_id, neither clears anything -
+        // so the board keeps what it already had while the half that succeeded
+        // still lands. Bailing would discard a good live pick because an
+        // unrelated traded-picks request failed.
         updateDraftBoard(
             (builtDraft) =>
-                syncLiveDraft({ liveDraft: { built_draft: builtDraft }, livePicks, tradedPicks }).built_draft,
+                syncLiveDraft({
+                    liveDraft: { built_draft: builtDraft },
+                    livePicks: livePicks || [],
+                    tradedPicks: tradedPicks || [],
+                }).built_draft,
         );
     };
 
