@@ -8,13 +8,18 @@ import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut as fire
 import { auth, googleProvider } from './firebase.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
-import { checkErrors } from './lib/http.js';
+import {
+    fetchDraft,
+    fetchLatestUpdateAttempt,
+    fetchLeagueBundle,
+    fetchLeagueSeason,
+    fetchPlayerData,
+    fetchTradedDraftPicks,
+} from './lib/sleeperApi.js';
 import { addPlayerToRoster, removePlayerFromLineup } from './lib/roster.js';
-import { buildLineupSet, decorateRosters, memoizeRosterInfo } from './lib/rosterInfo.js';
-import { resolveLeagueSeason, resolveMyDisplayName } from './lib/sleeper.js';
-import APP_DB_URLS, { SLEEPER_API_URLS, SLEEPER_USER_ID } from './urls.js';
-const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
-const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
+import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
+import { resolveMyDisplayName } from './lib/sleeper.js';
+import { SLEEPER_USER_ID } from './urls.js';
 
 // What, if anything, is currently loading. These states are mutually exclusive
 // - at most one thing loads at a time - which is why this is one field rather
@@ -25,6 +30,21 @@ const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_P
 // startLoad and then comparing against that same literal coming back down as a
 // prop. The panels now receive a plain boolean and no longer share a
 // vocabulary with App at all, so these names stay private to this file.
+// Sleeper's own labels, shortened for display, with bench slots dropped -
+// only startable positions appear in the weekly lineup.
+function toRosterPositions(rosterPositions) {
+    return rosterPositions
+        .filter((pos) => pos !== 'BN')
+        .map((pos) => {
+            if (pos === 'SUPER_FLEX') {
+                return 'SFLX';
+            } else if (pos === 'FLEX') {
+                return 'FLX';
+            }
+            return pos;
+        });
+}
+
 const LOADING = {
     NONE: 'none',
     INITIAL: 'initial',
@@ -60,9 +80,9 @@ class App extends React.Component {
                     signedInEmail: currentUser.email ? currentUser.email : null,
                 });
                 if (playerInfo && Object.keys(playerInfo).length === 0) {
-                    this.getPlayerData();
+                    this.loadEverything();
                 } else {
-                    this.getLeagueData();
+                    this.loadLeague(playerInfo);
                 }
             } else {
                 signInAnonymously(auth).catch((err) => console.error('Error:', err));
@@ -74,158 +94,90 @@ class App extends React.Component {
         this.unsubscribeAuth();
     }
 
-    getLatestUpdateAttempt = async () => {
-        return await fetch(LATEST_UPDATE_ATTEMPT + (await auth.currentUser.getIdToken(true)))
-            .then(checkErrors)
-            .then((response) => response.json())
-            .then((data) => {
-                this.setState({
-                    lastUpdate: data,
-                });
-                return data;
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-    };
-
-    getPlayerData = async () => {
-        this.getLatestUpdateAttempt();
-        await fetch(ACTIVE_PLAYERS)
-            .then((response) => response.json())
-            .then((data) => {
-                this.setState({
-                    playerInfo: data,
-                });
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-        this.getLeagueData();
-    };
-
-    getLeagueSeason = async () => {
-        return await fetch(NFL_STATE)
-            .then(checkErrors)
-            .then((response) => response.json())
-            .then((nflState) => resolveLeagueSeason(nflState))
-            .catch((error) => {
-                console.error('Error fetching NFL state, falling back to current calendar year:', error);
-                return String(new Date().getFullYear());
-            });
-    };
-
-    getLeagueData = async () => {
-        const leagueID = this.state.leagueID;
-        const LEAGUE_PATH = LEAGUE + leagueID + '/';
-        const season = this.state.season ? this.state.season : await this.getLeagueSeason();
-        if (!this.state.season) {
-            this.setState({ season });
-        }
-        const urls = [
-            LEAGUE_PATH + ROSTERS,
-            LEAGUE_PATH + SLEEPER_USERS,
-            LEAGUE_PATH,
-            USER_LEAGUES(season),
-            LEAGUE_PATH + DRAFTS,
-        ];
-        const requests = urls.map(async (url) => {
-            const response = await fetch(url);
-            return response.json();
+    // The whole load chain, from player database through to a built draft
+    // board. Each step passes its result to the next as an argument instead of
+    // writing it to state and reading it back: #96 and #98 were both a read of
+    // a value that had not settled, and neither is expressible in this shape.
+    loadEverything = async () => {
+        // Deliberately not awaited, matching the original: this is a display-only
+        // timestamp and the player database is the critical path, so serialising
+        // the two would add a whole round trip to every cold start. The guard
+        // keeps a failed request from replacing the null default with undefined,
+        // which renders as 'Invalid Date' rather than being ignored.
+        fetchLatestUpdateAttempt().then((lastUpdate) => {
+            if (lastUpdate !== undefined) {
+                this.setState({ lastUpdate });
+            }
         });
-        Promise.all(requests)
-            .then((data) => {
-                const leagueData = {};
-                [
-                    leagueData.rosterData,
-                    leagueData.managerData,
-                    leagueData.currentLeague,
-                    leagueData.leagueIds,
-                    leagueData.currentLeagueDrafts,
-                ] = data;
-                leagueData.rosterData = decorateRosters({
-                    rosterData: leagueData.rosterData,
-                    managerData: leagueData.managerData,
-                });
-                this.warnAboutMissingRosterPlayers(leagueData.rosterData);
-                this.setState(
-                    {
-                        leagueData: leagueData,
-                        loading: LOADING.LEAGUE_PANEL,
-                        myDisplayName: resolveMyDisplayName(leagueData.managerData, SLEEPER_USER_ID),
-                        rosterPositions: leagueData.currentLeague.roster_positions
-                            .filter((pos) => pos !== 'BN')
-                            .map((pos) => {
-                                if (pos === 'SUPER_FLEX') {
-                                    return 'SFLX';
-                                } else if (pos === 'FLEX') {
-                                    return 'FLX';
-                                } else {
-                                    return pos;
-                                }
-                            }),
-                    },
-                    this.getTradedDraftPicks,
-                );
-                if (this.state.rankingPlayersIdsList.length > 0) {
-                    this.setState({ rankingPlayersIdsList: [...this.state.rankingPlayersIdsList] });
-                }
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+
+        const playerInfo = await fetchPlayerData();
+        if (playerInfo) {
+            this.setState({ playerInfo });
+        }
+        await this.loadLeague(playerInfo || this.state.playerInfo);
     };
 
-    getTradedDraftPicks = async () => {
-        const draftId = this.state.leagueData.currentLeagueDrafts[0].draft_id;
-        const DRAFT_PATH = DRAFT + draftId + '/';
-        const tradedPicks = await fetch(DRAFT_PATH + TRADED_PICKS)
-            .then((response) => response.json())
-            .then((data) => data)
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-        // Handed straight down the chain rather than round-tripped through state:
-        // setState batches inside an async context, so buildDraft could read the
-        // previous value and render every pick under its original roster with no
-        // "via <manager>" attribution. Production only got away with it because
-        // getSpecificDraft awaits another fetch first, which happened to give React
-        // time to flush.
-        this.getSpecificDraft(tradedPicks);
-    };
+    // `playerInfo` is a parameter rather than a state read for the same
+    // reason: on the very first load the setState above has not necessarily
+    // flushed, and warnAboutMissingRosterPlayers would compare rosters against
+    // an empty database and warn about every player in the league.
+    loadLeague = async (playerInfo) => {
+        const season = this.state.season || (await fetchLeagueSeason());
+        const leagueData = await fetchLeagueBundle({ leagueID: this.state.leagueID, season });
+        if (!leagueData) {
+            this.setState({ season, loading: LOADING.NONE });
+            return;
+        }
 
-    getSpecificDraft = async (tradedDraftPicks) => {
-        const { leagueData } = this.state;
-        const draftId = leagueData.currentLeagueDrafts[0].draft_id;
-        const DRAFT_PATH = DRAFT + draftId;
-        const draftData = await fetch(DRAFT_PATH)
-            .then((response) => response.json())
-            .then((data) => data)
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-        // The fetch's own catch resolves to undefined on failure, and
-        // DraftPanel reads currentDraft.draft_id unconditionally - so
-        // currentDraft has to stay a real object even when the fetch fails,
-        // or the next render crashes. Same shape as the ADP bug (#101).
-        leagueData.currentDraft = draftData || { draft_id: draftId };
+        this.warnAboutMissingRosterPlayers(leagueData.rosterData, playerInfo);
         this.setState({
+            season,
             leagueData,
+            loading: LOADING.LEAGUE_PANEL,
+            myDisplayName: resolveMyDisplayName(leagueData.managerData, SLEEPER_USER_ID),
+            rosterPositions: toRosterPositions(leagueData.currentLeague.roster_positions),
         });
-        if (draftData && draftData.draft_order) {
-            this.buildDraft(tradedDraftPicks);
-        } else {
-            this.setState({
-                loading: LOADING.NONE,
-            });
-        }
+
+        await this.loadDraft(leagueData);
+    };
+
+    loadDraft = async (leagueData) => {
+        const draftId = leagueData.currentLeagueDrafts[0].draft_id;
+        const tradedDraftPicks = await fetchTradedDraftPicks(draftId);
+        const draftData = await fetchDraft(draftId);
+
+        // fetchDraft resolves to undefined on failure and DraftPanel reads
+        // currentDraft.draft_id unconditionally, so currentDraft has to stay a
+        // real object even when the request fails or the next render crashes
+        // (#103).
+        const currentDraft = draftData || { draft_id: draftId };
+        const built =
+            draftData && draftData.draft_order
+                ? buildDraftRounds({ currentDraft, rosterData: leagueData.rosterData, tradedDraftPicks })
+                : null;
+
+        // Composed against prevState rather than the leagueData this call
+        // captured. Note this is defensive, not load-bearing today: the only
+        // things that could rewrite leagueData during the two awaits above are
+        // a second league switch or a manual pick, and both are impossible
+        // while this runs because LeaguePanel is showing its loader - the
+        // dropdown and DraftPanel are unmounted behind it. No test covers it
+        // for that reason. It stays because it costs nothing and that gating
+        // is incidental: a loader change elsewhere would otherwise reintroduce
+        // #96's shape here, one level up.
+        this.setState((prevState) => ({
+            leagueData: {
+                ...prevState.leagueData,
+                currentDraft: built ? { ...currentDraft, ...built } : currentDraft,
+            },
+            loading: LOADING.NONE,
+        }));
     };
 
     // Diagnostic carried over from the old markTakenPlayers: a roster player id
     // that isn't in the player DB is usually a retired player that was removed
     // from it. Purely informational - it doesn't affect what gets rendered.
-    warnAboutMissingRosterPlayers = (rosterData) => {
-        const { playerInfo } = this.state;
+    warnAboutMissingRosterPlayers = (rosterData, playerInfo) => {
         rosterData.forEach((roster) => {
             (roster.players || []).forEach((player) => {
                 if (!playerInfo[player]) {
@@ -243,7 +195,7 @@ class App extends React.Component {
                 leagueID,
                 loading: LOADING.LEAGUE_PANEL,
             },
-            this.getLeagueData,
+            () => this.loadLeague(this.state.playerInfo),
         );
     };
 
@@ -304,24 +256,6 @@ class App extends React.Component {
         this.setState({
             playerInfo: updated.playerInfo,
             rosterPositions: updated.rosterPositions,
-        });
-    };
-
-    buildDraft = (tradedDraftPicks) => {
-        const { leagueData } = this.state;
-        const { currentDraft, rosterData } = leagueData;
-        const { built_draft, player_pool } = buildDraftRounds({ currentDraft, rosterData, tradedDraftPicks });
-        const newLeagueData = {
-            ...leagueData,
-            currentDraft: {
-                ...currentDraft,
-                built_draft,
-                player_pool,
-            },
-        };
-        this.setState({
-            leagueData: newLeagueData,
-            loading: LOADING.NONE,
         });
     };
 
