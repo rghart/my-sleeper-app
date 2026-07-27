@@ -8,6 +8,7 @@ import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut as fire
 import { auth, googleProvider } from './firebase.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
+import { checkErrors } from './lib/http.js';
 import { addPlayerToRoster, removePlayerFromLineup } from './lib/roster.js';
 import { buildLineupSet, decorateRosters, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveLeagueSeason, resolveMyDisplayName } from './lib/sleeper.js';
@@ -73,35 +74,9 @@ class App extends React.Component {
         this.unsubscribeAuth();
     }
 
-    // TODO clean up and pull out helper functions and search function into separate file(s)
-    checkErrors = (response) => {
-        if (!response.ok) {
-            throw new Error(response.statusText, response.status);
-        }
-        return response;
-    };
-
-    fetchRequest = async (url, type, data, custHeaders) => {
-        const response = await fetch(url, {
-            method: type,
-            headers: custHeaders
-                ? custHeaders
-                : {
-                      'Content-type': 'application/json',
-                  },
-            body: data ? JSON.stringify(data) : null,
-        })
-            .then(this.checkErrors)
-            .catch((err) => console.error('Error:', err));
-        if (response) {
-            console.log(response.statusText);
-        }
-        return response;
-    };
-
     getLatestUpdateAttempt = async () => {
         return await fetch(LATEST_UPDATE_ATTEMPT + (await auth.currentUser.getIdToken(true)))
-            .then(this.checkErrors)
+            .then(checkErrors)
             .then((response) => response.json())
             .then((data) => {
                 this.setState({
@@ -131,7 +106,7 @@ class App extends React.Component {
 
     getLeagueSeason = async () => {
         return await fetch(NFL_STATE)
-            .then(this.checkErrors)
+            .then(checkErrors)
             .then((response) => response.json())
             .then((nflState) => resolveLeagueSeason(nflState))
             .catch((error) => {
@@ -441,8 +416,6 @@ class App extends React.Component {
                             rosterInfo={rosterInfo}
                             updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
                             startLoad={this.startLoad}
-                            fetchRequest={this.fetchRequest}
-                            checkErrors={this.checkErrors}
                             addToRoster={this.addToRoster}
                             updatePlayerId={this.updatePlayerId}
                             notFoundPlayers={notFoundPlayers}
