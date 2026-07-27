@@ -15,7 +15,7 @@ import {
     fetchPlayerData,
     fetchTradedDraftPicks,
 } from './lib/sleeperApi.js';
-import { addPlayerToRoster, removePlayerFromLineup } from './lib/roster.js';
+import { addPlayerToRoster, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
 import { SLEEPER_USER_ID } from './urls.js';
@@ -29,21 +29,6 @@ import { SLEEPER_USER_ID } from './urls.js';
 // startLoad and then comparing against that same literal coming back down as a
 // prop. The panels now receive a plain boolean and no longer share a
 // vocabulary with App at all, so these names stay private to this file.
-// Sleeper's own labels, shortened for display, with bench slots dropped -
-// only startable positions appear in the weekly lineup.
-function toRosterPositions(rosterPositions) {
-    return rosterPositions
-        .filter((pos) => pos !== 'BN')
-        .map((pos) => {
-            if (pos === 'SUPER_FLEX') {
-                return 'SFLX';
-            } else if (pos === 'FLEX') {
-                return 'FLX';
-            }
-            return pos;
-        });
-}
-
 const LOADING = {
     NONE: 'none',
     INITIAL: 'initial',
@@ -58,7 +43,7 @@ class App extends React.Component {
         loading: LOADING.INITIAL,
         rankingPlayersIdsList: [],
         leagueID: '1312088290526003200',
-        rosterPositions: [],
+        rosterSlots: [],
         notFoundPlayers: [],
         lastUpdate: null,
         signedIn: false,
@@ -130,7 +115,7 @@ class App extends React.Component {
             leagueData,
             loading: LOADING.LEAGUE_PANEL,
             myDisplayName: resolveMyDisplayName(leagueData.managerData, SLEEPER_USER_ID),
-            rosterPositions: toRosterPositions(leagueData.currentLeague.roster_positions),
+            rosterSlots: toRosterSlots(leagueData.currentLeague.roster_positions),
         });
 
         await this.loadDraft(leagueData);
@@ -237,21 +222,11 @@ class App extends React.Component {
     };
 
     addToRoster = (player) => {
-        const { rosterPositions, playerInfo } = this.state;
-        const updated = addPlayerToRoster({ player, rosterPositions, playerInfo });
-        this.setState({
-            playerInfo: updated.playerInfo,
-            rosterPositions: updated.rosterPositions,
-        });
+        this.setState((prevState) => addPlayerToRoster({ player, rosterSlots: prevState.rosterSlots }));
     };
 
-    removeFromLineup = (id, i) => {
-        const { rosterPositions, playerInfo } = this.state;
-        const updated = removePlayerFromLineup({ id, i, rosterPositions, playerInfo });
-        this.setState({
-            playerInfo: updated.playerInfo,
-            rosterPositions: updated.rosterPositions,
-        });
+    removeFromLineup = (i) => {
+        this.setState((prevState) => removePlayerFromLineup({ i, rosterSlots: prevState.rosterSlots }));
     };
 
     // Takes a reducer rather than a finished board on purpose. Callers compute
@@ -289,7 +264,7 @@ class App extends React.Component {
             lastUpdate,
             loading,
             rankingPlayersIdsList,
-            rosterPositions,
+            rosterSlots,
             leagueData,
             notFoundPlayers,
             leagueID,
@@ -304,7 +279,7 @@ class App extends React.Component {
                 rosterData: leagueData.rosterData,
                 builtDraft: leagueData.currentDraft?.built_draft,
             });
-            const lineupSet = buildLineupSet(rosterPositions);
+            const lineupSet = buildLineupSet(rosterSlots);
             return (
                 <div>
                     <Header
@@ -334,7 +309,7 @@ class App extends React.Component {
                             leagueID={leagueID}
                             updateLeagueID={this.updateLeagueID}
                             rankingPlayersIdsList={rankingPlayersIdsList}
-                            rosterPositions={rosterPositions}
+                            rosterSlots={rosterSlots}
                             playerInfo={playerInfo}
                             rosterInfo={rosterInfo}
                             isLoading={loading === LOADING.LEAGUE_PANEL}

@@ -179,16 +179,37 @@ describe('buildRosterInfo — derived from draft picks', () => {
 });
 
 describe('in_lineup derivation', () => {
-    it('treats a player as in the lineup exactly when their id fills a roster slot', () => {
-        const lineup = buildLineupSet(['QB', '11435', 'RB', 'FLX', '13274']);
+    const slot = (label, playerId = null) => ({ label, playerId });
+
+    it('treats a player as in the lineup exactly when their id fills a slot', () => {
+        const lineup = buildLineupSet([
+            slot('QB'),
+            slot('RB', '11435'),
+            slot('RB'),
+            slot('FLX'),
+            slot('SFLX', '13274'),
+        ]);
         expect(isInLineup(lineup, '11435')).toBe(true);
         expect(isInLineup(lineup, '13274')).toBe(true);
         expect(isInLineup(lineup, '13279')).toBe(false);
     });
 
-    it('does not treat bare position labels as player ids', () => {
-        const lineup = buildLineupSet(['QB', 'RB', 'WR', 'TE', 'FLX', 'SFLX']);
+    it('counts no one as in the lineup when every slot is empty', () => {
+        // This used to be a test that bare position labels were not mistaken
+        // for player ids, which was a real hazard while labels and ids shared
+        // one array. A slot now carries its occupant in its own field, so the
+        // question is occupancy rather than what a string looks like.
+        const lineup = buildLineupSet(['QB', 'RB', 'WR', 'TE', 'FLX', 'SFLX'].map((label) => slot(label)));
         expect(lineup.size).toBe(0);
+    });
+
+    it('does not treat a label as an occupant even when it looks like an id', () => {
+        // Nothing rules out a future position label being numeric; the old
+        // regex-based derivation would have counted one as a player.
+        const lineup = buildLineupSet([slot('2'), slot('QB', '11435')]);
+        expect(lineup.size).toBe(1);
+        expect(isInLineup(lineup, '11435')).toBe(true);
+        expect(isInLineup(lineup, '2')).toBe(false);
     });
 
     it('handles an empty lineup', () => {

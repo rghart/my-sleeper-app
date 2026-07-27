@@ -73,13 +73,14 @@ export function rosteredBy(rosterInfo, playerId) {
 
 /**
  * Builds the set of player ids currently occupying a lineup slot.
- * `rosterPositions` is a mixed array of bare position labels (e.g. 'QB',
- * 'FLX', 'SFLX') and player ids; Sleeper player ids are purely numeric
- * strings, while every position label contains at least one letter, so that
- * distinguishes the two without hardcoding a position-label table.
+ *
+ * This used to sniff a mixed array of labels and ids apart with a
+ * `/^\d+$/` test, on the reasoning that Sleeper player ids are purely numeric
+ * while every position label contains a letter. That inference is gone: a slot
+ * carries its occupant in a field, so occupancy is read rather than guessed.
  */
-export function buildLineupSet(rosterPositions) {
-    return new Set(rosterPositions.filter((entry) => /^\d+$/.test(entry)));
+export function buildLineupSet(rosterSlots) {
+    return new Set(rosterSlots.filter((slot) => slot.playerId !== null).map((slot) => slot.playerId));
 }
 
 /**

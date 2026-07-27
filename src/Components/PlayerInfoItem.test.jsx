@@ -92,10 +92,14 @@ describe('PlayerInfoItem', () => {
         // The lineup set is built by the real helper rather than a literal Set
         // so the shape stays honest, but what this protects is the component
         // half: that lineupSet reaches the item and drives the button's label
-        // and disabled state. buildLineupSet's own numeric filtering is
-        // covered directly in lib/rosterInfo.test.js - sabotaging that filter
-        // does not fail this test, and this comment used to claim it did.
-        const lineupSet = buildLineupSet(['QB', MY_PLAYER_ID, 'FLX', 'BN']);
+        // and disabled state. buildLineupSet's own occupancy logic is covered
+        // directly in lib/rosterInfo.test.js - sabotaging it does not fail this
+        // test, and this comment used to claim it did.
+        const lineupSet = buildLineupSet([
+            { label: 'QB', playerId: null },
+            { label: 'WR', playerId: MY_PLAYER_ID },
+            { label: 'FLX', playerId: null },
+        ]);
         renderItem(MY_PLAYER_ID, { lineupSet });
 
         const added = screen.getByRole('button', { name: 'Added' });

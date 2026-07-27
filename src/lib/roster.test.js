@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addPlayerToRoster, getEligiblePositions, removePlayerFromLineup } from './roster.js';
+import { addPlayerToRoster, getEligiblePositions, removePlayerFromLineup, toRosterSlots } from './roster.js';
 
 const makePlayer = (overrides = {}) => ({
     player_id: '1001',
@@ -56,113 +56,125 @@ describe('getEligiblePositions', () => {
     });
 });
 
+const slots = (...labels) => labels.map((label) => ({ label, playerId: null }));
+
+describe('toRosterSlots', () => {
+    it('drops bench slots and shortens the flex labels', () => {
+        expect(toRosterSlots(['QB', 'RB', 'FLEX', 'SUPER_FLEX', 'BN', 'BN'])).toEqual(slots('QB', 'RB', 'FLX', 'SFLX'));
+    });
+
+    it('starts every slot empty', () => {
+        expect(toRosterSlots(['QB', 'RB']).every((slot) => slot.playerId === null)).toBe(true);
+    });
+
+    it('keeps duplicate positions as separate slots', () => {
+        // Two RB slots are two places a player can go, not one.
+        expect(toRosterSlots(['RB', 'RB'])).toHaveLength(2);
+    });
+});
+
 describe('addPlayerToRoster', () => {
-    it('assigns the player to the first matching open roster slot', () => {
-        const player = makePlayer();
-        const rosterPositions = ['QB', 'RB', 'WR', 'FLX', 'BN'];
-        const playerInfo = {};
-        const result = addPlayerToRoster({ player, rosterPositions, playerInfo });
+    it('fills the first open slot matching the player position', () => {
+        const result = addPlayerToRoster({ player: makePlayer(), rosterSlots: slots('QB', 'RB', 'WR', 'FLX') });
 
-        expect(result.rosterPositions).toEqual(['QB', '1001', 'WR', 'FLX', 'BN']);
-        expect(result.playerInfo['1001'].roster_text).toEqual('RB');
-        // The eligible positions are computed to find the slot, but not written
-        // back onto the player: nothing reads the extended list, and
-        // getEligiblePositions re-derives it on demand.
-        expect(result.playerInfo['1001'].fantasy_positions).toEqual(['RB']);
+        expect(result.rosterSlots[1]).toEqual({ label: 'RB', playerId: '1001' });
+        // Every other slot keeps its label and stays empty - the label is no
+        // longer destroyed by filling a slot, which is what made roster_text
+        // necessary in the first place.
+        expect(result.rosterSlots.map((slot) => slot.label)).toEqual(['QB', 'RB', 'WR', 'FLX']);
     });
 
-    it('falls back to FLX slot when the primary position slot is unavailable', () => {
-        const player = makePlayer();
-        const rosterPositions = ['QB', 'WR', 'FLX', 'BN'];
-        const playerInfo = {};
-        const result = addPlayerToRoster({ player, rosterPositions, playerInfo });
+    it('falls back to FLX when the primary position slot is taken', () => {
+        const taken = slots('QB', 'RB', 'WR', 'FLX');
+        taken[1] = { label: 'RB', playerId: '2002' };
 
-        expect(result.rosterPositions).toEqual(['QB', 'WR', '1001', 'BN']);
-        expect(result.playerInfo['1001'].roster_text).toEqual('FLX');
+        const result = addPlayerToRoster({ player: makePlayer(), rosterSlots: taken });
+
+        expect(result.rosterSlots[3]).toEqual({ label: 'FLX', playerId: '1001' });
     });
 
-    it('leaves rosterPositions unchanged when no eligible slot is open', () => {
-        const player = makePlayer();
-        const rosterPositions = ['QB', 'WR', 'TE', 'BN'];
-        const playerInfo = {};
-        const result = addPlayerToRoster({ player, rosterPositions, playerInfo });
+    it('skips an occupied slot of the right label rather than displacing its occupant', () => {
+        // findIndex has to test occupancy as well as label; matching on label
+        // alone would silently evict whoever is already there.
+        const taken = slots('RB', 'RB');
+        taken[0] = { label: 'RB', playerId: '2002' };
 
-        expect(result.rosterPositions).toEqual(rosterPositions);
-        expect(result.playerInfo['1001'].roster_text).toBeUndefined();
+        const result = addPlayerToRoster({ player: makePlayer(), rosterSlots: taken });
+
+        expect(result.rosterSlots[0].playerId).toEqual('2002');
+        expect(result.rosterSlots[1].playerId).toEqual('1001');
+    });
+
+    it('leaves the slots unchanged when no eligible slot is open', () => {
+        const rosterSlots = slots('QB', 'WR', 'TE');
+        const result = addPlayerToRoster({ player: makePlayer(), rosterSlots });
+
+        expect(result.rosterSlots).toEqual(rosterSlots);
     });
 
     it('does not mutate its inputs', () => {
         const player = makePlayer();
-        const rosterPositions = ['QB', 'RB', 'WR', 'FLX', 'BN'];
-        const playerInfo = { 2002: makePlayer({ player_id: '2002' }) };
+        const rosterSlots = slots('QB', 'RB', 'WR', 'FLX');
         const clonedPlayer = structuredClone(player);
-        const clonedRosterPositions = structuredClone(rosterPositions);
-        const clonedPlayerInfo = structuredClone(playerInfo);
+        const clonedSlots = structuredClone(rosterSlots);
 
-        addPlayerToRoster({ player, rosterPositions, playerInfo });
+        addPlayerToRoster({ player, rosterSlots });
 
         expect(player).toEqual(clonedPlayer);
-        expect(rosterPositions).toEqual(clonedRosterPositions);
-        expect(playerInfo).toEqual(clonedPlayerInfo);
+        expect(rosterSlots).toEqual(clonedSlots);
     });
 
-    it('leaves the player database entry untouched apart from roster_text', () => {
-        // The whole point of dropping the write-back: adding a player to a
-        // lineup must not rewrite the shared player database with derived
-        // values. roster_text is the last remaining write, and goes next.
-        const player = makePlayer();
-        const playerInfo = { 1001: player };
-        const result = addPlayerToRoster({ player, rosterPositions: ['QB', 'RB', 'BN'], playerInfo });
-
-        const { roster_text, ...rest } = result.playerInfo['1001'];
-        expect(roster_text).toEqual('RB');
-        expect(rest).toEqual(player);
-    });
-
-    it('assigns the same slot whether or not a previous add cached anything on the player', () => {
-        // getEligiblePositions is idempotent, which is what made the cache
-        // pointless: a second add computes the same eligible list from the
-        // player's real position and picks the same slot.
-        const player = makePlayer();
-        const first = addPlayerToRoster({ player, rosterPositions: ['QB', 'RB', 'WR', 'FLX', 'BN'], playerInfo: {} });
-
-        const second = addPlayerToRoster({
-            player: first.playerInfo['1001'],
-            rosterPositions: ['QB', 'RB', 'WR', 'FLX', 'BN'],
-            playerInfo: first.playerInfo,
-        });
-
-        expect(second.rosterPositions).toEqual(first.rosterPositions);
-        expect(second.playerInfo['1001'].roster_text).toEqual('RB');
+    it('never touches the player database, because it is not given one', () => {
+        // The point of the whole change: assigning a player to a lineup slot is
+        // a fact about the slot. playerInfo is not a parameter any more, so
+        // there is no way to write to it even by accident.
+        expect(addPlayerToRoster.length).toBe(1);
+        expect(Object.keys(addPlayerToRoster({ player: makePlayer(), rosterSlots: slots('RB') }))).toEqual([
+            'rosterSlots',
+        ]);
     });
 });
 
 describe('removePlayerFromLineup', () => {
-    it('restores the roster slot to the remembered roster_text, so the player no longer occupies a lineup slot', () => {
-        const playerInfo = {
-            1001: { ...makePlayer(), roster_text: 'RB' },
-        };
-        const rosterPositions = ['QB', '1001', 'WR', 'FLX', 'BN'];
-        const result = removePlayerFromLineup({ id: '1001', i: 1, rosterPositions, playerInfo });
+    it('empties the slot while keeping its label', () => {
+        const filled = slots('QB', 'RB', 'WR');
+        filled[1] = { label: 'RB', playerId: '1001' };
 
-        expect(result.rosterPositions).toEqual(['QB', 'RB', 'WR', 'FLX', 'BN']);
-        // Lineup membership is derived (see rosterInfo.test.js's buildLineupSet
-        // coverage), not tracked on the player: the player id simply no longer
-        // appears among the roster positions.
-        expect(result.rosterPositions).not.toContain('1001');
+        const result = removePlayerFromLineup({ i: 1, rosterSlots: filled });
+
+        expect(result.rosterSlots[1]).toEqual({ label: 'RB', playerId: null });
+        // Nothing was looked up to restore the label: it never went away. The
+        // old implementation read it back off the player as roster_text, which
+        // is why it needed the player database at all.
+        expect(result.rosterSlots.map((slot) => slot.label)).toEqual(['QB', 'RB', 'WR']);
+    });
+
+    it('removes the player from the derived lineup membership', () => {
+        const filled = slots('QB', 'RB');
+        filled[1] = { label: 'RB', playerId: '1001' };
+
+        const result = removePlayerFromLineup({ i: 1, rosterSlots: filled });
+
+        expect(result.rosterSlots.some((slot) => slot.playerId === '1001')).toBe(false);
+    });
+
+    it('leaves other filled slots alone', () => {
+        const filled = slots('RB', 'RB');
+        filled[0] = { label: 'RB', playerId: '2002' };
+        filled[1] = { label: 'RB', playerId: '1001' };
+
+        const result = removePlayerFromLineup({ i: 1, rosterSlots: filled });
+
+        expect(result.rosterSlots[0].playerId).toEqual('2002');
     });
 
     it('does not mutate its inputs', () => {
-        const playerInfo = {
-            1001: { ...makePlayer(), roster_text: 'RB' },
-        };
-        const rosterPositions = ['QB', '1001', 'WR', 'FLX', 'BN'];
-        const clonedRosterPositions = structuredClone(rosterPositions);
-        const clonedPlayerInfo = structuredClone(playerInfo);
+        const filled = slots('QB', 'RB');
+        filled[1] = { label: 'RB', playerId: '1001' };
+        const clonedSlots = structuredClone(filled);
 
-        removePlayerFromLineup({ id: '1001', i: 1, rosterPositions, playerInfo });
+        removePlayerFromLineup({ i: 1, rosterSlots: filled });
 
-        expect(rosterPositions).toEqual(clonedRosterPositions);
-        expect(playerInfo).toEqual(clonedPlayerInfo);
+        expect(filled).toEqual(clonedSlots);
     });
 });
