@@ -27,7 +27,10 @@ export function decorateRosters({ rosterData, managerData }) {
 export function buildRosterInfo({ rosterData, builtDraft }) {
     const rosterInfo = new Map();
 
-    rosterData.forEach((roster) => {
+    // Missing roster data is a real state, not a caller error: it is what the
+    // app holds before the first load finishes and after one that failed.
+    // Nobody is rostered in that case, which is exactly what an empty map says.
+    (rosterData || []).forEach((roster) => {
         if (!roster.players) {
             return;
         }

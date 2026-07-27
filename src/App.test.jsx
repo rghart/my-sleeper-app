@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import rosterFlagsFixture from './lib/__fixtures__/roster-flags-2026.json';
@@ -24,12 +24,13 @@ vi.mock('./firebase.js', () => ({
     googleProvider: {},
 }));
 
-const authMockState = vi.hoisted(() => ({ unsubscribe: null }));
+const authMockState = vi.hoisted(() => ({ unsubscribe: null, callback: null }));
 
 vi.mock('firebase/auth', () => ({
     onAuthStateChanged: vi.fn((auth, callback) => {
         // Simplest path: report an already-signed-in (anonymous) user
         // immediately, so App skips the signInAnonymously branch entirely.
+        authMockState.callback = callback;
         callback({ uid: 'test-uid', isAnonymous: true });
         authMockState.unsubscribe = vi.fn();
         return authMockState.unsubscribe;
@@ -404,6 +405,138 @@ describe('App', () => {
         } finally {
             vi.restoreAllMocks();
         }
+    });
+
+    it('shows a retryable error instead of a blank page when the league load fails', async () => {
+        // Nothing covered a failed league bundle, and the app rendered a blank
+        // page: loadLeague bailed to LOADING.NONE, render ran with leagueData
+        // still empty, and buildRosterInfo threw on undefined rosterData.
+        // Before the load chain was reworked this was an infinite spinner
+        // instead - bad, but not a white screen.
+        const rejections = [];
+        const recordRejection = (reason) => rejections.push(reason);
+        process.on('unhandledRejection', recordRejection);
+
+        try {
+            global.fetch = vi.fn((url) => {
+                if (/league\/\d+\//.test(url) || url.includes('leagues/nfl/')) {
+                    return Promise.reject(new Error('Sleeper unavailable'));
+                }
+                return mockFetch(url);
+            });
+
+            const { container } = render(<App />);
+
+            const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
+            expect(alert.textContent).toMatch(/Couldn't load your league data/);
+            expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
+
+            // The page is not blank and not stuck on a spinner.
+            expect(screen.getByText('Sleeper Team Assistant')).toBeTruthy();
+            expect(container.querySelector('.loader')).toBeNull();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(rejections).toEqual([]);
+        } finally {
+            process.off('unhandledRejection', recordRejection);
+        }
+    });
+
+    it('does not render the panels when there is no league data to render them from', async () => {
+        // LeaguePanel reads leagueData.currentLeague.name unconditionally, so
+        // "render the panels anyway" is not an option - this is why the banner
+        // replaces them rather than sitting above them.
+        global.fetch = vi.fn((url) => {
+            if (/league\/\d+\//.test(url) || url.includes('leagues/nfl/')) {
+                return Promise.reject(new Error('Sleeper unavailable'));
+            }
+            return mockFetch(url);
+        });
+
+        const { container } = render(<App />);
+        await screen.findByRole('alert', {}, { timeout: 5000 });
+
+        expect(container.querySelector('.main-container')).toBeNull();
+        expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull();
+    });
+
+    it('replaces the panels rather than leaving a board that disagrees with the dropdown', async () => {
+        // A league switch that fails leaves the previous league's data in
+        // state. Rendering the panels from it would show one league's board
+        // under a dropdown reading another - the same confidently-wrong shape
+        // the banner exists to avoid. So the banner replaces the panels
+        // whenever a load has failed, not only when there is nothing to render.
+        global.fetch = vi.fn(mockFetch);
+        const user = userEvent.setup();
+        render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        expect(screen.getByDisplayValue('Test League')).toBeTruthy();
+
+        global.fetch = vi.fn((url) => {
+            if (url.includes(OTHER_LEAGUE_ID)) {
+                return Promise.reject(new Error('Sleeper unavailable'));
+            }
+            return mockFetch(url);
+        });
+        await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
+
+        await screen.findByRole('alert', {}, { timeout: 5000 });
+        expect(document.querySelector('.main-container')).toBeNull();
+    });
+
+    it('recovers when Retry succeeds', async () => {
+        // Only the league load is retried; the player database is already in
+        // memory and is not what failed.
+        let failLeague = true;
+        global.fetch = vi.fn((url) => {
+            if (failLeague && (/league\/\d+\//.test(url) || url.includes('leagues/nfl/'))) {
+                return Promise.reject(new Error('Sleeper unavailable'));
+            }
+            return mockFetch(url);
+        });
+
+        const user = userEvent.setup();
+        render(<App />);
+        await screen.findByRole('alert', {}, { timeout: 5000 });
+
+        const playerDbRequestsBefore = global.fetch.mock.calls.filter((call) =>
+            call[0].includes('legacy/players'),
+        ).length;
+
+        failLeague = false;
+        await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        expect(screen.queryByRole('alert')).toBeNull();
+
+        expect(global.fetch.mock.calls.filter((call) => call[0].includes('legacy/players')).length).toBe(
+            playerDbRequestsBefore,
+        );
+    });
+
+    it('clears the error when a load triggered by anything other than Retry succeeds', async () => {
+        // Retry clears the banner itself, so the clear on the success path is
+        // only observable through the other caller: the auth callback, which
+        // re-runs loadLeague whenever auth state changes - signing in, for
+        // instance. Without it the banner would sit on screen next to a fully
+        // working set of panels.
+        let failLeague = true;
+        global.fetch = vi.fn((url) => {
+            if (failLeague && (/league\/\d+\//.test(url) || url.includes('leagues/nfl/'))) {
+                return Promise.reject(new Error('Sleeper unavailable'));
+            }
+            return mockFetch(url);
+        });
+
+        render(<App />);
+        await screen.findByRole('alert', {}, { timeout: 5000 });
+
+        failLeague = false;
+        await act(async () => {
+            authMockState.callback({ uid: 'test-uid', isAnonymous: true });
+        });
+
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        expect(screen.queryByRole('alert')).toBeNull();
     });
 
     it('unsubscribes from auth state changes on unmount', async () => {
