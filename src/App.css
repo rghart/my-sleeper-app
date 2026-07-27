@@ -1,8 +1,4 @@
 @media screen and (max-width: 767px) {
-    .title {
-        font-size: x-large;
-    }
-
     .avatar-player {
         margin-left: 10px !important;
     }
@@ -147,16 +143,6 @@
     display: flex;
     flex-direction: column;
     padding: 5px 15px 15px 15px;
-}
-
-.latest-update {
-    margin: 0px 0px 6px 3px;
-    font-size: x-small;
-    margin-right: 8px;
-}
-
-.title {
-    margin: 0px 0px 6px 3px;
 }
 
 .input {

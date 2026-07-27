@@ -710,6 +710,70 @@ describe('App', () => {
         );
     });
 
+    // The season-aware default has to be read from data that exists when the
+    // shell first mounts. The obvious source - `currentDraft.status` - is
+    // filled by loadDraft, which resolves a render later, so the default was
+    // computed from `undefined` and the setting never took effect on the one
+    // load it exists for. The draft's status is already in the league bundle's
+    // drafts list, which is why that is what App reads.
+    it('opens on Lineup when the current league draft is already complete', async () => {
+        window.location.hash = '';
+        global.fetch = vi.fn((url) => {
+            if (/league\/\d+\/drafts\//.test(url)) {
+                return jsonResponse([{ draft_id: DRAFT_ID, status: 'complete' }]);
+            }
+            return mockFetch(url);
+        });
+
+        render(<App />);
+
+        const lineupTab = await screen.findByRole('button', { name: 'Lineup' }, { timeout: 5000 });
+        await waitFor(() => expect(lineupTab).toHaveAttribute('aria-current', 'page'));
+    });
+
+    it('opens on Draft while the draft is still running', async () => {
+        window.location.hash = '';
+        global.fetch = vi.fn((url) => {
+            if (/league\/\d+\/drafts\//.test(url)) {
+                return jsonResponse([{ draft_id: DRAFT_ID, status: 'drafting' }]);
+            }
+            return mockFetch(url);
+        });
+
+        render(<App />);
+
+        const draftTab = await screen.findByRole('button', { name: 'Draft' }, { timeout: 5000 });
+        await waitFor(() => expect(draftTab).toHaveAttribute('aria-current', 'page'));
+    });
+
+    it('re-derives the default section when the league is switched', async () => {
+        // The default is not a one-off decision taken at mount: switching to a
+        // league whose draft is finished should land on Lineup, and this is
+        // the case that a hook holding the resolved section in state gets
+        // wrong, because nothing remounts on a league switch.
+        window.location.hash = '';
+        global.fetch = vi.fn((url) => {
+            if (/league\/\d+\/drafts\//.test(url)) {
+                return url.includes(OTHER_LEAGUE_ID)
+                    ? jsonResponse([{ draft_id: OTHER_DRAFT_ID, status: 'complete' }])
+                    : jsonResponse([{ draft_id: DRAFT_ID, status: 'drafting' }]);
+            }
+            return mockFetch(url);
+        });
+
+        const user = userEvent.setup();
+        render(<App />);
+
+        const draftTab = await screen.findByRole('button', { name: 'Draft' }, { timeout: 5000 });
+        await waitFor(() => expect(draftTab).toHaveAttribute('aria-current', 'page'));
+
+        await user.selectOptions(screen.getByRole('combobox'), OTHER_LEAGUE_ID);
+
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: 'Lineup' })).toHaveAttribute('aria-current', 'page'),
+        );
+    });
+
     it('unsubscribes from auth state changes on unmount', async () => {
         global.fetch = vi.fn(mockFetch);
 

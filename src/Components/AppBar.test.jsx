@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Header from './Header';
+import AppBar from './AppBar';
 
 // The top bar is the only place the signed-in/signed-out distinction is
 // visible. App.test.jsx runs entirely as an anonymous user, so the signed-in
@@ -9,7 +9,7 @@ import Header from './Header';
 
 const LAST_UPDATE = '2026-01-01T00:00:00.000Z';
 
-function renderHeader(overrides = {}) {
+function renderAppBar(overrides = {}) {
     const props = {
         signedIn: false,
         signedInEmail: null,
@@ -18,20 +18,20 @@ function renderHeader(overrides = {}) {
         onSignOut: vi.fn(),
         ...overrides,
     };
-    render(<Header {...props} />);
+    render(<AppBar {...props} />);
     return props;
 }
 
-describe('Header', () => {
+describe('AppBar', () => {
     it('offers sign in, and shows no identity, when signed out', () => {
-        renderHeader();
+        renderAppBar();
 
         expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
         expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
     });
 
     it('shows the signed-in email and offers sign out', () => {
-        renderHeader({ signedIn: true, signedInEmail: 'someone@example.test' });
+        renderAppBar({ signedIn: true, signedInEmail: 'someone@example.test' });
 
         expect(screen.getByText('someone@example.test')).toBeTruthy();
         expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
@@ -40,18 +40,18 @@ describe('Header', () => {
 
     it('reports sign in and sign out to its caller rather than acting itself', async () => {
         const user = userEvent.setup();
-        const { onSignIn } = renderHeader();
+        const { onSignIn } = renderAppBar();
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
         expect(onSignIn).toHaveBeenCalledTimes(1);
 
-        const { onSignOut } = renderHeader({ signedIn: true, signedInEmail: 'someone@example.test' });
+        const { onSignOut } = renderAppBar({ signedIn: true, signedInEmail: 'someone@example.test' });
         await user.click(screen.getByRole('button', { name: 'Sign out' }));
         expect(onSignOut).toHaveBeenCalledTimes(1);
     });
 
     it('renders the player database timestamp', () => {
-        renderHeader();
+        renderAppBar();
 
         expect(screen.getByText(/Latest player DB update attempt:/)).toHaveTextContent(
             new Date(LAST_UPDATE).toString(),
@@ -62,11 +62,11 @@ describe('Header', () => {
         // lastUpdate starts null and its request is deliberately not awaited,
         // so this state is on screen during every load. `new Date(null)` is the
         // epoch, which rendered as a confident "Wed Dec 31 1969".
-        renderHeader({ lastUpdate: null });
+        renderAppBar({ lastUpdate: null });
 
         expect(screen.queryByText(/Latest player DB update attempt:/)).toBeNull();
         expect(screen.queryByText(/1969/)).toBeNull();
-        // The rest of the header still renders - the missing timestamp costs
+        // The rest of the bar still renders - the missing timestamp costs
         // one line, not the sign-in control.
         expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
     });

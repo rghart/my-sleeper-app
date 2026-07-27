@@ -1,12 +1,13 @@
 import React from 'react';
 import './App.css';
 import './loader.css';
+import AppBar from './Components/AppBar';
 import AppShell from './Components/AppShell';
 import ErrorBanner from './Components/ErrorBanner';
-import Header from './Components/Header';
+import LeagueBar from './Components/LeagueBar';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
-import { SECTIONS } from './sections.js';
+import { SECTIONS, defaultSectionFor } from './sections.js';
 import { currentUserIdentity, observeAuthState, signInAnonymous, signInWithGoogle, signOutUser } from './lib/auth.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
@@ -359,7 +360,7 @@ class App extends React.Component {
             );
             return (
                 <div>
-                    <Header
+                    <AppBar
                         signedIn={signedIn}
                         signedInEmail={signedInEmail}
                         lastUpdate={lastUpdate}
@@ -373,7 +374,20 @@ class App extends React.Component {
                     {!loadError && leagueData.currentLeague ? (
                         <AppShell
                             sections={SECTIONS}
-                            leagueBar={null}
+                            // The league bundle already carries the draft's status, so this is
+                            // known the moment the shell can mount. Reading it off
+                            // currentDraft instead would be a render too late: that is
+                            // filled by loadDraft, which resolves after the shell is
+                            // already on screen.
+                            defaultSectionId={defaultSectionFor(leagueData.currentLeagueDrafts?.[0]?.status)}
+                            leagueBar={
+                                <LeagueBar
+                                    leagueName={leagueData.currentLeague.name}
+                                    leagueID={leagueID}
+                                    leagueIds={leagueData.leagueIds}
+                                    updateLeagueID={this.updateLeagueID}
+                                />
+                            }
                             renderAside={() => ranksPanel}
                             renderSection={(activeId) => {
                                 if (activeId === 'ranks') {
@@ -383,8 +397,6 @@ class App extends React.Component {
                                     <LeaguePanel
                                         view={activeId === 'lineup' ? 'weekly' : 'draft'}
                                         leagueData={leagueData}
-                                        leagueID={leagueID}
-                                        updateLeagueID={this.updateLeagueID}
                                         rankingPlayersIdsList={rankingPlayersIdsList}
                                         rosterSlots={rosterSlots}
                                         playerInfo={playerInfo}
