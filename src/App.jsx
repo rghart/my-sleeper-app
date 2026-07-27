@@ -141,10 +141,32 @@ class App extends React.Component {
         // real object even when the request fails or the next render crashes
         // (#103).
         const currentDraft = draftData || { draft_id: draftId };
-        const built =
-            draftData && draftData.draft_order
-                ? buildDraftRounds({ currentDraft, rosterData: leagueData.rosterData, tradedDraftPicks })
-                : null;
+
+        // The old guard here checked `draft_order`, which buildDraftRounds never
+        // reads - it was standing in for "this is a real draft" rather than for
+        // what the builder actually needs. A response carrying draft_order but
+        // no settings threw on settings.player_type, and one with no
+        // slot_to_roster_id threw in createPickOrder. Check the two fields that
+        // are genuinely dereferenced instead.
+        const canBuild = Boolean(draftData && draftData.settings && draftData.slot_to_roster_id);
+        if (draftData && !canBuild) {
+            console.warn(`Draft ${draftId} is missing settings or slot_to_roster_id; rendering an empty board`);
+        }
+
+        // fetchTradedDraftPicks also resolves to undefined on failure, and
+        // buildDraftRounds forEaches over it. That took out the whole load
+        // chain: loadDraft threw, its setState never ran, and the app sat on
+        // the LEAGUE_PANEL loader forever. Trades are an overlay on a board
+        // that is perfectly renderable without them, so build without them.
+        // Note this is silent - the board looks authoritative while missing
+        // every trade - which is the tradeoff the follow-up notice addresses.
+        const built = canBuild
+            ? buildDraftRounds({
+                  currentDraft,
+                  rosterData: leagueData.rosterData,
+                  tradedDraftPicks: tradedDraftPicks || [],
+              })
+            : null;
 
         // Composed against prevState rather than the leagueData this call
         // captured. Note this is defensive, not load-bearing today: the only
