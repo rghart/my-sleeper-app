@@ -109,6 +109,24 @@
     margin: 0px;
 }
 
+.warning-banner {
+    background-color: #283245;
+    border-radius: 10px;
+    border-left: 4px solid #e0a832;
+    margin: 8px 3px 3px 3px;
+    padding: 12px 15px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.warning-banner p {
+    margin: 0px;
+}
+
 .search {
     display: flex;
     flex-direction: column;

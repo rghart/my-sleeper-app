@@ -31,6 +31,7 @@ import { SLEEPER_USER_ID } from './urls.js';
 // prop. The panels now receive a plain boolean and no longer share a
 // vocabulary with App at all, so these names stay private to this file.
 const LEAGUE_LOAD_FAILED = "Couldn't load your league data. The Sleeper API may be unavailable.";
+const TRADED_PICKS_FAILED = "Couldn't load traded draft picks. The board shows every pick under its original owner.";
 
 const LOADING = {
     NONE: 'none',
@@ -44,6 +45,7 @@ class App extends React.Component {
         playerInfo: {},
         leagueData: {},
         loadError: null,
+        draftWarning: null,
         loading: LOADING.INITIAL,
         rankingPlayersIdsList: [],
         leagueID: '1312088290526003200',
@@ -158,8 +160,10 @@ class App extends React.Component {
         // chain: loadDraft threw, its setState never ran, and the app sat on
         // the LEAGUE_PANEL loader forever. Trades are an overlay on a board
         // that is perfectly renderable without them, so build without them.
-        // Note this is silent - the board looks authoritative while missing
-        // every trade - which is the tradeoff the follow-up notice addresses.
+        // Building without them cannot be silent, though: 42 of 48 picks in the
+        // real league carry a "via" attribution, so the board would look
+        // authoritative while misattributing most of itself. Hence draftWarning
+        // in the setState below.
         const built = canBuild
             ? buildDraftRounds({
                   currentDraft,
@@ -183,6 +187,7 @@ class App extends React.Component {
                 currentDraft: built ? { ...currentDraft, ...built } : currentDraft,
             },
             loading: LOADING.NONE,
+            draftWarning: canBuild && !tradedDraftPicks ? TRADED_PICKS_FAILED : null,
         }));
     };
 
@@ -207,6 +212,15 @@ class App extends React.Component {
     // nowhere for a panel-level spinner to appear.
     retryLeagueLoad = () => {
         this.setState({ loadError: null, loading: LOADING.INITIAL }, () => this.loadLeague(this.state.playerInfo));
+    };
+
+    // Retries only the draft load, not the whole league: leagueData is already
+    // in state and is not what failed, mirroring retryLeagueLoad's reasoning
+    // about the player database above.
+    retryDraftLoad = () => {
+        this.setState({ draftWarning: null, loading: LOADING.LEAGUE_PANEL }, () =>
+            this.loadDraft(this.state.leagueData),
+        );
     };
 
     updateLeagueID = (leagueID) => {
@@ -309,6 +323,7 @@ class App extends React.Component {
             notFoundPlayers,
             leagueID,
             loadError,
+            draftWarning,
             signedIn,
             signedInEmail,
             myDisplayName,
@@ -331,6 +346,9 @@ class App extends React.Component {
                         onSignOut={this.signOut}
                     />
                     {loadError ? <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} /> : null}
+                    {!loadError && draftWarning ? (
+                        <ErrorBanner message={draftWarning} variant="warning" onRetry={this.retryDraftLoad} />
+                    ) : null}
                     {!loadError && leagueData.currentLeague ? (
                         <div className="main-container">
                             <RanksPanel
