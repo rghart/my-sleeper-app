@@ -27,7 +27,13 @@ const APP_CSS = resolve(process.cwd(), 'src/App.css');
 // declarations. Raising the ceiling for a deliberate, explained reason is the
 // ratchet doing its job - the thing it exists to stop is growth nobody
 // noticed.
-const MAX_LINES = 328;
+//
+// 341 now that Button.css is deleted: two of its rules were never about
+// buttons (`.clickable-item:hover` and the `.player-add-div` media query)
+// and moved in here rather than being converted or dropped. This is rules
+// relocating out of a deleted stylesheet, not new styling - the ratchet
+// still only trends toward zero across the two files combined.
+const MAX_LINES = 341;
 
 const CONVERTED = ['error-banner', 'warning-banner', 'main-container', 'latest-update', '.title {'];
 
@@ -52,7 +58,11 @@ describe('App.css drain', () => {
 // RB position colour, and rows hovered to #00d8a7 next door to it. Both are
 // gone; this is what stops them coming back as "just a highlight".
 describe('position colours are not reused as chrome', () => {
-    const CHROME_SHEETS = ['src/App.css', 'src/Components/Button/Button.css', 'src/index.css'];
+    // Button.css is gone - Button is Tailwind now, and its `alert` variant
+    // deliberately fills with the `qb` token (see Button.tsx), so a raw hex
+    // guard on that component would either fight the migration or need an
+    // exception carved out for it. Button.tsx takes over the guard here.
+    const CHROME_SHEETS = ['src/App.css', 'src/Components/Button/Button.tsx', 'src/index.css'];
 
     it.each(CHROME_SHEETS)('%s does not fill anything with the RB colour', (sheet) => {
         const contents = readFileSync(resolve(process.cwd(), sheet), 'utf8').toLowerCase();

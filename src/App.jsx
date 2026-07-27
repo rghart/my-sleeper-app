@@ -1,12 +1,12 @@
 import React from 'react';
 import './App.css';
-import './loader.css';
 import AppBar from './Components/AppBar';
 import AppShell from './Components/AppShell';
 import ErrorBanner from './Components/ErrorBanner';
 import LeagueBar from './Components/LeagueBar';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
+import Spinner from './Components/Spinner';
 import { SECTIONS, defaultSectionFor } from './sections.js';
 import { currentUserIdentity, observeAuthState, signInAnonymous, signInWithGoogle, signOutUser } from './lib/auth.js';
 import createRankings from './helpers.js';
@@ -332,7 +332,7 @@ class App extends React.Component {
             myDisplayName,
         } = this.state;
         if (loading === LOADING.INITIAL) {
-            return <div className="loader"></div>;
+            return <Spinner size="page" />;
         } else {
             const rosterInfo = this.selectRosterInfo({
                 rosterData: leagueData.rosterData,

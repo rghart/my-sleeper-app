@@ -6,6 +6,7 @@ import Dropdown from '../Components/Dropdown';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Button from '../Components/Button';
+import Spinner from '../Components/Spinner';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 import { checkErrors, fetchRequest } from '../lib/http.js';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
@@ -243,7 +244,7 @@ const RanksPanel = ({
     return (
         <div className="panel search-panel">
             {isLoading ? (
-                <div className="panel-loader"></div>
+                <Spinner size="panel" />
             ) : (
                 <>
                     <div className="search">

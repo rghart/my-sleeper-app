@@ -325,3 +325,17 @@
 .search-alert {
     border: 6px solid red;
 }
+
+/* Moved in from the deleted Button.css: neither rule is about buttons.
+   clickable-item is used by draft rows and player rows, and the media query
+   is grid placement belonging to PlayerInfoItem's .player-add-div. */
+.clickable-item:hover {
+    cursor: pointer;
+}
+
+@media screen and (max-width: 767px) {
+    .player-add-div {
+        grid-column-start: 2;
+        grid-row-start: 3;
+    }
+}

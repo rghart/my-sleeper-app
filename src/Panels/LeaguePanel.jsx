@@ -1,4 +1,5 @@
 import DraftPanel from './DraftPanel';
+import Spinner from '../Components/Spinner';
 
 const LeaguePanel = ({
     leagueData,
@@ -14,7 +15,7 @@ const LeaguePanel = ({
     return (
         <div className="panel league-panel">
             {isLoading ? (
-                <div className="panel-loader"></div>
+                <Spinner size="panel" />
             ) : (
                 <>
                     {view === 'weekly' && (

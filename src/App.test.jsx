@@ -291,17 +291,18 @@ describe('App', () => {
             return mockFetch(url);
         });
 
-        const { container } = render(<App />);
+        render(<App />);
 
-        // The whole-page loader is a bare div, distinct from the per-panel
-        // `.panel-loader` the two panels render.
-        await waitFor(() => expect(container.querySelector('.loader')).toBeTruthy());
+        // The whole-page loader is distinct from the per-panel loader the two
+        // panels render, but both are now the same Spinner component, so the
+        // page one is told apart by its accessible name.
+        await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Loading your leagues' })).toBeTruthy());
         expect(screen.queryByText('Sleeper Team Assistant')).toBeNull();
 
         releaseLeague();
 
         await screen.findAllByText('ryangh', {}, { timeout: 5000 });
-        expect(container.querySelector('.loader')).toBeNull();
+        expect(screen.queryByRole('progressbar', { name: 'Loading your leagues' })).toBeNull();
     });
 
     it('shows the league panel loader while a league switch is in flight', async () => {
@@ -327,18 +328,22 @@ describe('App', () => {
         const user = userEvent.setup();
         const { container } = render(<App />);
         await screen.findAllByText('ryangh', {}, { timeout: 5000 });
-        expect(container.querySelector('.league-panel .panel-loader')).toBeNull();
+        const leaguePanelLoader = () => {
+            const leaguePanel = container.querySelector('.league-panel');
+            return leaguePanel ? within(leaguePanel).queryByRole('progressbar', { name: 'Loading' }) : null;
+        };
+        expect(leaguePanelLoader()).toBeNull();
 
         await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
 
-        await waitFor(() => expect(container.querySelector('.league-panel .panel-loader')).toBeTruthy());
+        await waitFor(() => expect(leaguePanelLoader()).toBeTruthy());
         // The full-page loader is a different thing and must not come back:
         // a league switch replaces one panel, it does not restart the app.
-        expect(container.querySelector(':scope > .loader')).toBeNull();
+        expect(screen.queryByRole('progressbar', { name: 'Loading your leagues' })).toBeNull();
 
         releaseSecondLeague();
 
-        await waitFor(() => expect(container.querySelector('.league-panel .panel-loader')).toBeNull());
+        await waitFor(() => expect(leaguePanelLoader()).toBeNull());
         expect(screen.getAllByText('ryangh').length).toBeGreaterThan(0);
     });
 
