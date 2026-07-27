@@ -1,0 +1,79 @@
+/*
+ * Design tokens for the UI redesign.
+ *
+ * Preflight is deliberately not imported. A bare `@import 'tailwindcss'` would
+ * pull it in, and its resets to buttons, headings and margins are exactly what
+ * the surviving App.css rules still assume - so it would break the one thing
+ * this step has to prove, which is that the substrate can be installed without
+ * changing a pixel. It comes back in its own PR once App.css is at zero.
+ *
+ * Layer order matters more than usual here. Utilities live in `layer(utilities)`
+ * and unlayered CSS outranks every cascade layer regardless of specificity, so
+ * while App.css remains unlayered its rules still win over utilities. That is
+ * intended during the migration: a component is either fully converted, with its
+ * App.css rules deleted in the same change, or left alone. Never both.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/*
+ * Raw values, kept one indirection away from the Tailwind colour names below so
+ * a second theme is a matter of redefining this block under a selector rather
+ * than touching any call site.
+ *
+ * These are the app's CURRENT colours, not the redesign palette. This step ships
+ * pixel-identical, so the names arrive first and the values change later, in the
+ * step that rebuilds the shell.
+ */
+:root {
+    --raw-ground: #18202f;
+    --raw-raised: #283245;
+    --raw-line: #4b576b;
+    --raw-ink: #ffffff;
+    --raw-ink-muted: #a3bbd3;
+
+    /*
+     * The accent is named `mine`, not `accent`, because violet is reserved for
+     * "yours" - your picks, your slots, your turn. `bg-mine` on another
+     * manager's pick reads wrong at the call site where `bg-accent` would read
+     * fine, so there is deliberately no generic accent token to reach for.
+     * Nothing consumes this yet.
+     */
+    --raw-mine: #7a6ff0;
+
+    /*
+     * Position colours encode data, so they keep the loud end of the spectrum.
+     * Contrast for near-black text on each fill: TE 9.9:1, RB 9.1:1, WR 7.3:1,
+     * QB 5.0:1. QB is the floor - it is the one that breaks AA first if that
+     * hue is ever moved.
+     */
+    --raw-qb: #ff2a6d;
+    --raw-rb: #00ceb8;
+    --raw-wr: #58a7ff;
+    --raw-te: #ffae58;
+
+    --raw-danger: #d9534f;
+    --raw-warn: #e0a832;
+}
+
+/* `inline` so the utilities resolve through the variable at runtime, which is
+ * what lets the block above be swapped under a selector later. */
+@theme inline {
+    --color-ground: var(--raw-ground);
+    --color-raised: var(--raw-raised);
+    --color-line: var(--raw-line);
+    --color-ink: var(--raw-ink);
+    --color-ink-muted: var(--raw-ink-muted);
+
+    --color-mine: var(--raw-mine);
+    --color-focus: var(--color-mine);
+
+    --color-qb: var(--raw-qb);
+    --color-rb: var(--raw-rb);
+    --color-wr: var(--raw-wr);
+    --color-te: var(--raw-te);
+
+    --color-danger: var(--raw-danger);
+    --color-warn: var(--raw-warn);
+}
