@@ -43,12 +43,12 @@ const rankEntry = (playerId, ranking) => ({
 
 const rankingPlayersIdsList = [rankEntry(FREE_AGENT.id, 1), rankEntry(OTHERS_PLAYER.id, 2), rankEntry(MY_PLAYER.id, 3)];
 
-function renderPanel() {
+function renderPanel(overrides = {}) {
     // signedIn stays false so the saved-rank-lists effect takes its else
     // branch and no global fetch is needed; ADP resolves empty so the panel
     // renders without an ADP column. Neither touches the filter path.
     const props = {
-        loadingMessage: '',
+        isLoading: false,
         signedIn: false,
         playerInfo,
         rosterInfo,
@@ -62,9 +62,10 @@ function renderPanel() {
         updatePlayerId: vi.fn(),
         notFoundPlayers: [],
         myDisplayName: MY_DISPLAY_NAME,
+        ...overrides,
     };
-    render(<RanksPanel {...props} />);
-    return props;
+    const { container } = render(<RanksPanel {...props} />);
+    return { ...props, container };
 }
 
 // The filter controls are <label> elements wrapping a checkbox, so the
@@ -73,6 +74,29 @@ const toggle = (user, name) => user.click(screen.getByRole('checkbox', { name })
 
 const visiblePlayers = () =>
     [FREE_AGENT, OTHERS_PLAYER, MY_PLAYER].filter((p) => screen.queryByText(p.name) !== null).map((p) => p.name);
+
+describe('RanksPanel loading', () => {
+    it('shows only the loader while the ranks panel is loading', () => {
+        const { container } = renderPanel({ isLoading: true });
+
+        expect(container.querySelector('.panel-loader')).toBeTruthy();
+        expect(screen.queryByText(FREE_AGENT.name)).toBeNull();
+    });
+
+    it('asks for a search by text alone, without naming a loading state', async () => {
+        // startLoad used to take the loading message as its first argument, and
+        // RanksPanel passed the literal 'Loading search panel...' - which came
+        // straight back down as the prop it then compared against. The panel no
+        // longer knows that vocabulary exists.
+        const user = userEvent.setup();
+        const { startLoad } = renderPanel();
+
+        await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), 'Ja  rr Chase');
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        expect(startLoad).toHaveBeenCalledWith('Ja  rr Chase');
+    });
+});
 
 describe('RanksPanel player filters', () => {
     let user;

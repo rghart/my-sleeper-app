@@ -43,6 +43,7 @@ const { rosterDataRaw, managerData, playerInfo, livePicksPartial } = rosterFlags
 const { currentDraft: draftSettings, tradedDraftPicks } = realDraftFixture;
 
 const LEAGUE_ID = '1312088290526003200';
+const OTHER_LEAGUE_ID = '9999999999999999999';
 const DRAFT_ID = 'draft123';
 
 const jsonResponse = (data) => Promise.resolve({ ok: true, statusText: 'OK', json: () => Promise.resolve(data) });
@@ -63,22 +64,27 @@ function mockFetch(url) {
     if (url.includes('state/nfl')) {
         return jsonResponse({ league_season: '2026' });
     }
-    if (url.includes(`league/${LEAGUE_ID}/rosters/`)) {
+    // Both leagues are served the same fixture data; only the id differs. The
+    // second one exists so the league dropdown has somewhere to switch to.
+    if (/league\/\d+\/rosters\//.test(url)) {
         return jsonResponse(structuredClone(rosterDataRaw));
     }
-    if (url.includes(`league/${LEAGUE_ID}/users/`)) {
+    if (/league\/\d+\/users\//.test(url)) {
         return jsonResponse(structuredClone(managerData));
     }
-    if (url.includes(`league/${LEAGUE_ID}/drafts/`)) {
+    if (/league\/\d+\/drafts\//.test(url)) {
         return jsonResponse([{ draft_id: DRAFT_ID }]);
     }
     if (url.includes('leagues/nfl/')) {
-        return jsonResponse([{ league_id: LEAGUE_ID, name: 'Test League' }]);
+        return jsonResponse([
+            { league_id: LEAGUE_ID, name: 'Test League' },
+            { league_id: OTHER_LEAGUE_ID, name: 'Other League' },
+        ]);
     }
-    if (url.includes(`league/${LEAGUE_ID}/`)) {
+    if (/league\/\d+\/$/.test(url)) {
         return jsonResponse({
-            league_id: LEAGUE_ID,
-            name: 'Test League',
+            league_id: url.includes(OTHER_LEAGUE_ID) ? OTHER_LEAGUE_ID : LEAGUE_ID,
+            name: url.includes(OTHER_LEAGUE_ID) ? 'Other League' : 'Test League',
             roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'BN', 'BN'],
         });
     }
@@ -249,6 +255,73 @@ describe('App', () => {
         } finally {
             process.off('unhandledRejection', recordRejection);
         }
+    });
+
+    it('shows a full-page loader, and neither panel, until the league data arrives', async () => {
+        // The initial-load branch used to be guarded by `isLoading &&
+        // loadingMessage === 'Initial load...'` and is now a single enum
+        // check. Nothing rendered App before its data settled, so which of
+        // those two conditions was doing the work was never observable.
+        let releaseLeague;
+        const leagueGate = new Promise((resolve) => {
+            releaseLeague = resolve;
+        });
+        global.fetch = vi.fn((url) => {
+            if (url.includes(`league/${LEAGUE_ID}/rosters/`)) {
+                return leagueGate.then(() => mockFetch(url));
+            }
+            return mockFetch(url);
+        });
+
+        const { container } = render(<App />);
+
+        // The whole-page loader is a bare div, distinct from the per-panel
+        // `.panel-loader` the two panels render.
+        await waitFor(() => expect(container.querySelector('.loader')).toBeTruthy());
+        expect(screen.queryByText('Sleeper Team Assistant')).toBeNull();
+
+        releaseLeague();
+
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        expect(container.querySelector('.loader')).toBeNull();
+    });
+
+    it('shows the league panel loader while a league switch is in flight', async () => {
+        // The only path where the league-panel loading state earns its keep.
+        // On the initial load it is redundant - the full-page loader already
+        // suppresses both panels until the board is built, so never entering
+        // it changes nothing observable. On a switch, App is already past that
+        // branch, and without this state LeaguePanel would render against
+        // half-replaced league data.
+        let releaseSecondLeague;
+        const gate = new Promise((resolve) => {
+            releaseSecondLeague = resolve;
+        });
+        let gated = false;
+        global.fetch = vi.fn((url) => {
+            if (url.includes(`league/${OTHER_LEAGUE_ID}/rosters/`) && !gated) {
+                gated = true;
+                return gate.then(() => mockFetch(url));
+            }
+            return mockFetch(url);
+        });
+
+        const user = userEvent.setup();
+        const { container } = render(<App />);
+        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        expect(container.querySelector('.league-panel .panel-loader')).toBeNull();
+
+        await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
+
+        await waitFor(() => expect(container.querySelector('.league-panel .panel-loader')).toBeTruthy());
+        // The full-page loader is a different thing and must not come back:
+        // a league switch replaces one panel, it does not restart the app.
+        expect(container.querySelector(':scope > .loader')).toBeNull();
+
+        releaseSecondLeague();
+
+        await waitFor(() => expect(container.querySelector('.league-panel .panel-loader')).toBeNull());
+        expect(screen.getAllByText('ryangh').length).toBeGreaterThan(0);
     });
 
     it('unsubscribes from auth state changes on unmount', async () => {
