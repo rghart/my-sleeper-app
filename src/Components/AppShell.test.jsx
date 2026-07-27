@@ -59,6 +59,27 @@ describe('AppShell', () => {
         expect(screen.getByTestId('section-content')).toHaveTextContent('draft');
     });
 
+    it('renders the aside alongside a league section', () => {
+        window.location.hash = '#/draft';
+
+        renderShell();
+
+        expect(screen.getByTestId('aside-content')).toBeInTheDocument();
+    });
+
+    it('drops the aside when Ranks is the active section', () => {
+        // Ranks IS the aside's content, so rendering both would put the same
+        // panel on screen twice on a wide screen. Whether the aside is visible
+        // at a given width is a stylesheet question jsdom cannot answer - this
+        // pins the half that is structural.
+        window.location.hash = '#/ranks';
+
+        renderShell();
+
+        expect(screen.getByTestId('section-content')).toHaveTextContent('ranks');
+        expect(screen.queryByTestId('aside-content')).toBeNull();
+    });
+
     it('does not render the leagueBar for a global-scope section', () => {
         // No real global section exists yet - this fixture is the only thing
         // holding the cross-league decision up: a section with scope
