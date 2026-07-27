@@ -22,16 +22,16 @@
  * a second theme is a matter of redefining this block under a selector rather
  * than touching any call site.
  *
- * These are the app's CURRENT colours, not the redesign palette. This step ships
- * pixel-identical, so the names arrive first and the values change later, in the
- * step that rebuilds the shell.
+ * The flip has happened: these are the redesign palette now, not the app's
+ * former colours. The names arrived first and the values have since changed,
+ * in the step that rebuilds the shell.
  */
 :root {
-    --raw-ground: #18202f;
-    --raw-raised: #283245;
-    --raw-line: #4b576b;
-    --raw-ink: #ffffff;
-    --raw-ink-muted: #a3bbd3;
+    --raw-ground: #0f1720;
+    --raw-raised: #1b2530;
+    --raw-line: #2c3846;
+    --raw-ink: #e8edf2;
+    --raw-ink-muted: #8fa3b8;
 
     /*
      * The accent is named `mine`, not `accent`, because violet is reserved for
@@ -53,8 +53,8 @@
     --raw-wr: #58a7ff;
     --raw-te: #ffae58;
 
-    --raw-danger: #d9534f;
-    --raw-warn: #e0a832;
+    --raw-danger: #ff7a70;
+    --raw-warn: #e8b154;
 }
 
 /* `inline` so the utilities resolve through the variable at runtime, which is

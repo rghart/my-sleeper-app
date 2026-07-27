@@ -9,8 +9,8 @@
 @layer base {
     button {
         background: transparent;
-        color: #fff;
-        border: 1px solid #a3bbd3;
+        color: #e8edf2;
+        border: 1px solid #8fa3b8;
         border-radius: 5px;
         min-width: max-content;
         margin-bottom: 7px;
@@ -22,8 +22,8 @@
 
     :disabled {
         transform: none !important;
-        border: 1px solid #4b576b !important;
-        color: #4b576b !important;
+        border: 1px solid #2c3846 !important;
+        color: #2c3846 !important;
     }
 
     .primary-large {
@@ -37,8 +37,8 @@
 
     .primary:hover,
     .primary-large:hover {
-        color: #00d8a7;
-        border-color: #00d8a7;
+        color: #e8edf2;
+        border-color: #8fa3b8;
     }
 
     .alert {
@@ -51,18 +51,19 @@
     }
 
     .active {
-        background-color: #00d8a7;
+        background-color: #2c3846;
+        border-color: #8fa3b8;
         overflow: hidden;
     }
 
     .active:hover {
-        color: #fff;
+        color: #e8edf2;
     }
 
     .primary-invert,
     .player-add-button {
-        color: #18202f;
-        border-color: #18202f;
+        color: #0f1720;
+        border-color: #0f1720;
     }
 
     .player-add-button {
@@ -84,8 +85,8 @@
 
     .player-add-button:hover,
     .primary-invert:hover {
-        color: #4b576b;
-        border-color: #4b576b;
+        color: #2c3846;
+        border-color: #2c3846;
     }
 
     .clickable-item:hover {

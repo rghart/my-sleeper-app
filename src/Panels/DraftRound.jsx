@@ -25,7 +25,7 @@ const DraftRound = ({ round, playerInfo, rosterInfo, rosterData, rankingPlayersI
     const style = {
         manualPickModal: {
             position: 'fixed',
-            background: '#18202f',
+            background: '#0F1720',
             zIndex: 999,
             bottom: 0,
             top: 45 + '%',
