@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import DraftPanel from './DraftPanel';
 import Dropdown from '../Components/Dropdown';
 
@@ -13,9 +12,8 @@ const LeaguePanel = ({
     removeFromLineup,
     rankingPlayersIdsList,
     updateDraftBoard,
+    view,
 }) => {
-    const [leaguePanel, setLeaguePanel] = useState('draft');
-
     return (
         <div className="panel league-panel">
             {isLoading ? (
@@ -33,32 +31,8 @@ const LeaguePanel = ({
                                 </option>
                             ))}
                         </Dropdown>
-                        <div className="custom-horizontal-select">
-                            <div
-                                className={`custom-horizontal-select-item ${
-                                    leaguePanel === 'weekly' ? 'selected' : null
-                                }`}
-                                onClick={() => setLeaguePanel('weekly')}
-                            >
-                                <div className="meta">
-                                    <div className="name">Weekly</div>
-                                    <div className="description">Lineup setter</div>
-                                </div>
-                            </div>
-                            <div
-                                className={`custom-horizontal-select-item ${
-                                    leaguePanel === 'draft' ? 'selected' : null
-                                }`}
-                                onClick={() => setLeaguePanel('draft')}
-                            >
-                                <div className="meta">
-                                    <div className="name">Draft</div>
-                                    <div className="description">Sync</div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
-                    {leaguePanel === 'weekly' && (
+                    {view === 'weekly' && (
                         <div className="roster-positions">
                             {rosterSlots.map((slot, i) => {
                                 // A slot is occupied whenever it holds a player id, even if
@@ -131,7 +105,7 @@ const LeaguePanel = ({
                             })}
                         </div>
                     )}
-                    {leaguePanel === 'draft' && (
+                    {view === 'draft' && (
                         <DraftPanel
                             leagueData={leagueData}
                             playerInfo={playerInfo}

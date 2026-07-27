@@ -1,10 +1,12 @@
 import React from 'react';
 import './App.css';
 import './loader.css';
+import AppShell from './Components/AppShell';
 import ErrorBanner from './Components/ErrorBanner';
 import Header from './Components/Header';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
+import { SECTIONS } from './sections.js';
 import { currentUserIdentity, observeAuthState, signInAnonymous, signInWithGoogle, signOutUser } from './lib/auth.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
@@ -336,6 +338,25 @@ class App extends React.Component {
                 builtDraft: leagueData.currentDraft?.built_draft,
             });
             const lineupSet = buildLineupSet(rosterSlots);
+            // One element, two possible slots: beside the league section on a
+            // wide screen, or as the main column when Ranks is the active
+            // section. Built once so the two call sites cannot drift apart.
+            const ranksPanel = (
+                <RanksPanel
+                    isLoading={loading === LOADING.RANKS_PANEL}
+                    signedIn={signedIn}
+                    playerInfo={playerInfo}
+                    rosterInfo={rosterInfo}
+                    updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
+                    startLoad={this.startLoad}
+                    addToRoster={this.addToRoster}
+                    updatePlayerId={this.updatePlayerId}
+                    notFoundPlayers={notFoundPlayers}
+                    rankingPlayersIdsList={rankingPlayersIdsList}
+                    myDisplayName={myDisplayName}
+                    lineupSet={lineupSet}
+                />
+            );
             return (
                 <div>
                     <Header
@@ -350,34 +371,31 @@ class App extends React.Component {
                         <ErrorBanner message={draftWarning} variant="warning" onRetry={this.retryDraftLoad} />
                     ) : null}
                     {!loadError && leagueData.currentLeague ? (
-                        <div className="main-container">
-                            <RanksPanel
-                                isLoading={loading === LOADING.RANKS_PANEL}
-                                signedIn={signedIn}
-                                playerInfo={playerInfo}
-                                rosterInfo={rosterInfo}
-                                updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
-                                startLoad={this.startLoad}
-                                addToRoster={this.addToRoster}
-                                updatePlayerId={this.updatePlayerId}
-                                notFoundPlayers={notFoundPlayers}
-                                rankingPlayersIdsList={rankingPlayersIdsList}
-                                myDisplayName={myDisplayName}
-                                lineupSet={lineupSet}
-                            />
-                            <LeaguePanel
-                                leagueData={leagueData}
-                                leagueID={leagueID}
-                                updateLeagueID={this.updateLeagueID}
-                                rankingPlayersIdsList={rankingPlayersIdsList}
-                                rosterSlots={rosterSlots}
-                                playerInfo={playerInfo}
-                                rosterInfo={rosterInfo}
-                                isLoading={loading === LOADING.LEAGUE_PANEL}
-                                removeFromLineup={this.removeFromLineup}
-                                updateDraftBoard={this.updateDraftBoard}
-                            />
-                        </div>
+                        <AppShell
+                            sections={SECTIONS}
+                            leagueBar={null}
+                            renderAside={() => ranksPanel}
+                            renderSection={(activeId) => {
+                                if (activeId === 'ranks') {
+                                    return ranksPanel;
+                                }
+                                return (
+                                    <LeaguePanel
+                                        view={activeId === 'lineup' ? 'weekly' : 'draft'}
+                                        leagueData={leagueData}
+                                        leagueID={leagueID}
+                                        updateLeagueID={this.updateLeagueID}
+                                        rankingPlayersIdsList={rankingPlayersIdsList}
+                                        rosterSlots={rosterSlots}
+                                        playerInfo={playerInfo}
+                                        rosterInfo={rosterInfo}
+                                        isLoading={loading === LOADING.LEAGUE_PANEL}
+                                        removeFromLineup={this.removeFromLineup}
+                                        updateDraftBoard={this.updateDraftBoard}
+                                    />
+                                );
+                            }}
+                        />
                     ) : null}
                 </div>
             );

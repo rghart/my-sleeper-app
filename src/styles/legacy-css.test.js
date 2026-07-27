@@ -18,16 +18,19 @@ import { resolve } from 'path';
 const APP_CSS = resolve(process.cwd(), 'src/App.css');
 
 // 427 lines before the redesign started; 381 after the dead CRA rules went;
-// 345 with ErrorBanner converted.
-const MAX_LINES = 350;
+// 345 with ErrorBanner converted; 340 once the shell replaced .main-container.
+const MAX_LINES = 340;
 
-const CONVERTED = ['error-banner', 'warning-banner'];
+const CONVERTED = ['error-banner', 'warning-banner', 'main-container'];
 
 describe('App.css drain', () => {
     const css = readFileSync(APP_CSS, 'utf8');
 
     it(`is no more than ${MAX_LINES} lines`, () => {
-        expect(css.split('\n').length).toBeLessThanOrEqual(MAX_LINES);
+        // trimEnd so this counts the way `wc -l` does - the file ends in a
+        // newline, and an off-by-one here reads as a ratchet that is one line
+        // looser than the number in the comment above says.
+        expect(css.trimEnd().split('\n').length).toBeLessThanOrEqual(MAX_LINES);
     });
 
     it.each(CONVERTED)('has no rules left for the converted %s', (selector) => {
