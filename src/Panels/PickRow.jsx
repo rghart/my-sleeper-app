@@ -1,6 +1,7 @@
 import { managerLabel, pickAccessibleName, pickNumberLabel, positionClass } from './pickLabels.js';
+import { pickKey } from '../lib/seenPicks.js';
 
-const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect }) => {
+const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect, newPickKeys = new Set() }) => {
     // The player database is a snapshot and a drafted player can be absent
     // from it. Render the id itself rather than a blank cell - that is what
     // makes the gap diagnosable, and it matches warnAboutMissingRosterPlayers,
@@ -12,7 +13,8 @@ const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect 
     const isMine = Boolean(owner?.manager_display_name) && owner.manager_display_name === myDisplayName;
     const manager = managerLabel({ pick, rosterData, myDisplayName });
     const pickNumber = pickNumberLabel(round, pick);
-    const accessibleName = pickAccessibleName({ round, pick, player, manager });
+    const isNew = newPickKeys.has(pickKey(round, pick));
+    const accessibleName = pickAccessibleName({ round, pick, player, manager, isNew });
 
     return (
         <li>
@@ -42,6 +44,16 @@ const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect 
                         className={`text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
                     >
                         {player.position}
+                    </span>
+                )}
+                {/* Neutral, not a saturated position colour or `bg-mine` -
+                    both are already spoken for (position data and "yours"
+                    respectively), so "new" gets the one high-contrast chip
+                    left: ink-on-ground, same geometry as the position badge
+                    above. */}
+                {isNew && (
+                    <span className="bg-ink text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold">
+                        NEW
                     </span>
                 )}
             </button>

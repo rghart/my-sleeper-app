@@ -43,13 +43,20 @@ export const managerLabel = ({ pick, rosterData, myDisplayName }) => {
 // "Round 1, pick 1, HEFFinAround305" for one that hasn't happened yet. `player`
 // is null both when the pick is unmade and when the drafted id is missing from
 // the player database - the two are told apart by `pick.player_id`.
-export const pickAccessibleName = ({ round, pick, player, manager }) => {
+//
+// `isNew` defaults to false and, when true, appends a trailing "new" part -
+// it is always last so DraftGrid's call sites (which never pass it) produce
+// byte-identical names to before this option existed.
+export const pickAccessibleName = ({ round, pick, player, manager, isNew = false }) => {
     const nameParts = [`Round ${round.round}`, `pick ${pick.pick_number}`, manager];
     if (pick.player_id) {
         nameParts.push(player ? player.full_name : `Unknown player ${pick.player_id}`);
         if (player) {
             nameParts.push(player.position);
         }
+    }
+    if (isNew) {
+        nameParts.push('new');
     }
     return nameParts.join(', ');
 };

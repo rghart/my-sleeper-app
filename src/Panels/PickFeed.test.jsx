@@ -163,6 +163,18 @@ describe('PickFeed manual pick selection', () => {
         expect(round.picks[0].player_id).toBeNull();
     });
 
+    it('passes the changed pick key as a second argument, so DraftPanel can mark it seen', async () => {
+        // A manual pick must not flash a "NEW" chip at the person who just
+        // made it - DraftPanel only knows to call markSeen because this
+        // second argument is present.
+        const { onPickChange } = renderFeed();
+
+        const modal = await openPickModal(user, 1);
+        await user.click(within(modal).getByText(new RegExp(FREE_AGENT.name)));
+
+        expect(onPickChange.mock.calls[0][1]).toBe(`${round.round}.1`);
+    });
+
     it('lets a filled pick be cleared again', async () => {
         // The remove path only renders when the pick already holds a player,
         // and it is the half of the flow that clears rather than sets - the
@@ -248,6 +260,89 @@ describe('PickFeed accessible names', () => {
         expect(
             screen.getByRole('button', { name: `Round 1, pick 1, HEFFinAround305, ${FREE_AGENT.name}, TE` }),
         ).toBeInTheDocument();
+    });
+
+    it('appends ", new" to a pick whose key is in newPickKeys', () => {
+        const filledRound = {
+            ...round,
+            picks: round.picks.map((pick) => (pick.pick_number === 1 ? { ...pick, player_id: FREE_AGENT.id } : pick)),
+        };
+        renderFeed({ builtDraft: [filledRound], newPickKeys: new Set([`${round.round}.1`]) });
+
+        expect(
+            screen.getByRole('button', { name: `Round 1, pick 1, HEFFinAround305, ${FREE_AGENT.name}, TE, new` }),
+        ).toBeInTheDocument();
+    });
+
+    it('does not append ", new" to an already-seen made pick', () => {
+        const filledRound = {
+            ...round,
+            picks: round.picks.map((pick) => (pick.pick_number === 1 ? { ...pick, player_id: FREE_AGENT.id } : pick)),
+        };
+        renderFeed({ builtDraft: [filledRound], newPickKeys: new Set() });
+
+        expect(
+            screen.getByRole('button', { name: `Round 1, pick 1, HEFFinAround305, ${FREE_AGENT.name}, TE` }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: `Round 1, pick 1, HEFFinAround305, ${FREE_AGENT.name}, TE, new` }),
+        ).toBeNull();
+    });
+});
+
+// The accessible name carries "new" for assistive tech, but the visible chips
+// are what a sighted user actually gets, and nothing above asserts they render
+// at all - stripping them left the whole suite green. These are text
+// assertions, not className ones: the palette is browser-verified, but whether
+// the marker exists in the DOM is not a styling question.
+describe('PickFeed new-pick markers', () => {
+    const filledRound = (pickNumbers) => ({
+        ...round,
+        picks: round.picks.map((pick) =>
+            pickNumbers.includes(pick.pick_number) ? { ...pick, player_id: FREE_AGENT.id } : pick,
+        ),
+    });
+
+    it('renders a NEW chip on each new row and none on the seen ones', () => {
+        renderFeed({
+            builtDraft: [filledRound([1, 2, 3])],
+            newPickKeys: new Set([`${round.round}.1`, `${round.round}.2`]),
+        });
+
+        const chips = screen.getAllByText('NEW');
+        expect(chips).toHaveLength(2);
+        expect(chips[0]).toBeVisible();
+
+        // Pick 3 is made but already seen, so its row carries no chip.
+        const seenRow = screen.getByRole('button', { name: /pick 3, ryangh/ });
+        expect(within(seenRow).queryByText('NEW')).toBeNull();
+    });
+
+    it('counts the new picks in the round header', () => {
+        renderFeed({
+            builtDraft: [filledRound([1, 2, 3])],
+            newPickKeys: new Set([`${round.round}.1`, `${round.round}.2`]),
+        });
+
+        expect(screen.getByText('2 new')).toBeVisible();
+    });
+
+    it('shows no chip and no count when nothing is new', () => {
+        renderFeed({ builtDraft: [filledRound([1, 2, 3])], newPickKeys: new Set() });
+
+        expect(screen.queryByText('NEW')).toBeNull();
+        expect(screen.queryByText(/\d+ new/)).toBeNull();
+    });
+
+    it('keeps the round header clickable with a count beside it', async () => {
+        // The count chip lives inside the collapse button. Adding a second
+        // child there is exactly how "Round 1" stops being its own text node
+        // and the collapse test below starts matching nothing.
+        const user = userEvent.setup();
+        renderFeed({ builtDraft: [filledRound([1])], newPickKeys: new Set([`${round.round}.1`]) });
+
+        await user.click(screen.getByText('Round 1'));
+        expect(screen.queryByRole('list', { name: 'Round 1' })).toBeNull();
     });
 });
 

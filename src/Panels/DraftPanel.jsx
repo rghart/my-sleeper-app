@@ -8,6 +8,7 @@ import PickClock from '../Components/PickClock';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
+import { useSeenPicks } from '../useSeenPicks.js';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
 const VIEW_OPTIONS = [
@@ -25,15 +26,28 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
     // shouldn't change what people already sync a draft against.
     const [boardView, setBoardView] = useState('feed');
 
+    const { newPickKeys, markSeen } = useSeenPicks({
+        draftId: currentDraft.draft_id,
+        builtDraft: currentDraft.built_draft,
+    });
+
     const updateDraftID = (val) => {
         setCurrentDraftId(val);
         setDraftPath(DRAFT + val + '/');
     };
 
-    const handlePickChange = (updatedRound) => {
+    // `changedKey` is only ever passed when the round object came from a
+    // manual pick (see PickFeed.selectPlayer) - the live sync path below
+    // calls updateDraftBoard directly and never goes through here at all, so
+    // there is nothing to distinguish there. Marking it seen immediately is
+    // what stops a "NEW" chip flashing on the pick the user just made.
+    const handlePickChange = (updatedRound, changedKey) => {
         updateDraftBoard((builtDraft) =>
             builtDraft.map((round) => (round.round === updatedRound.round ? updatedRound : round)),
         );
+        if (changedKey) {
+            markSeen(changedKey);
+        }
     };
 
     const getLiveDraft = async () => {
@@ -151,6 +165,7 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                                 rosterData={rosterData}
                                 myDisplayName={myDisplayName}
                                 onPickChange={handlePickChange}
+                                newPickKeys={newPickKeys}
                             />
                         ) : (
                             <DraftGrid

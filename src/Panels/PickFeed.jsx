@@ -2,6 +2,7 @@ import { useState } from 'react';
 import RoundSection from './RoundSection';
 import ManualPickModal from './ManualPickModal';
 import { applyManualPick } from '../lib/liveDraft.js';
+import { pickKey } from '../lib/seenPicks.js';
 
 // All rounds of the by-round draft board, rebuilt as a feed: each round is a
 // section with a sticky header and one row per pick. The manual-pick modal is
@@ -15,6 +16,7 @@ const PickFeed = ({
     rankingPlayersIdsList,
     myDisplayName,
     onPickChange,
+    newPickKeys = new Set(),
 }) => {
     const [activePick, setActivePick] = useState(null);
 
@@ -27,7 +29,11 @@ const PickFeed = ({
             currentManualPick: activePick.pick,
             playerID,
         });
-        onPickChange(updatedRound);
+        // The second argument tells DraftPanel this change was a deliberate
+        // manual entry, not a pick arriving from the live sync, so it can
+        // mark it seen immediately - otherwise a manual pick would flash a
+        // "NEW" chip at the person who just made it.
+        onPickChange(updatedRound, pickKey(activePick.round, activePick.pick));
         closeModal();
     };
 
@@ -41,6 +47,7 @@ const PickFeed = ({
                     rosterData={rosterData}
                     myDisplayName={myDisplayName}
                     onOpenPick={openPick}
+                    newPickKeys={newPickKeys}
                 />
             ))}
             {activePick && (
