@@ -33,7 +33,13 @@ const APP_CSS = resolve(process.cwd(), 'src/App.css');
 // and moved in here rather than being converted or dropped. This is rules
 // relocating out of a deleted stylesheet, not new styling - the ratchet
 // still only trends toward zero across the two files combined.
-const MAX_LINES = 341;
+//
+// 324 once the weekly lineup moved onto Tailwind as LineupPanel: both
+// `.roster-positions` rules (the base one and the one inside the phone
+// media query) and `.lineup-position` are gone. `.abbr-text`, `.full-text`,
+// and `.avatar-player` stay - PlayerInfoItem still uses them and is not
+// part of this migration.
+const MAX_LINES = 324;
 
 const CONVERTED = ['error-banner', 'warning-banner', 'main-container', 'latest-update', '.title {'];
 
