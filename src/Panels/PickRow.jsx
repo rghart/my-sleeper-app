@@ -1,37 +1,4 @@
-// Position colour classes have to be static strings for Tailwind's scanner to
-// pick them up - a template literal built from `player.position` at runtime
-// would never appear in the generated stylesheet.
-const POSITION_BG = {
-    QB: 'bg-qb',
-    RB: 'bg-rb',
-    WR: 'bg-wr',
-    TE: 'bg-te',
-};
-
-// K and DEF have no colour in the palette - only the four skill positions
-// encode data - so they fall back to a neutral chip rather than to the string
-// "undefined" as a class name.
-const positionClass = (position) => POSITION_BG[position] ?? 'bg-line text-ink';
-
-const pickNumberLabel = (round, pick) => `${round.round}.${String(pick.pick_number).padStart(2, '0')}`;
-
-// Builds the manager attribution text once so the visible label and the
-// button's accessible name can't drift apart - both read off this same
-// string.
-const managerLabel = ({ pick, rosterData, myDisplayName }) => {
-    const owner = pick.owner_id ? rosterData.find((roster) => roster.roster_id === pick.owner_id) : null;
-    if (!owner?.manager_display_name) {
-        return 'Pick owner missing';
-    }
-    let label = owner.manager_display_name;
-    if (pick.is_traded && pick.roster_id !== pick.owner_id) {
-        const original = rosterData.find((roster) => roster.roster_id === pick.roster_id);
-        label += ` via ${original?.manager_display_name}`;
-    }
-    // "you" marks the whole attribution, so it goes last: a traded pick of
-    // yours reads "ryangh via crbiehl · you", not "ryangh · you via crbiehl".
-    return owner.manager_display_name === myDisplayName ? `${label} · you` : label;
-};
+import { managerLabel, pickAccessibleName, pickNumberLabel, positionClass } from './pickLabels.js';
 
 const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect }) => {
     // The player database is a snapshot and a drafted player can be absent
@@ -45,15 +12,7 @@ const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect 
     const isMine = Boolean(owner?.manager_display_name) && owner.manager_display_name === myDisplayName;
     const manager = managerLabel({ pick, rosterData, myDisplayName });
     const pickNumber = pickNumberLabel(round, pick);
-
-    const nameParts = [`Round ${round.round}`, `pick ${pick.pick_number}`, manager];
-    if (pick.player_id) {
-        nameParts.push(player ? player.full_name : `Unknown player ${pick.player_id}`);
-        if (player) {
-            nameParts.push(player.position);
-        }
-    }
-    const accessibleName = nameParts.join(', ');
+    const accessibleName = pickAccessibleName({ round, pick, player, manager });
 
     return (
         <li>
