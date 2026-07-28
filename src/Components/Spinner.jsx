@@ -27,7 +27,7 @@ const Spinner = ({ size = 'panel' }) => {
             <div
                 role="progressbar"
                 aria-label={label}
-                className={`${ring} border-line border-t-ink animate-spin rounded-full border-solid motion-reduce:animate-none`}
+                className={`${ring} border-line border-t-ink animate-spin rounded-full motion-reduce:animate-none`}
             />
         </div>
     );

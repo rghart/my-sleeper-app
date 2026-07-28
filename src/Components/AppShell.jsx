@@ -41,7 +41,7 @@ const AppShell = ({ sections, renderSection, renderAside, leagueBar, defaultSect
                 </main>
                 <nav
                     aria-label="Sections"
-                    className="border-line bg-raised fixed inset-x-0 bottom-0 z-10 box-border flex h-[var(--tab-bar-h)] border-t border-solid md:static md:order-1 md:h-auto md:border-t-0 md:border-b md:border-solid"
+                    className="border-line bg-raised fixed inset-x-0 bottom-0 z-10 flex h-[var(--tab-bar-h)] border-t md:static md:order-1 md:h-auto md:border-t-0 md:border-b"
                 >
                     {sections.map((section) => {
                         const isActive = section.id === activeId;
@@ -51,11 +51,7 @@ const AppShell = ({ sections, renderSection, renderAside, leagueBar, defaultSect
                                 type="button"
                                 aria-current={isActive ? 'page' : undefined}
                                 onClick={() => goTo(section.id)}
-                                // `appearance-none bg-transparent` because preflight is not
-                                // loaded: without it a bare <button> keeps the UA's own
-                                // border, background and rounded corners, and every tab
-                                // renders as a grey box.
-                                className={`m-0 min-h-11 flex-1 cursor-pointer appearance-none rounded-none border-t-2 border-r-0 border-b-0 border-l-0 border-solid bg-transparent px-4 py-2 text-sm md:flex-none ${
+                                className={`min-h-11 flex-1 cursor-pointer border-t-2 px-4 py-2 text-sm md:flex-none ${
                                     isActive ? 'border-mine text-mine' : 'text-ink-muted border-transparent'
                                 }`}
                             >

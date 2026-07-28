@@ -23,7 +23,7 @@ const PickClock = ({ draft }) => {
         return () => clearInterval(timer);
     }, [mode]);
 
-    const WRAPPER = 'border border-solid border-line rounded-[5px] bg-raised px-3 py-2';
+    const WRAPPER = 'border border-line rounded-[5px] bg-raised px-3 py-2';
 
     if (mode === 'not-started') {
         return (

@@ -6,7 +6,7 @@ import Dropdown from './Dropdown';
 // would break the moment two leagues shared one.
 const LeagueBar = ({ leagueName, leagueID, leagueIds, updateLeagueID }) => {
     return (
-        <div className="border-line bg-raised flex flex-row items-center gap-3 border-b border-solid px-4 py-2">
+        <div className="border-line bg-raised flex flex-row items-center gap-3 border-b px-4 py-2">
             <p className="m-0 font-bold">{leagueName}</p>
             {/* Dropdown still carries its own w-[85%] (converted from the old
                 `.dropdown` rule, not dropped), so it is boxed here rather than

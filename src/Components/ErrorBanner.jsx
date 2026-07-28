@@ -17,10 +17,9 @@ import Button from './Button';
 // margins are legacy geometry carried over verbatim to keep this change
 // invisible; they become scale values when the shell is rebuilt.
 //
-// The border style is set on the left edge specifically, not with `border-solid`.
-// Preflight is not loaded, so there is no global `border-style: none` for the
-// other three edges to fall back to: `border-solid` gave them the browser's
-// default medium width and made the banner 3px taller.
+// The border style is set on the left edge specifically, via an arbitrary
+// value, rather than with the `border-solid` utility, which applies to all
+// four sides.
 const BANNER =
     'mx-[3px] mt-2 mb-[3px] flex flex-row flex-wrap items-center justify-between gap-3 rounded-[10px] border-l-4 [border-left-style:solid] bg-raised px-[15px] py-3';
 

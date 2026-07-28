@@ -8,7 +8,7 @@ const AppBar = ({ signedIn, signedInEmail, lastUpdate, onSignIn, onSignOut }) =>
     return (
         <>
             <div className="flex flex-row items-center justify-between px-[3px] py-0">
-                <h1 className="text-ink m-0 mb-1.5 ml-[3px] text-lg">Sleeper Team Assistant</h1>
+                <h1 className="text-ink mb-1.5 ml-[3px] text-lg font-bold">Sleeper Team Assistant</h1>
                 <AccountMenu
                     signedIn={signedIn}
                     signedInEmail={signedInEmail}

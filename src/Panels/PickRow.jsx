@@ -22,7 +22,7 @@ const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect,
                 type="button"
                 aria-label={accessibleName}
                 onClick={() => onSelect(pick)}
-                className={`m-0 flex min-h-11 w-full appearance-none items-center gap-3 rounded-[5px] border border-solid bg-transparent px-3 py-2 text-left ${
+                className={`flex min-h-11 w-full items-center gap-3 rounded-[5px] border px-3 py-2 text-left ${
                     isMine ? 'border-mine! bg-mine/10!' : 'border-line'
                 }`}
             >

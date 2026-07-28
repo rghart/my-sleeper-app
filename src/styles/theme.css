@@ -1,20 +1,9 @@
 /*
  * Design tokens for the UI redesign.
- *
- * Preflight is deliberately not imported. A bare `@import 'tailwindcss'` would
- * pull it in, and its resets to buttons, headings and margins are exactly what
- * the surviving App.css rules still assume - so it would break the one thing
- * this step has to prove, which is that the substrate can be installed without
- * changing a pixel. It comes back in its own PR once App.css is at zero.
- *
- * Layer order matters more than usual here. Utilities live in `layer(utilities)`
- * and unlayered CSS outranks every cascade layer regardless of specificity, so
- * while App.css remains unlayered its rules still win over utilities. That is
- * intended during the migration: a component is either fully converted, with its
- * App.css rules deleted in the same change, or left alone. Never both.
  */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 /*

@@ -362,7 +362,7 @@ const RanksPanel = ({
                                         <input
                                             type="text"
                                             placeholder="Enter new list name..."
-                                            className="border-line text-ink caret-ink-muted m-0 box-border rounded-[10px] border-2 border-solid bg-transparent"
+                                            className="border-line text-ink caret-ink-muted m-0 rounded-[10px] border-2 bg-transparent"
                                             value={newRankListName}
                                             onChange={(e) => setNewRankListName(e.target.value)}
                                         />
@@ -377,7 +377,7 @@ const RanksPanel = ({
                                 {!isNewRankList && (
                                     <>
                                         <textarea
-                                            className="border-line text-ink caret-ink-muted mt-2 mr-[3px] box-border h-[100px] w-[85%] rounded-[10px] border-2 border-solid bg-transparent"
+                                            className="border-line text-ink caret-ink-muted mt-2 mr-[3px] h-[100px] w-[85%] rounded-[10px] border-2 bg-transparent"
                                             placeholder="Copy + Paste rankings here..."
                                             value={searchText}
                                             onChange={(e) => setSearchText(e.target.value)}

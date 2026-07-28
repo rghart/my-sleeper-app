@@ -16,19 +16,12 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
     const accessibleName = slotAccessibleName({ slot, player });
 
     // Shared classes for the row geometry - copied from PickRow rather than
-    // reinvented, because Tailwind orders utilities by group, not by
-    // class-string order: a base border-solid here would beat a later
-    // border-dashed if both were left in the same string.
-    // `box-border` is load-bearing, not tidiness. Preflight is not loaded, so
-    // a <button> keeps the UA's border-box while a <div> stays content-box -
-    // and a filled slot is a button while an empty one is a div. Measured in a
-    // browser, that alone made empty rows 62px against a filled row's 54, so
-    // the list jogged 8px at every gap. min-h-14 rather than min-h-11 because
-    // the filled row's two stacked lines already exceed 44px: with both rows
-    // border-box the floor is what makes them agree instead of merely being
-    // above the 44px touch minimum.
+    // reinvented. min-h-14 rather than min-h-11 because the filled row's two
+    // stacked lines already exceed 44px: the floor is what makes an empty and
+    // a filled row agree on height instead of merely both clearing the 44px
+    // touch minimum.
     const rowClasses =
-        'm-0 box-border flex min-h-14 w-full items-center gap-3 rounded-[5px] border bg-transparent px-3 py-2 text-left';
+        'm-0 flex min-h-14 w-full items-center gap-3 rounded-[5px] border bg-transparent px-3 py-2 text-left';
 
     const content = (
         <>
@@ -79,7 +72,7 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
                 type="button"
                 aria-label={accessibleName}
                 onClick={() => onRemove(index)}
-                className={`${rowClasses} border-line appearance-none border-solid`}
+                className={`${rowClasses} border-line`}
             >
                 {content}
             </button>

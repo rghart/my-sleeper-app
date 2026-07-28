@@ -12,12 +12,12 @@ const RoundSection = ({ round, playerInfo, rosterData, myDisplayName, onOpenPick
                 click handler on the heading itself: collapsing a round is
                 reachable from the keyboard, and aria-expanded says which way
                 it currently is. */}
-            <h4 className="border-line bg-ground sticky top-0 z-10 m-0 border-b border-solid text-sm font-semibold">
+            <h4 className="border-line bg-ground sticky top-0 z-10 border-b text-sm font-semibold">
                 <button
                     type="button"
                     aria-expanded={showRound}
                     onClick={() => setShowRound((prev) => !prev)}
-                    className="text-ink m-0 flex w-full cursor-pointer appearance-none items-center gap-2 rounded-none border-0 bg-transparent px-3 py-2 text-left text-sm font-semibold"
+                    className="text-ink flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm font-semibold"
                 >
                     {/* Kept as its own element, not concatenated into the
                         "N new" chip's text, so screen.getByText('Round 1')
@@ -32,7 +32,7 @@ const RoundSection = ({ round, playerInfo, rosterData, myDisplayName, onOpenPick
                 </button>
             </h4>
             {showRound && (
-                <ol aria-label={`Round ${round.round}`} className="m-0 flex list-none flex-col gap-1 p-0 py-1">
+                <ol aria-label={`Round ${round.round}`} className="flex flex-col gap-1 py-1">
                     {round.picks.map((pick) => (
                         <PickRow
                             key={pick.pick_number}
