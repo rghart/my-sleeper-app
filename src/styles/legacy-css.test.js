@@ -39,9 +39,39 @@ const APP_CSS = resolve(process.cwd(), 'src/App.css');
 // media query) and `.lineup-position` are gone. `.abbr-text`, `.full-text`,
 // and `.avatar-player` stay - PlayerInfoItem still uses them and is not
 // part of this migration.
-const MAX_LINES = 324;
+//
+// 240 once PlayerInfoItem moved onto Tailwind: `.single-player-item`,
+// `.player-name`, `.player-info`, `.player-info-item`, the four
+// `-available` rules, `.available`, `.search-alert`, `.avatar-player` (both
+// the base rule and its phone media-query override), `.abbr-text` and
+// `.full-text` (both the base rules and the width-breakpoint media query)
+// and `.player-add-div`'s phone media query are all gone. `.QB`/`.RB`/
+// `.WR`/`.TE`, `.draft-pick-rows` (both the base rule and its `:hover`),
+// `.clickable-item:hover` and `.dropdown` stay - ManualPickModal and
+// Dropdown still use them and neither is part of this migration.
+const MAX_LINES = 240;
 
-const CONVERTED = ['error-banner', 'warning-banner', 'main-container', 'latest-update', '.title {'];
+const CONVERTED = [
+    'error-banner',
+    'warning-banner',
+    'main-container',
+    'latest-update',
+    '.title {',
+    '.single-player-item',
+    '.player-name',
+    '.player-info {',
+    '.player-info-item',
+    '.RB-available',
+    '.WR-available',
+    '.TE-available',
+    '.QB-available',
+    '.available {',
+    '.search-alert',
+    '.avatar-player',
+    '.abbr-text',
+    '.full-text',
+    '.player-add-div',
+];
 
 describe('App.css drain', () => {
     const css = readFileSync(APP_CSS, 'utf8');

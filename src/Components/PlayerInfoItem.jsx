@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import Button from './Button';
+import { positionClass } from '../Panels/pickLabels.js';
+import { playerAccessibleName, playerAvailabilityText } from './playerInfoLabels.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
 const PlayerInfoItem = ({
@@ -19,6 +21,12 @@ const PlayerInfoItem = ({
     const taken = isTaken(rosterInfo, player.player_id);
     const rosteredByName = rosteredBy(rosterInfo, player.player_id);
     const inLineup = isInLineup(lineupSet, player.player_id);
+    const isMine = taken && rosteredByName === myDisplayName;
+    // A low search-confidence match used to fill the whole row with a red
+    // background (`.search-alert`); the `--color-warn` border below is the
+    // replacement, and it is independent of taken/mine.
+    const lowConfidenceMatch = Number(searchData.match_results[0][1]) > 0;
+    const accessibleName = playerAccessibleName({ player, taken, rosteredByName, isMine, lowConfidenceMatch });
 
     const updatePlayerInfo = (newPlayerId) => {
         const newSearchData = { ...searchData };
@@ -40,20 +48,43 @@ const PlayerInfoItem = ({
         setEditingPlayer(false);
     };
 
+    const rankedDiff = Math.round(Number(searchData.ranking) - adpData);
+    const adpLabel =
+        rankedDiff < 0
+            ? `Ranked ${Math.round(adpData - Number(searchData.ranking))} picks before ADP`
+            : rankedDiff === 0
+              ? 'Rank matches ADP'
+              : `Ranked ${rankedDiff} picks after ADP`;
+
     return (
+        // Uniform row geometry copied from PickRow/SlotRow: transparent
+        // background, `border-line` by default, `rounded-[5px]`. `box-border`
+        // matters here even though this is a single div (not a button/div
+        // pair) because Button.tsx's own buttons sit inside this row - see
+        // SlotRow's comment on the same property.
+        //
+        // Border precedence: `isMine` (violet, "yours") outranks a
+        // low-confidence match (warn) outranks the default line colour - a
+        // player can be both mine and a weak match, and violet is reserved
+        // for "yours" so it wins the one available border colour.
+        // `role="group"` is what makes the aria-label real. On a bare div -
+        // role `generic` - an aria-label is ignored by most screen readers, so
+        // the name would exist for the tests and for nobody else. The row is a
+        // composite of controls, which is what group is for.
         <div
-            key={player.player_id}
-            className={`single-player-item ${
-                Number(searchData.match_results[0][1]) <= 0 ? player.position : 'search-alert'
-            } ${taken ? '' : `${player.position}-available`}`}
+            role="group"
+            aria-label={accessibleName}
+            className={`m-0 box-border flex w-full items-start gap-3 rounded-[5px] border border-solid bg-transparent px-3 py-2 ${
+                isMine ? 'border-mine!' : lowConfidenceMatch ? 'border-warn!' : 'border-line'
+            }`}
         >
-            <div className="player-name" style={{ gridColumnStart: 1, gridColumnEnd: 4 }}>
-                {editingPlayer && (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                {editingPlayer ? (
+                    <div className="flex flex-col gap-2">
                         <select
-                            className="dropdown"
                             value={player.player_id}
                             onChange={(e) => updatePlayerInfo(e.target.value)}
+                            className="border-line text-ink box-border w-full appearance-none rounded-[5px] border border-solid bg-transparent px-2 py-1 text-sm"
                         >
                             {searchData.match_results.map((result) => (
                                 <option key={result[0]} value={result[0]}>{`${playerInfo[result[0]].full_name} - ${
@@ -61,137 +92,113 @@ const PlayerInfoItem = ({
                                 } (${playerInfo[result[0]].position})`}</option>
                             ))}
                         </select>
-                        <div>
-                            <Button text="Close" btnStyle="primary-invert" onClick={() => setEditingPlayer(false)} />
+                        <div className="flex gap-2">
+                            <Button text="Close" btnStyle="primary" onClick={() => setEditingPlayer(false)} />
                             <Button text="Delete" btnStyle="alert" onClick={() => updatePlayerId(searchData, true)} />
                         </div>
-                        {(isNewRankList || Number(searchData.match_results[0][1]) > 0 || editingPlayer) && (
-                            <div>
-                                <p style={{ fontSize: 'small' }}>
+                        {(isNewRankList || lowConfidenceMatch || editingPlayer) && (
+                            <div className="flex flex-col gap-1">
+                                <p className="text-ink-muted text-xs">
                                     <i>&quot;{searchData.search_string}&quot; </i> - Search score:{' '}
                                     {searchData.match_results[0][1]}
                                 </p>
-                                {editingPlayer && (
-                                    <input
-                                        type="text"
-                                        className="input-small"
-                                        onChange={(e) => setSearchValue(e.target.value)}
-                                        placeholder="Manually update player"
-                                    />
-                                )}
+                                <input
+                                    type="text"
+                                    onChange={(e) => setSearchValue(e.target.value)}
+                                    placeholder="Manually update player"
+                                    className="border-line text-ink box-border w-full rounded-[5px] border border-solid bg-transparent px-2 py-1 text-sm"
+                                />
                                 {searchValue.length > 2 && (
-                                    <div style={{ overflow: 'scroll', height: 100 + 'px' }}>
+                                    <div className="flex max-h-[100px] flex-col gap-1 overflow-y-scroll">
                                         {Object.values(playerInfo)
-                                            .filter((player) =>
-                                                player.full_name
-                                                    ? player.full_name
+                                            .filter((candidate) =>
+                                                candidate.full_name
+                                                    ? candidate.full_name
                                                           .toLowerCase()
                                                           .includes(searchValue.toLowerCase()) &&
-                                                      ['QB', 'RB', 'WR', 'TE'].includes(player.position)
+                                                      ['QB', 'RB', 'WR', 'TE'].includes(candidate.position)
                                                     : null,
                                             )
                                             .sort((a, b) => a.search_rank - b.search_rank)
-                                            .map((player) => (
-                                                <p
-                                                    className={`clickable-item draft-pick-rows ${player.position}`}
-                                                    style={{ padding: `${0} ${3}px` }}
-                                                    key={player.player_id}
-                                                    onClick={() => updatePlayerInfo(player.player_id)}
+                                            .map((candidate) => (
+                                                <button
+                                                    type="button"
+                                                    key={candidate.player_id}
+                                                    onClick={() => updatePlayerInfo(candidate.player_id)}
+                                                    className="border-line text-ink hover:border-ink-muted box-border flex w-full appearance-none items-center gap-2 rounded-[4px] border border-solid bg-transparent px-2 py-1 text-left text-sm"
                                                 >
-                                                    {player.full_name} {player.position}{' '}
-                                                    {player.team ? player.team : null}
-                                                </p>
+                                                    <span className="min-w-0 flex-1 truncate">
+                                                        {candidate.full_name}
+                                                    </span>
+                                                    <span
+                                                        className={`text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(candidate.position)}`}
+                                                    >
+                                                        {candidate.position}
+                                                    </span>
+                                                    {candidate.team && (
+                                                        <span className="text-ink-muted shrink-0 text-xs">
+                                                            {candidate.team}
+                                                        </span>
+                                                    )}
+                                                </button>
                                             ))}
                                     </div>
                                 )}
                             </div>
                         )}
                     </div>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setEditingPlayer(true)}
+                        // A single always-visible name replaces the old
+                        // full-text/abbr-text pair, a width-hiding mechanism
+                        // whose hidden fallback shipped a real defect once
+                        // (PR #116).
+                        // `border-0` is required, not cosmetic: preflight is off, so a
+                        // bare <button> keeps the UA's default outset border and
+                        // this name rendered looking like a text input.
+                        className="text-ink box-border w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-sm font-semibold hover:underline"
+                    >
+                        {player.full_name}
+                    </button>
                 )}
-                {!editingPlayer && (
-                    <>
-                        <span className="clickable-item full-text" onClick={() => setEditingPlayer(true)}>
-                            <b>{player.full_name}</b>
-                        </span>
-                        <span className="clickable-item abbr-text" onClick={() => setEditingPlayer(true)}>
-                            <b>{`${player.first_name.split('')[0]}.${player.last_name}`}</b>
-                        </span>
-                        <span className="player-info-item" style={{ marginLeft: 2 + 'px', whiteSpace: 'nowrap' }}>
-                            {` - ${player.team}`} ({player.position})
-                        </span>
-                    </>
+                <div className="text-ink-muted flex flex-wrap items-center gap-x-2 text-xs">
+                    <span>Rank: {searchData.ranking}</span>
+                    <span>{player.team ? player.team : 'FA'}</span>
+                    <span>{playerAvailabilityText({ taken, rosteredByName })}</span>
+                </div>
+                {adpData && (
+                    <div className="text-ink-muted flex items-center gap-2 text-xs">
+                        <span>ADP: {adpData}</span>
+                        <span>{adpLabel}</span>
+                    </div>
                 )}
             </div>
-            <div className="player-info" style={{ gridRowStart: 2, overflow: 'hidden' }}>
-                <p className="player-info-item">
-                    <b>Rank:</b> {searchData.ranking}
-                </p>
-                <div className="player-info-item team" style={{ overflow: 'hidden', display: 'flex' }}>
-                    <p style={{ overflow: 'visible' }}>
-                        <b>Team:</b>
-                    </p>
-                    <p className="team-name" style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                        {rosteredByName ? rosteredByName : 'Free Agent'}
-                    </p>
-                </div>
-            </div>
-            {adpData && (
-                <div style={{ display: 'flex', alignItems: 'center', gridRowStart: 3 }}>
-                    <p className="player-info-item">
-                        <b>ADP:</b> {adpData ? adpData : null}
-                    </p>
-                    <p className="player-info-item" style={{ fontSize: 'x-small' }}>
-                        {Math.round(Number(searchData.ranking) - adpData) < 0
-                            ? 'Ranked ' + Math.round(adpData - Number(searchData.ranking)) + ' picks before ADP'
-                            : Math.round(Number(searchData.ranking) - adpData) === 0
-                              ? 'Rank matches ADP'
-                              : 'Ranked ' + Math.round(Number(searchData.ranking) - adpData) + ' picks after ADP'}
-                    </p>
-                </div>
-            )}
-            <div style={{ gridRowStart: 2, gridColumnStart: 2, marginLeft: 3 + 'px' }}>
-                <div
-                    className="avatar-player"
-                    aria-label="nfl Player"
-                    style={{
-                        width: 32 + 'px',
-                        height: 32 + 'px',
-                        flex: '0 0 32 px',
-                        background: `url(https://sleepercdn.com/content/nfl/players/thumb/${player.player_id}.jpg) center center / cover rgb(239, 239, 239)`,
-                        borderRadius: 33 + '%',
-                        marginTop: -3 + '%',
-                        marginLeft: 30 + 'px',
-                        backgroundColor: 'transparent',
-                    }}
-                ></div>
-                <div
-                    className="avatar-player"
-                    aria-label="nfl Player"
-                    style={{
-                        width: 17 + 'px',
-                        height: 17 + 'px',
-                        flex: '0 0 32 px',
-                        background: `url(https://sleepercdn.com/images/team_logos/nfl/${
-                            player.team ? player.team.toLowerCase() : null
-                        }.png) center center / cover rgb(239, 239, 239)`,
-                        borderRadius: 33 + '%',
-                        margin: `${-3}% ${0} ${-10}px ${30}px`,
-                        position: 'relative',
-                        top: -10 + 'px',
-                        left: 17 + 'px',
-                        backgroundColor: 'transparent',
-                    }}
-                ></div>
-            </div>
-            <div className="player-add-div">
-                {(rosteredByName && rosteredByName === myDisplayName) || !taken ? (
+            <div className="flex shrink-0 flex-col items-end gap-1">
+                <span
+                    className={`text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
+                >
+                    {player.position}
+                </span>
+                {/* Neutral, not a colour fill: saturation is reserved for
+                    position data and violet for "yours", so availability -
+                    the thing this row most needs to say - is carried by this
+                    chip's text plus the manager-name/"free agent" line above,
+                    not by tinting the row. */}
+                {taken && (
+                    <span className="border-line text-ink-muted shrink-0 rounded-[4px] border border-solid px-1.5 py-0.5 text-xs font-semibold">
+                        Taken
+                    </span>
+                )}
+                {(!taken || isMine) && (
                     <Button
                         text={`${inLineup ? 'Added' : 'Add'}`}
                         isDisabled={inLineup}
                         btnStyle="player-add-button"
                         onClick={() => addToRoster(player)}
                     />
-                ) : null}
+                )}
             </div>
         </div>
     );

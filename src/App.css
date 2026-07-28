@@ -1,8 +1,4 @@
 @media screen and (max-width: 767px) {
-    .avatar-player {
-        margin-left: 10px !important;
-    }
-
     /* The 50% width here dated from the two-panel phone layout: the shell shows
        one section at a time below 768px, so it just left the other half empty. */
     .panel {
@@ -16,13 +12,6 @@
 
     .draft-pick-rows {
         flex-direction: column;
-    }
-
-    .team {
-        flex-direction: column;
-    }
-    .team-name {
-        font-size: smaller;
     }
 }
 
@@ -58,35 +47,10 @@
     flex-direction: row;
 }
 
-.single-player-item {
-    border: 2px solid #2c3846;
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    padding: 5px;
-    border-radius: 10px;
-    margin-top: 3px;
-    position: relative;
-}
-
 .player-grid {
     overflow-y: scroll;
     overflow-x: visible;
     max-height: 600px;
-}
-
-.player-name {
-    display: flex;
-    margin-bottom: 3px;
-}
-
-.player-info {
-    display: flex;
-    flex-direction: row;
-}
-
-.player-info-item {
-    font-size: small;
-    margin-right: 6px;
 }
 
 .RB {
@@ -103,26 +67,6 @@
 
 .QB {
     background: rgb(255, 42, 109);
-}
-
-.RB-available {
-    background-color: rgba(0, 206, 185, 0.45);
-}
-
-.WR-available {
-    background-color: rgb(88, 167, 255, 0.45);
-}
-
-.TE-available {
-    background-color: rgb(255, 174, 88, 0.45);
-}
-
-.QB-available {
-    background-color: rgb(255, 42, 109, 0.45);
-}
-
-.available {
-    opacity: 0.45;
 }
 
 .dropdown {
@@ -190,24 +134,6 @@
     color: #e8edf2;
     height: 20px;
     width: 20px;
-}
-
-.abbr-text {
-    display: none;
-}
-
-/* This is a width breakpoint, not an orientation check: below 640px
-   (Tailwind's `sm`), abbreviate names; at 640px and up, show full names. */
-@media all and (max-width: 639px) {
-    .abbr-text {
-        display: inline-block;
-        text-overflow: ellipsis;
-        overflow: hidden;
-        white-space: nowrap;
-    }
-    .full-text {
-        display: none;
-    }
 }
 
 .draft-pick-details {
@@ -305,20 +231,10 @@
     display: none;
 }
 
-.search-alert {
-    border: 6px solid red;
-}
-
-/* Moved in from the deleted Button.css: neither rule is about buttons.
-   clickable-item is used by draft rows and player rows, and the media query
-   is grid placement belonging to PlayerInfoItem's .player-add-div. */
+/* Moved in from the deleted Button.css - not about buttons. clickable-item is
+   used by ManualPickModal's draft-pick-rows; the grid-placement media query
+   that used to live beside it belonged to PlayerInfoItem and went with that
+   component's Tailwind conversion. */
 .clickable-item:hover {
     cursor: pointer;
-}
-
-@media screen and (max-width: 767px) {
-    .player-add-div {
-        grid-column-start: 2;
-        grid-row-start: 3;
-    }
 }

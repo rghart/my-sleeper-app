@@ -364,18 +364,22 @@ describe('App', () => {
         await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), `1. ${SWAPPED_PLAYER.name}`);
         await user.click(screen.getByRole('button', { name: 'Submit' }));
 
+        // PlayerInfoItem's row carries availability in its accessible name now
+        // (see playerInfoLabels.js) rather than in a `.team-name` element, so
+        // this reads the row's aria-label instead of a class-scoped text node.
         const attribution = async () => {
-            const item = (await screen.findByText(SWAPPED_PLAYER.name)).closest('.single-player-item');
-            return item.querySelector('.team-name').textContent;
+            await screen.findByText(SWAPPED_PLAYER.name);
+            const row = screen.getByRole('group', { name: new RegExp(`^${SWAPPED_PLAYER.name}, `) });
+            return row.getAttribute('aria-label');
         };
 
-        expect(await attribution()).toBe('ryangh');
+        expect(await attribution()).toContain('taken by ryangh');
 
         await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
 
         // The second league has this player on nobody's roster, so the derived
         // flags must follow the new league rather than keeping the stale name.
-        await waitFor(async () => expect(await attribution()).toBe('Free Agent'));
+        await waitFor(async () => expect(await attribution()).toContain('free agent'));
     });
 
     it('checks rosters against a player database that has actually loaded', async () => {
