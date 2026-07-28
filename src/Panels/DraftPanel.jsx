@@ -125,13 +125,13 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
 
     return (
         <div>
-            <div className="league-grid">
+            <div className="overflow-hidden pt-[5px] pr-[15px] pb-[15px] pl-[15px] max-md:w-[95%] max-md:p-[5px]">
                 <p>
                     <b>Draft ID</b>
                 </p>
                 <input
                     type="text"
-                    className="input-small"
+                    className="border-line text-ink caret-ink-muted m-0 box-border rounded-[10px] border-2 border-solid bg-transparent"
                     value={currentDraftId}
                     onChange={(e) => updateDraftID(e.target.value)}
                 />
@@ -147,7 +147,7 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                     onClick={() => setIsSyncing(!isSyncing)}
                 />
             </div>
-            <div className="player-grid">
+            <div className="max-h-[600px] overflow-x-visible overflow-y-scroll">
                 {currentDraft.built_draft && (
                     <>
                         <SegmentedControl

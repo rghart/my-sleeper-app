@@ -58,10 +58,14 @@ function renderFeed(overrides = {}) {
 const roundList = () => screen.getByRole('list', { name: `Round ${round.round}` });
 
 // The modal is rendered as a sibling of the round list, so scope queries to it
-// rather than to the board - the board also renders player names.
+// rather than to the board - the board also renders player names. Queried by
+// its dialog role now rather than `closest('div').parentElement`: that
+// structural climb only ever worked because of how many wrapper divs
+// happened to exist, and ManualPickModal's conversion to Tailwind gives it a
+// real `role="dialog"` and accessible name to query instead.
 const openPickModal = async (user, pickNumber) => {
     await user.click(screen.getByRole('button', { name: new RegExp(`pick ${pickNumber},`) }));
-    return screen.getByText(/^Manually select pick/).closest('div').parentElement;
+    return screen.getByRole('dialog', { name: /^Manually select pick/ });
 };
 
 // The player database is a snapshot - it is fetched wholesale and its last
@@ -139,6 +143,18 @@ describe('PickFeed manual pick selection', () => {
         expect(within(modal).getByText(new RegExp(FREE_AGENT.name))).toBeTruthy();
         expect(within(modal).queryByText(new RegExp(OTHERS_PLAYER.name))).toBeNull();
         expect(within(modal).queryByText(new RegExp(MY_PLAYER.name))).toBeNull();
+    });
+
+    it('exposes the pick modal as a dialog named after the pick it edits', async () => {
+        // openPickModal itself queries getByRole('dialog', ...) already, so a
+        // failure to expose the role or name shows up there - this pins the
+        // exact accessible name down as its own assertion rather than leaving
+        // it implicit in a helper.
+        renderFeed();
+
+        const modal = await openPickModal(user, 1);
+
+        expect(modal).toHaveAccessibleName(`Manually select pick ${round.round}.1`);
     });
 
     it('reports the chosen player back through onPickChange as a whole round', async () => {

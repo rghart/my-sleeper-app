@@ -3,6 +3,7 @@ import SearchFilterButton from '../Components/SearchFilterButton';
 import OnFocusButton from '../Components/OnFocusButton';
 import PlayerInfoItem from '../Components/PlayerInfoItem';
 import Dropdown from '../Components/Dropdown';
+import SegmentedControl from '../Components/SegmentedControl';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Button from '../Components/Button';
@@ -242,16 +243,21 @@ const RanksPanel = ({
     }, [signedIn]);
 
     return (
-        <div className="panel search-panel">
+        // Panel chrome copied from LeaguePanel rather than reinvented: both
+        // panels are `.panel` in the old sheet, and this is the surviving
+        // instance of that shared geometry now that it's gone. `mt-2` is a
+        // Tailwind spacing-scale match for the old 8px top margin; the other
+        // three sides use arbitrary 3px values because 3px isn't on the scale.
+        <div className="bg-raised mt-2 mr-[3px] mb-[3px] ml-[3px] flex h-full flex-1 flex-col rounded-[10px] pt-[5px] pr-[15px] pb-[15px] pl-[15px] max-md:p-[5px]">
             {isLoading ? (
                 <Spinner size="panel" />
             ) : (
                 <>
-                    <div className="search">
+                    <div className="flex flex-col">
                         <p>
                             <b>Player filters</b>
                         </p>
-                        <div className="position-filter" style={{ overflow: 'scroll' }}>
+                        <div className="flex flex-row" style={{ overflow: 'scroll' }}>
                             {['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].map((pos, i) => (
                                 <SearchFilterButton
                                     name={pos}
@@ -262,7 +268,7 @@ const RanksPanel = ({
                                 />
                             ))}
                         </div>
-                        <div className="position-filter">
+                        <div className="flex flex-row">
                             {[
                                 { label: 'Taken', name: 'showTaken' },
                                 { label: 'My players', name: 'showMyPlayers' },
@@ -276,7 +282,7 @@ const RanksPanel = ({
                                 />
                             ))}
                         </div>
-                        <div className="position-filter">
+                        <div className="flex flex-row">
                             <SearchFilterButton
                                 name={'Only rookies'}
                                 handleChange={() => updateFilters('showRookiesOnly', !filters['showRookiesOnly'])}
@@ -293,57 +299,47 @@ const RanksPanel = ({
                         <p>
                             <b>ADP type</b>
                         </p>
-                        <div className="position-filter" style={{ alignItems: 'center', overflow: 'scroll' }}>
-                            <div
-                                className={`radio-label ${adpType === 'startup_adp' ? 'checked' : ''}`}
-                                onClick={() => setADPType('startup_adp')}
-                            >
-                                Startup
-                            </div>
-                            <div
-                                className={`radio-label ${adpType === 'sf_startup_adp' ? 'checked' : ''}`}
-                                onClick={() => setADPType('sf_startup_adp')}
-                            >
-                                SF startup
-                            </div>
-                            <div
-                                className={`radio-label ${adpType === 'rookie_adp' ? 'checked' : ''}`}
-                                onClick={() => setADPType('rookie_adp')}
-                            >
-                                Rookie
-                            </div>
-                            <div
-                                className={`radio-label ${adpType === 'sf_rookie_adp' ? 'checked' : ''}`}
-                                onClick={() => setADPType('sf_rookie_adp')}
-                            >
-                                SF rookie
-                            </div>
-                        </div>
+                        {/* Same shape as the view-toggle SegmentedControl already used in
+                            DraftPanel, reused rather than re-styled: four flat text
+                            options standing in for what used to be four `.radio-label`
+                            divs wired up by hand. */}
+                        <SegmentedControl
+                            label="ADP type"
+                            options={[
+                                { value: 'startup_adp', label: 'Startup' },
+                                { value: 'sf_startup_adp', label: 'SF startup' },
+                                { value: 'rookie_adp', label: 'Rookie' },
+                                { value: 'sf_rookie_adp', label: 'SF rookie' },
+                            ]}
+                            value={adpType}
+                            onChange={setADPType}
+                        />
                         {signedIn && allListsVals.length > 1 && (
-                            <div className="custom-horizontal-select">
-                                <div
-                                    className={`custom-horizontal-select-item ${
-                                        rankListType === 'new' ? 'selected' : null
-                                    }`}
-                                    onClick={() => setRankListType('new')}
-                                >
-                                    <div className="meta">
-                                        <div className="name">New</div>
-                                        <div className="description">Rank list</div>
-                                    </div>
-                                </div>
-                                <div
-                                    className={`custom-horizontal-select-item ${
-                                        rankListType === 'saved' ? 'selected' : null
-                                    }`}
-                                    onClick={() => setRankListType('saved')}
-                                >
-                                    <div className="meta">
-                                        <div className="name">Saved</div>
-                                        <div className="description">Rank lists</div>
-                                    </div>
-                                </div>
-                            </div>
+                            <SegmentedControl
+                                label="Rank list source"
+                                options={[
+                                    {
+                                        value: 'new',
+                                        label: (
+                                            <>
+                                                <span className="block">New</span>
+                                                <span className="block text-xs font-normal">Rank list</span>
+                                            </>
+                                        ),
+                                    },
+                                    {
+                                        value: 'saved',
+                                        label: (
+                                            <>
+                                                <span className="block">Saved</span>
+                                                <span className="block text-xs font-normal">Rank lists</span>
+                                            </>
+                                        ),
+                                    },
+                                ]}
+                                value={rankListType}
+                                onChange={setRankListType}
+                            />
                         )}
                         {rankListType === 'saved' && (
                             <div>
@@ -366,7 +362,7 @@ const RanksPanel = ({
                                         <input
                                             type="text"
                                             placeholder="Enter new list name..."
-                                            className="input-small"
+                                            className="border-line text-ink caret-ink-muted m-0 box-border rounded-[10px] border-2 border-solid bg-transparent"
                                             value={newRankListName}
                                             onChange={(e) => setNewRankListName(e.target.value)}
                                         />
@@ -381,7 +377,7 @@ const RanksPanel = ({
                                 {!isNewRankList && (
                                     <>
                                         <textarea
-                                            className="input"
+                                            className="border-line text-ink caret-ink-muted mt-2 mr-[3px] box-border h-[100px] w-[85%] rounded-[10px] border-2 border-solid bg-transparent"
                                             placeholder="Copy + Paste rankings here..."
                                             value={searchText}
                                             onChange={(e) => setSearchText(e.target.value)}
@@ -397,7 +393,7 @@ const RanksPanel = ({
                             </>
                         )}
                     </div>
-                    <div className="player-grid">
+                    <div className="max-h-[600px] overflow-x-visible overflow-y-scroll">
                         {rankingPlayersIdsList
                             .filter(filterPlayers)
                             .filter((results) =>

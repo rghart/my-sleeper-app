@@ -1,5 +1,4 @@
 import React from 'react';
-import './App.css';
 import AppBar from './Components/AppBar';
 import AppShell from './Components/AppShell';
 import ErrorBanner from './Components/ErrorBanner';

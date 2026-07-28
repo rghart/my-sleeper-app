@@ -327,12 +327,14 @@ describe('App', () => {
         });
 
         const user = userEvent.setup();
-        const { container } = render(<App />);
+        render(<App />);
         await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
-        const leaguePanelLoader = () => {
-            const leaguePanel = container.querySelector('.league-panel');
-            return leaguePanel ? within(leaguePanel).queryByRole('progressbar', { name: 'Loading' }) : null;
-        };
+        // LeaguePanel and RanksPanel are the only two panels that render a
+        // panel-sized Spinner (labelled "Loading", as opposed to the
+        // full-page one labelled "Loading your leagues"), and their loading
+        // states are mutually exclusive - so during a league switch this can
+        // only be LeaguePanel's, with no container class needed to scope to.
+        const leaguePanelLoader = () => screen.queryByRole('progressbar', { name: 'Loading' });
         expect(leaguePanelLoader()).toBeNull();
 
         await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
@@ -435,7 +437,7 @@ describe('App', () => {
                 return mockFetch(url);
             });
 
-            const { container } = render(<App />);
+            render(<App />);
 
             const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
             expect(alert.textContent).toMatch(/Couldn't load your league data/);
@@ -443,7 +445,7 @@ describe('App', () => {
 
             // The page is not blank and not stuck on a spinner.
             expect(screen.getByText('Sleeper Team Assistant')).toBeTruthy();
-            expect(container.querySelector('.loader')).toBeNull();
+            expect(screen.queryByRole('progressbar')).toBeNull();
             await new Promise((resolve) => setTimeout(resolve, 0));
             expect(rejections).toEqual([]);
         } finally {

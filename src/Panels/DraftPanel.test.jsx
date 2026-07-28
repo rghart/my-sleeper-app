@@ -205,7 +205,7 @@ describe('DraftPanel', () => {
         const { updateDraftBoard } = renderPanel();
 
         await click(screen.getByText('1.01').closest('button'));
-        const modal = screen.getByText(/^Manually select pick/).closest('div').parentElement;
+        const modal = screen.getByRole('dialog', { name: /^Manually select pick/ });
         await click(within(modal).getByText(new RegExp(FREE_AGENT.name)));
 
         expect(updateDraftBoard).toHaveBeenCalledTimes(1);
@@ -511,7 +511,7 @@ describe('DraftPanel new-pick markers', () => {
         expect(screen.queryByText('NEW')).toBeNull();
 
         await user.click(screen.getByRole('button', { name: new RegExp(`pick 2,`) }));
-        const modal = screen.getByText(/^Manually select pick/).closest('div').parentElement;
+        const modal = screen.getByRole('dialog', { name: /^Manually select pick/ });
         await user.click(within(modal).getByText(new RegExp(FREE_AGENT.name)));
 
         // The board really did update - without this the assertion below is
