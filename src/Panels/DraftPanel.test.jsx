@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import DraftPanel from './DraftPanel';
 import { buildRosterInfo, decorateRosters } from '../lib/rosterInfo.js';
 import rosterFlagsFixture from '../lib/__fixtures__/roster-flags-2026.json';
@@ -423,5 +425,101 @@ describe('DraftPanel board view toggle', () => {
 
         expect(screen.getByRole('list', { name: 'Round 1' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull();
+    });
+});
+
+// The wiring seam: useSeenPicks lives in DraftPanel, and every piece below it
+// takes newPickKeys as a prop with an empty-Set default. That default means
+// unthreading the prop anywhere between the hook and PickRow leaves the whole
+// component suite green - the feature silently does nothing while every unit
+// still passes. These two tests are the only place the assembled path is
+// exercised, so they run against real timers and userEvent rather than the
+// fake-timer harness above, which nothing here needs.
+describe('DraftPanel new-pick markers', () => {
+    const ROUND_NUMBER = builtDraft[0].round;
+    const STORAGE_KEY = `sleeper-app:seen-picks:${DRAFT_ID}`;
+
+    // A one-round board with the given pick numbers filled in, so "made" and
+    // "seen" can be varied independently. The fixture's own board has no made
+    // picks at all, which is why nothing is filled in by default.
+    const boardWith = (madePickNumbers) => [
+        {
+            ...builtDraft[0],
+            picks: builtDraft[0].picks.map((pick) => ({
+                ...pick,
+                player_id: madePickNumbers.includes(pick.pick_number) ? FREE_AGENT.id : null,
+            })),
+        },
+    ];
+
+    it('marks picks made since the stored snapshot, and counts them in the round header', async () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([`${ROUND_NUMBER}.1`]));
+
+        renderPanel({
+            leagueData: {
+                currentDraft: {
+                    draft_id: DRAFT_ID,
+                    season: '2026',
+                    player_pool: 'Rookie',
+                    status: 'drafting',
+                    start_time: DRAFT_BASE_TIME,
+                    last_picked: null,
+                    settings: { pick_timer: 30 },
+                    built_draft: boardWith([1, 2, 3]),
+                },
+                rosterData,
+            },
+        });
+
+        // Picks 2 and 3 were made after the stored snapshot; pick 1 is in it.
+        expect(screen.getAllByText('NEW')).toHaveLength(2);
+        expect(screen.getByText('2 new')).toBeVisible();
+    });
+
+    it('does not mark a pick the user just made themselves', async () => {
+        const user = userEvent.setup();
+        // A first visit with a board that already has pick 1 made: nothing is
+        // new, which is the state a manual pick has to leave intact.
+        const currentDraft = {
+            draft_id: DRAFT_ID,
+            season: '2026',
+            player_pool: 'Rookie',
+            status: 'drafting',
+            start_time: DRAFT_BASE_TIME,
+            last_picked: null,
+            settings: { pick_timer: 30 },
+            built_draft: boardWith([1]),
+        };
+
+        // updateDraftBoard has to really apply the reducer here. With the usual
+        // vi.fn() the board never changes, so no chip could appear whatever
+        // markSeen did and the test would pass vacuously.
+        const StatefulPanel = () => {
+            const [board, setBoard] = useState(currentDraft.built_draft);
+            return (
+                <DraftPanel
+                    leagueData={{ currentDraft: { ...currentDraft, built_draft: board }, rosterData }}
+                    playerInfo={playerInfo}
+                    rosterInfo={rosterInfo}
+                    rankingPlayersIdsList={[rankEntry(FREE_AGENT.id)]}
+                    updateDraftBoard={(reducer) => setBoard((prev) => reducer(prev))}
+                />
+            );
+        };
+        render(<StatefulPanel />);
+
+        expect(screen.queryByText('NEW')).toBeNull();
+
+        await user.click(screen.getByRole('button', { name: new RegExp(`pick 2,`) }));
+        const modal = screen.getByText(/^Manually select pick/).closest('div').parentElement;
+        await user.click(within(modal).getByText(new RegExp(FREE_AGENT.name)));
+
+        // The board really did update - without this the assertion below is
+        // just re-checking a board that never changed.
+        const filledRow = screen.getByRole('button', { name: new RegExp(`pick 2,.*${FREE_AGENT.name}`) });
+        expect(filledRow).toBeInTheDocument();
+
+        expect(screen.queryByText('NEW')).toBeNull();
+        expect(screen.queryByText(/\d+ new/)).toBeNull();
     });
 });

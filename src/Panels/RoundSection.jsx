@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import PickRow from './PickRow';
+import { countNewInRound } from '../lib/seenPicks.js';
 
-const RoundSection = ({ round, playerInfo, rosterData, myDisplayName, onOpenPick }) => {
+const RoundSection = ({ round, playerInfo, rosterData, myDisplayName, onOpenPick, newPickKeys = new Set() }) => {
     const [showRound, setShowRound] = useState(true);
+    const newCount = countNewInRound(round, newPickKeys);
 
     return (
         <section>
@@ -15,9 +17,18 @@ const RoundSection = ({ round, playerInfo, rosterData, myDisplayName, onOpenPick
                     type="button"
                     aria-expanded={showRound}
                     onClick={() => setShowRound((prev) => !prev)}
-                    className="text-ink m-0 w-full cursor-pointer appearance-none rounded-none border-0 bg-transparent px-3 py-2 text-left text-sm font-semibold"
+                    className="text-ink m-0 flex w-full cursor-pointer appearance-none items-center gap-2 rounded-none border-0 bg-transparent px-3 py-2 text-left text-sm font-semibold"
                 >
-                    Round {round.round}
+                    {/* Kept as its own element, not concatenated into the
+                        "N new" chip's text, so screen.getByText('Round 1')
+                        keeps resolving - the round-collapsing test depends on
+                        this exact node. */}
+                    <span>Round {round.round}</span>
+                    {newCount > 0 && (
+                        <span className="bg-ink text-ground rounded-[4px] px-1.5 py-0.5 text-xs font-semibold">
+                            {newCount} new
+                        </span>
+                    )}
                 </button>
             </h4>
             {showRound && (
@@ -31,6 +42,7 @@ const RoundSection = ({ round, playerInfo, rosterData, myDisplayName, onOpenPick
                             rosterData={rosterData}
                             myDisplayName={myDisplayName}
                             onSelect={() => onOpenPick(round, pick)}
+                            newPickKeys={newPickKeys}
                         />
                     ))}
                 </ol>
