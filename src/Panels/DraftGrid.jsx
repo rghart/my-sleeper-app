@@ -43,8 +43,8 @@ const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, zoom, on
     // it); an unmade one stays a dashed, unfilled cell so the two can never be
     // confused for one another, even at a glance in overview mode.
     const stateClasses = isMade
-        ? `border-0 text-ground ${positionClass(player?.position)}`
-        : 'border border-dashed border-line bg-transparent text-ink-muted';
+        ? `text-ground ${positionClass(player?.position)}`
+        : 'border border-dashed border-line text-ink-muted';
 
     // Violet marks "yours" as an outline, not a fill, so the position colour
     // underneath a made pick still shows through. `!` because outline and
@@ -53,12 +53,12 @@ const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, zoom, on
     const mineClasses = isMine ? 'outline! outline-2! outline-mine! outline-offset-[-2px]!' : '';
 
     return (
-        <td className="box-border p-0">
+        <td className="p-0">
             <button
                 type="button"
                 aria-label={accessibleName}
                 onClick={onSelect}
-                className={`m-0 flex h-[var(--cell-h)] w-[var(--cell-w)] appearance-none flex-col items-center justify-center overflow-hidden rounded-none p-0.5 text-[10px] leading-tight ${stateClasses} ${mineClasses}`}
+                className={`flex h-[var(--cell-h)] w-[var(--cell-w)] flex-col items-center justify-center overflow-hidden p-0.5 text-[10px] leading-tight ${stateClasses} ${mineClasses}`}
             >
                 {/* Overview is position colour only, no text at all - that is
                     the whole point of the zoom level, so nothing renders here
@@ -117,9 +117,8 @@ const DraftGrid = ({
     };
 
     const headerCellClasses =
-        'border-line bg-ground text-ink sticky top-0 z-10 box-border border border-solid p-1 text-xs font-semibold truncate';
-    const gutterCellClasses =
-        'border-line bg-ground text-ink sticky left-0 z-10 box-border w-10 border border-solid p-1 text-xs font-semibold';
+        'border-line bg-ground text-ink sticky top-0 z-10 border p-1 text-xs font-semibold truncate';
+    const gutterCellClasses = 'border-line bg-ground text-ink sticky left-0 z-10 w-10 border p-1 text-xs font-semibold';
 
     return (
         <div>
@@ -181,7 +180,7 @@ const DraftGrid = ({
                                         return (
                                             <td
                                                 key={team.boardSpot}
-                                                className="border-line box-border h-[var(--cell-h)] w-[var(--cell-w)] border border-solid"
+                                                className="border-line h-[var(--cell-h)] w-[var(--cell-w)] border"
                                             />
                                         );
                                     }

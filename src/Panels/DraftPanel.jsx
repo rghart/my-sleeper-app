@@ -131,7 +131,7 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                 </p>
                 <input
                     type="text"
-                    className="border-line text-ink caret-ink-muted m-0 box-border rounded-[10px] border-2 border-solid bg-transparent"
+                    className="border-line text-ink caret-ink-muted m-0 rounded-[10px] border-2 bg-transparent"
                     value={currentDraftId}
                     onChange={(e) => updateDraftID(e.target.value)}
                 />

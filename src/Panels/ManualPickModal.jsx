@@ -25,7 +25,7 @@ const ManualPickModal = ({
     // player" search results, not reinvented: both are the same shape, a
     // scrollable list of players to pick one of, ending in a position chip.
     const candidateRowClasses =
-        'border-line text-ink hover:border-ink-muted box-border flex w-full appearance-none items-center gap-2 rounded-[4px] border border-solid bg-transparent px-2 py-1 text-left text-sm';
+        'border-line text-ink hover:border-ink-muted flex w-full items-center gap-2 rounded-[4px] border px-2 py-1 text-left text-sm';
 
     // `keySuffix` mirrors the old per-item key here (`player_id + i`): the
     // ranked-list branch below has no guarantee a pasted rank list doesn't
@@ -64,15 +64,15 @@ const ManualPickModal = ({
             // sheet on phones now - the pattern BestAvailableSheet already
             // established, sitting clear of the tab bar via `--tab-bar-h` -
             // and a centred panel from `md` up.
-            className="border-line bg-raised fixed inset-x-0 bottom-[var(--tab-bar-h)] z-[999] flex max-h-[70vh] flex-col gap-2 rounded-t-[10px] border-t border-solid p-3 md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[420px] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[10px] md:border md:border-solid"
+            className="border-line bg-raised fixed inset-x-0 bottom-[var(--tab-bar-h)] z-[999] flex max-h-[70vh] flex-col gap-2 rounded-t-[10px] border-t p-3 md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[420px] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[10px] md:border"
         >
             <div className="flex flex-col gap-2">
-                <h4 id={HEADING_ID} className="text-ink m-0 text-sm font-semibold">
+                <h4 id={HEADING_ID} className="text-ink text-sm font-semibold">
                     Manually select pick {`${round.round}.${currentManualPick.pick_number}`}
                 </h4>
                 <input
                     type="text"
-                    className="border-line text-ink caret-ink-muted m-0 box-border w-full rounded-[5px] border border-solid bg-transparent px-2 py-1 text-sm"
+                    className="border-line text-ink caret-ink-muted m-0 w-full rounded-[5px] border bg-transparent px-2 py-1 text-sm"
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder="Start typing player name to search"
                 />

@@ -16,7 +16,7 @@ import { positionClass } from './pickLabels.js';
 const playerId = (entry) => entry.match_results[0][0];
 
 const sheetClasses =
-    'border-line bg-raised fixed inset-x-0 bottom-[var(--tab-bar-h)] z-10 flex flex-col border-t border-solid md:hidden';
+    'border-line bg-raised fixed inset-x-0 bottom-[var(--tab-bar-h)] z-10 flex flex-col border-t md:hidden';
 
 const BestAvailableSheet = ({ rankingPlayersIdsList, playerInfo, rosterInfo }) => {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -43,14 +43,14 @@ const BestAvailableSheet = ({ rankingPlayersIdsList, playerInfo, rosterInfo }) =
                 type="button"
                 aria-expanded={isExpanded}
                 onClick={() => setIsExpanded((expanded) => !expanded)}
-                className="m-0 flex min-h-11 w-full appearance-none items-center justify-between rounded-none border-0 bg-transparent px-4 py-2"
+                className="flex min-h-11 w-full items-center justify-between px-4 py-2"
             >
                 <span className="text-ink text-sm font-semibold">Best available</span>
                 <span className="text-ink-muted text-sm">{available.length} left</span>
             </button>
             {isExpanded && (
                 <div className="max-h-[45vh] overflow-y-auto px-4 pb-4">
-                    <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                    <ul className="flex flex-col gap-1">
                         {available.map((entry) => {
                             const id = playerId(entry);
                             const player = playerInfo[id];

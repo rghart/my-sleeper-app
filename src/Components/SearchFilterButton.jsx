@@ -7,7 +7,7 @@
 const SearchFilterButton = ({ checked, handleChange, labelName, name }) => {
     return (
         <label
-            className={`border-ink-muted relative m-[3px] inline-block cursor-pointer rounded-[22px] border border-solid p-1.5 text-center text-sm ${
+            className={`border-ink-muted relative m-[3px] inline-block cursor-pointer rounded-[22px] border p-1.5 text-center text-sm ${
                 checked ? 'bg-line! text-ink! font-semibold' : 'text-ink-muted'
             }`}
         >

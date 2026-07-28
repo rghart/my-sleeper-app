@@ -58,10 +58,7 @@ const PlayerInfoItem = ({
 
     return (
         // Uniform row geometry copied from PickRow/SlotRow: transparent
-        // background, `border-line` by default, `rounded-[5px]`. `box-border`
-        // matters here even though this is a single div (not a button/div
-        // pair) because Button.tsx's own buttons sit inside this row - see
-        // SlotRow's comment on the same property.
+        // background, `border-line` by default, `rounded-[5px]`.
         //
         // Border precedence: `isMine` (violet, "yours") outranks a
         // low-confidence match (warn) outranks the default line colour - a
@@ -74,7 +71,7 @@ const PlayerInfoItem = ({
         <div
             role="group"
             aria-label={accessibleName}
-            className={`m-0 box-border flex w-full items-start gap-3 rounded-[5px] border border-solid bg-transparent px-3 py-2 ${
+            className={`m-0 flex w-full items-start gap-3 rounded-[5px] border bg-transparent px-3 py-2 ${
                 isMine ? 'border-mine!' : lowConfidenceMatch ? 'border-warn!' : 'border-line'
             }`}
         >
@@ -84,7 +81,7 @@ const PlayerInfoItem = ({
                         <select
                             value={player.player_id}
                             onChange={(e) => updatePlayerInfo(e.target.value)}
-                            className="border-line text-ink box-border w-full appearance-none rounded-[5px] border border-solid bg-transparent px-2 py-1 text-sm"
+                            className="border-line text-ink w-full appearance-none rounded-[5px] border bg-transparent px-2 py-1 text-sm"
                         >
                             {searchData.match_results.map((result) => (
                                 <option key={result[0]} value={result[0]}>{`${playerInfo[result[0]].full_name} - ${
@@ -106,7 +103,7 @@ const PlayerInfoItem = ({
                                     type="text"
                                     onChange={(e) => setSearchValue(e.target.value)}
                                     placeholder="Manually update player"
-                                    className="border-line text-ink box-border w-full rounded-[5px] border border-solid bg-transparent px-2 py-1 text-sm"
+                                    className="border-line text-ink w-full rounded-[5px] border bg-transparent px-2 py-1 text-sm"
                                 />
                                 {searchValue.length > 2 && (
                                     <div className="flex max-h-[100px] flex-col gap-1 overflow-y-scroll">
@@ -125,7 +122,7 @@ const PlayerInfoItem = ({
                                                     type="button"
                                                     key={candidate.player_id}
                                                     onClick={() => updatePlayerInfo(candidate.player_id)}
-                                                    className="border-line text-ink hover:border-ink-muted box-border flex w-full appearance-none items-center gap-2 rounded-[4px] border border-solid bg-transparent px-2 py-1 text-left text-sm"
+                                                    className="border-line text-ink hover:border-ink-muted flex w-full items-center gap-2 rounded-[4px] border px-2 py-1 text-left text-sm"
                                                 >
                                                     <span className="min-w-0 flex-1 truncate">
                                                         {candidate.full_name}
@@ -155,10 +152,7 @@ const PlayerInfoItem = ({
                         // full-text/abbr-text pair, a width-hiding mechanism
                         // whose hidden fallback shipped a real defect once
                         // (PR #116).
-                        // `border-0` is required, not cosmetic: preflight is off, so a
-                        // bare <button> keeps the UA's default outset border and
-                        // this name rendered looking like a text input.
-                        className="text-ink box-border w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-sm font-semibold hover:underline"
+                        className="text-ink w-full truncate text-left text-sm font-semibold hover:underline"
                     >
                         {player.full_name}
                     </button>
@@ -187,7 +181,7 @@ const PlayerInfoItem = ({
                     chip's text plus the manager-name/"free agent" line above,
                     not by tinting the row. */}
                 {taken && (
-                    <span className="border-line text-ink-muted shrink-0 rounded-[4px] border border-solid px-1.5 py-0.5 text-xs font-semibold">
+                    <span className="border-line text-ink-muted shrink-0 rounded-[4px] border px-1.5 py-0.5 text-xs font-semibold">
                         Taken
                     </span>
                 )}
