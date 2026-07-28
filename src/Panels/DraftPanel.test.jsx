@@ -202,7 +202,7 @@ describe('DraftPanel', () => {
     it('hands updateDraftBoard a reducer that swaps in only the changed round on a manual pick', async () => {
         const { updateDraftBoard } = renderPanel();
 
-        await click(screen.getByText('1.1').closest('.draft-pick'));
+        await click(screen.getByText('1.01').closest('button'));
         const modal = screen.getByText(/^Manually select pick/).closest('div').parentElement;
         await click(within(modal).getByText(new RegExp(FREE_AGENT.name)));
 

@@ -404,6 +404,7 @@ class App extends React.Component {
                                         isLoading={loading === LOADING.LEAGUE_PANEL}
                                         removeFromLineup={this.removeFromLineup}
                                         updateDraftBoard={this.updateDraftBoard}
+                                        myDisplayName={myDisplayName}
                                     />
                                 );
                             }}

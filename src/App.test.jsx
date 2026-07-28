@@ -132,9 +132,11 @@ describe('App', () => {
         // round (the draft is linear, not snake) - so once the board is built,
         // "ryangh" should show up as a pick owner at least once. This element
         // only exists if `decorateRosters` ran: without it,
-        // `roster.manager_display_name` is `undefined` and DraftRound renders
-        // "Pick owner missing" or `undefined` instead.
-        const ryanghMentions = await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        // `roster.manager_display_name` is `undefined` and PickRow renders
+        // "Pick owner missing" or `undefined` instead. Matched as a substring
+        // because roster 1 is also `myDisplayName` here, so PickRow appends
+        // " · you" to every mention of it.
+        const ryanghMentions = await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         expect(ryanghMentions.length).toBeGreaterThan(0);
     });
 
@@ -142,7 +144,7 @@ describe('App', () => {
         global.fetch = vi.fn(mockFetch);
 
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
         // These mocked fetches resolve immediately, which is the whole point: it
         // leaves React no window to flush a setState between getTradedDraftPicks
@@ -153,11 +155,10 @@ describe('App', () => {
         // pick.owner_id and the original holder via pick.roster_id - so the
         // "<owner> via <originator>" text covers a lookup the assertion above
         // never touches.
-        const owners = [...document.querySelectorAll('p.draft-pick')];
-        const traded = owners.filter((pick) => pick.textContent.includes(' via '));
+        const traded = screen.getAllByRole('button', { name: /via/ });
         expect(traded).toHaveLength(tradedDraftPicks.length);
         for (const pick of traded) {
-            expect(pick.textContent).toMatch(/^\S+ via \S+$/);
+            expect(pick.getAttribute('aria-label')).toMatch(/\S+ via \S+/);
         }
     });
 
@@ -184,12 +185,12 @@ describe('App', () => {
 
         const user = userEvent.setup();
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
-        // livePicksPartial covers rounds 1 and 2.1-2.8, so 3.1 is a slot the
+        // livePicksPartial covers rounds 1 and 2.1-2.8, so 3.01 is a slot the
         // server has no pick for - the mid-draft case where a manager pencils in
         // a pick the sync can't legitimately overwrite.
-        const manualPickBox = screen.getByText('3.1').closest('.draft-pick');
+        const manualPickBox = screen.getByText('3.01').closest('button');
 
         await user.click(screen.getByRole('button', { name: 'Update' }));
 
@@ -199,7 +200,7 @@ describe('App', () => {
 
         // The pick is on the board before the sync resolves; that is what makes
         // the assertion after the release meaningful rather than vacuous.
-        const round3 = manualPickBox.closest('.draft-picks-box');
+        const round3 = manualPickBox.closest('section');
         expect(within(round3).getByText('Tom Brady')).toBeTruthy();
 
         releaseLivePicks();
@@ -234,7 +235,7 @@ describe('App', () => {
 
             // The rest of the app must still come up: a failed ADP lookup costs
             // the ADP column, nothing else.
-            await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+            await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
             await new Promise((resolve) => setTimeout(resolve, 0));
 
             expect(rejections).toEqual([]);
@@ -301,7 +302,7 @@ describe('App', () => {
 
         releaseLeague();
 
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         expect(screen.queryByRole('progressbar', { name: 'Loading your leagues' })).toBeNull();
     });
 
@@ -327,7 +328,7 @@ describe('App', () => {
 
         const user = userEvent.setup();
         const { container } = render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         const leaguePanelLoader = () => {
             const leaguePanel = container.querySelector('.league-panel');
             return leaguePanel ? within(leaguePanel).queryByRole('progressbar', { name: 'Loading' }) : null;
@@ -344,7 +345,7 @@ describe('App', () => {
         releaseSecondLeague();
 
         await waitFor(() => expect(leaguePanelLoader()).toBeNull());
-        expect(screen.getAllByText('ryangh').length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/ryangh/).length).toBeGreaterThan(0);
     });
 
     it('recomputes roster attribution in the ranks panel after a league switch', async () => {
@@ -358,7 +359,7 @@ describe('App', () => {
 
         const user = userEvent.setup();
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
         await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), `1. ${SWAPPED_PLAYER.name}`);
         await user.click(screen.getByRole('button', { name: 'Submit' }));
@@ -394,7 +395,7 @@ describe('App', () => {
         try {
             global.fetch = vi.fn(mockFetch);
             render(<App />);
-            await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+            await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
             // Derived from the fixture rather than hardcoded: it is trimmed, so
             // some roster players are legitimately absent from the player DB.
@@ -473,7 +474,7 @@ describe('App', () => {
         global.fetch = vi.fn(mockFetch);
         const user = userEvent.setup();
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         expect(screen.getByDisplayValue('Test League')).toBeTruthy();
 
         global.fetch = vi.fn((url) => {
@@ -510,7 +511,7 @@ describe('App', () => {
         failLeague = false;
         await user.click(screen.getByRole('button', { name: 'Retry' }));
 
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         expect(screen.queryByRole('alert')).toBeNull();
 
         expect(global.fetch.mock.calls.filter((call) => call[0].includes('legacy/players')).length).toBe(
@@ -540,7 +541,7 @@ describe('App', () => {
             authMockState.callback({ uid: 'test-uid', isAnonymous: true });
         });
 
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         expect(screen.queryByRole('alert')).toBeNull();
     });
 
@@ -590,7 +591,7 @@ describe('App', () => {
 
             expect(screen.getByDisplayValue(DRAFT_ID)).toBeInTheDocument();
             // No board, but a live app rather than a permanent loader.
-            expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBe(0);
+            expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBe(0);
         });
 
         it('renders the panels when the draft response has no slot_to_roster_id', async () => {
@@ -599,7 +600,7 @@ describe('App', () => {
             await renderAndSettle();
 
             expect(screen.getByDisplayValue(DRAFT_ID)).toBeInTheDocument();
-            expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBe(0);
+            expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBe(0);
         });
     });
 
@@ -616,10 +617,10 @@ describe('App', () => {
         });
 
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
         // The board is fully built...
-        expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBeGreaterThan(0);
+        expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBeGreaterThan(0);
         // ...and carries no trade attribution, since that is what failed. The
         // successful case asserts the opposite in 'applies every traded pick to
         // the board' above, so this is not vacuous.
@@ -635,9 +636,9 @@ describe('App', () => {
         });
 
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
-        expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBeGreaterThan(0);
+        expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBeGreaterThan(0);
         expect(await screen.findByRole('status', {}, { timeout: 5000 })).toHaveTextContent(
             "Couldn't load traded draft picks",
         );
@@ -647,7 +648,7 @@ describe('App', () => {
         global.fetch = vi.fn(mockFetch);
 
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
         expect(screen.queryByRole('status')).toBeNull();
     });
@@ -678,7 +679,7 @@ describe('App', () => {
         render(<App />);
         await screen.findByText(/Draft$/, { selector: 'b' }, { timeout: 5000 });
 
-        expect(document.querySelectorAll('.draft-pick.clickable-item').length).toBe(0);
+        expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBe(0);
         expect(screen.queryByRole('status')).toBeNull();
     });
 
@@ -693,7 +694,7 @@ describe('App', () => {
 
         const user = userEvent.setup();
         render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         await screen.findByRole('status', {}, { timeout: 5000 });
 
         const playerDbRequestsBefore = global.fetch.mock.calls.filter((call) =>
@@ -783,7 +784,7 @@ describe('App', () => {
         global.fetch = vi.fn(mockFetch);
 
         const { unmount } = render(<App />);
-        await screen.findAllByText('ryangh', {}, { timeout: 5000 });
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
         expect(authMockState.unsubscribe).toEqual(expect.any(Function));
         expect(authMockState.unsubscribe).not.toHaveBeenCalled();
