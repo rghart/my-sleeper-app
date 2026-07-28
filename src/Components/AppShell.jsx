@@ -41,7 +41,7 @@ const AppShell = ({ sections, renderSection, renderAside, leagueBar, defaultSect
                 </main>
                 <nav
                     aria-label="Sections"
-                    className="border-line bg-raised fixed inset-x-0 bottom-0 z-10 flex border-t border-solid md:static md:order-1 md:border-t-0 md:border-b md:border-solid"
+                    className="border-line bg-raised fixed inset-x-0 bottom-0 z-10 box-border flex h-[var(--tab-bar-h)] border-t border-solid md:static md:order-1 md:h-auto md:border-t-0 md:border-b md:border-solid"
                 >
                     {sections.map((section) => {
                         const isActive = section.id === activeId;

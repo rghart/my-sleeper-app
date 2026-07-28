@@ -3,6 +3,7 @@ import Button from '../Components/Button';
 import SegmentedControl from '../Components/SegmentedControl';
 import PickFeed from './PickFeed';
 import DraftGrid from './DraftGrid';
+import BestAvailableSheet from './BestAvailableSheet';
 import PickClock from '../Components/PickClock';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
@@ -162,6 +163,11 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                                 onPickChange={handlePickChange}
                             />
                         )}
+                        <BestAvailableSheet
+                            rankingPlayersIdsList={rankingPlayersIdsList}
+                            playerInfo={playerInfo}
+                            rosterInfo={rosterInfo}
+                        />
                     </>
                 )}
             </div>
