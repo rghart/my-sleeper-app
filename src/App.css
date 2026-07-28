@@ -18,9 +18,6 @@
         flex-direction: column;
     }
 
-    .roster-positions {
-        padding: 0 !important;
-    }
     .team {
         flex-direction: column;
     }
@@ -139,12 +136,6 @@
     height: 25px;
 }
 
-.roster-positions {
-    display: flex;
-    flex-direction: column;
-    padding: 5px 15px 15px 15px;
-}
-
 .input {
     margin-top: 8px;
     margin-right: 3px;
@@ -179,14 +170,6 @@
 
 .radioPad {
     display: none;
-}
-
-.lineup-position {
-    width: fit-content;
-    display: flex;
-    padding: 5px 5px 5px 5px;
-    border-radius: 10px;
-    margin-top: 3px;
 }
 
 .draft-pick {
