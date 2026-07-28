@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import ManualPickModal from './ManualPickModal';
 import SegmentedControl from '../Components/SegmentedControl';
 import { applyManualPick } from '../lib/liveDraft.js';
-import { managerLabel, pickAccessibleName, pickNumberLabel, positionClass } from './pickLabels.js';
+import { managerLabel, pickAccessibleName, pickNumberLabel, positionFillClass } from './pickLabels.js';
 
 const ZOOM_OPTIONS = [
     { value: 'overview', label: 'Overview' },
@@ -43,7 +43,7 @@ const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, zoom, on
     // it); an unmade one stays a dashed, unfilled cell so the two can never be
     // confused for one another, even at a glance in overview mode.
     const stateClasses = isMade
-        ? `text-ground ${positionClass(player?.position)}`
+        ? `text-ground ${positionFillClass(player?.position)}`
         : 'border border-dashed border-line text-ink-muted';
 
     // Violet marks "yours" as an outline, not a fill, so the position colour

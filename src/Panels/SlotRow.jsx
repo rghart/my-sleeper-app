@@ -39,7 +39,7 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
             )}
             {player && (
                 <span
-                    className={`text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
+                    className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
                 >
                     {player.position}
                 </span>

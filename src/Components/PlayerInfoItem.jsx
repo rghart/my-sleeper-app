@@ -128,7 +128,7 @@ const PlayerInfoItem = ({
                                                         {candidate.full_name}
                                                     </span>
                                                     <span
-                                                        className={`text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(candidate.position)}`}
+                                                        className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(candidate.position)}`}
                                                     >
                                                         {candidate.position}
                                                     </span>
@@ -171,7 +171,7 @@ const PlayerInfoItem = ({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
                 <span
-                    className={`text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
+                    className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
                 >
                     {player.position}
                 </span>

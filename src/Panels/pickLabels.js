@@ -6,17 +6,33 @@
 // Position colour classes have to be static strings for Tailwind's scanner to
 // pick them up - a template literal built from `player.position` at runtime
 // would never appear in the generated stylesheet.
-const POSITION_BG = {
+//
+// A position tag is a tint plus a light ink, never a solid fill, so this
+// returns the pair: the caller no longer supplies its own text colour.
+const POSITION_TAG = {
+    QB: 'bg-qb-tint text-qb-ink',
+    RB: 'bg-rb-tint text-rb-ink',
+    WR: 'bg-wr-tint text-wr-ink',
+    TE: 'bg-te-tint text-te-ink',
+};
+
+// K and DEF have no hue in the palette - only the four skill positions encode
+// data - so they fall back to a neutral tint rather than to the string
+// "undefined" as a class name.
+export const positionClass = (position) => POSITION_TAG[position] ?? 'bg-pos-none-tint text-ink-muted';
+
+// The draft grid's overview zoom is colour and nothing else - 23px cells with
+// no text in them - so it needs the saturated base rather than the 16% tint a
+// tag wears. This is the one place a position hue appears as a fill, and the
+// reason the base colours are still tokens at all.
+const POSITION_FILL = {
     QB: 'bg-qb',
     RB: 'bg-rb',
     WR: 'bg-wr',
     TE: 'bg-te',
 };
 
-// K and DEF have no colour in the palette - only the four skill positions
-// encode data - so they fall back to a neutral chip rather than to the string
-// "undefined" as a class name.
-export const positionClass = (position) => POSITION_BG[position] ?? 'bg-line text-ink';
+export const positionFillClass = (position) => POSITION_FILL[position] ?? 'bg-line';
 
 export const pickNumberLabel = (round, pick) => `${round.round}.${String(pick.pick_number).padStart(2, '0')}`;
 
