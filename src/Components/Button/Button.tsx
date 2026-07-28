@@ -37,11 +37,22 @@ const BASE =
 const VARIANTS: Record<string, string> = {
     primary: 'hover:text-ink hover:border-ink-muted',
     'primary-large': 'w-4/5 text-center mt-2 mb-[15px] text-base h-[30px] hover:text-ink hover:border-ink-muted',
-    alert: 'bg-qb! border-qb! hover:scale-[1.05]!',
+    // `text-ground!` because BASE's light ink on the QB fill measured 3.07:1
+    // in a browser - below AA. Every position chip already puts near-black on
+    // these fills (5.0:1 on QB, the palette's floor), so this only brings the
+    // button in line with them. Whether a destructive action should be wearing
+    // the QB *hue* at all is the separate open decision noted above.
+    alert: 'bg-qb! border-qb! text-ground! hover:scale-[1.05]!',
     active: 'bg-line! border-ink-muted overflow-hidden hover:text-ink',
-    'primary-invert': 'text-ground! border-ground! hover:text-line hover:border-line',
+    // `player-add-button` used to invert - `text-ground! border-ground!` - and
+    // it was legible only because PlayerInfoItem's row was filled with a
+    // position colour behind it. That fill was the availability encoding that
+    // failed AA, and removing it left this button dark-on-dark: measured at
+    // 1.16:1 in a browser, effectively invisible. It takes BASE's ink now.
+    // `primary-invert` went the same way and is gone entirely - PlayerInfoItem
+    // was its only caller, so nothing renders on a coloured ground any more.
     'player-add-button':
-        'text-ground! border-ground! hover:text-line hover:border-line self-center justify-self-end text-center w-[45px] mt-2 mb-0! ml-[3px]',
+        'hover:text-ink hover:border-ink-muted self-center justify-self-end text-center w-[45px] mt-2 mb-0! ml-[3px]',
 };
 
 export const Button = ({ text, onClick, btnStyle = 'primary', isDisabled = false }: Props): React.JSX.Element => {

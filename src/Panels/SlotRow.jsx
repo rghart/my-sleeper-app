@@ -62,7 +62,11 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
     if (!slot.playerId) {
         return (
             <li>
-                <div aria-label={accessibleName} className={`${rowClasses} border-line border-dashed`}>
+                {/* role="group" so the aria-label is actually exposed: on a
+                    bare div - role `generic` - most screen readers drop it,
+                    which would leave the name working in tests and nowhere
+                    else. The filled row below is a button and needs no role. */}
+                <div role="group" aria-label={accessibleName} className={`${rowClasses} border-line border-dashed`}>
                     {content}
                 </div>
             </li>
