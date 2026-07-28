@@ -152,4 +152,39 @@ describe('RanksPanel player filters', () => {
 
         expect(visiblePlayers()).toEqual([FREE_AGENT.name]);
     });
+
+    it('marks a filter chip checked once toggled on, and only that one', async () => {
+        // The chips are real checkboxes styled as pills (SearchFilterButton),
+        // not a from-scratch control - this is the assertion that the
+        // Tailwind conversion didn't quietly disconnect `checked` from the
+        // underlying input.
+        renderPanel();
+
+        expect(screen.getByRole('checkbox', { name: 'Taken' }).checked).toBe(false);
+
+        await toggle(user, 'Taken');
+
+        expect(screen.getByRole('checkbox', { name: 'Taken' }).checked).toBe(true);
+        // WR defaults on (see the top-of-file position filter defaults) and is
+        // untouched by toggling Taken.
+        expect(screen.getByRole('checkbox', { name: 'WR' }).checked).toBe(true);
+    });
+});
+
+describe('RanksPanel ADP type picker', () => {
+    it('has no ADP type selected by default, then reflects the pressed option', async () => {
+        // adpType starts as undefined - no `.radio-label.checked` div in the old
+        // markup, no `aria-pressed` segment here - and a click should move
+        // exactly one segment into the pressed state.
+        const user = userEvent.setup();
+        renderPanel();
+
+        expect(screen.getByRole('button', { name: 'Startup' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Rookie' })).toHaveAttribute('aria-pressed', 'false');
+
+        await user.click(screen.getByRole('button', { name: 'Rookie' }));
+
+        expect(screen.getByRole('button', { name: 'Rookie' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Startup' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

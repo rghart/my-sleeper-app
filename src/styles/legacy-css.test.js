@@ -1,90 +1,48 @@
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { resolve, join, extname } from 'path';
 
-// App.css is draining to zero as components move onto Tailwind, and this is the
-// ratchet that keeps it draining. Two things are guarded:
-//
-// 1. The file only ever gets smaller. The ceiling drops in the change that
-//    deletes the rules, so a later change cannot quietly grow it back.
-// 2. A converted component's rules never come back. That matters more than it
-//    looks: App.css is unlayered and utilities live in a cascade layer, so an
-//    unlayered rule beats a utility no matter how specific the utility is. A
-//    reintroduced `.error-banner` would silently win over the classes on the
-//    component and the component would look untouched while being wrong.
-//
-// This file is deleted along with App.css at the end of the migration.
-// Resolved from the vitest root rather than from import.meta.url: the jsdom
-// environment does not hand this file a file: URL, so fileURLToPath throws.
+// The App.css drain finished: RanksPanel and ManualPickModal were the last two
+// components on it (plus LeaguePanel, DraftPanel and Dropdown, which shared a
+// handful of its rules - `.panel`, `.player-grid`, `.input-small`, `.dropdown`
+// - without being named on the original migration list). The ratchet's job
+// here is done, so instead of shrinking a line-count ceiling it now guards the
+// two things that would make the file's absence a lie: that it is actually
+// gone, and that nothing still tries to import it. An import of a deleted
+// file doesn't fail loudly in every bundler configuration - some resolve it
+// to `undefined` at build time - so this is a real regression class, not a
+// theoretical one.
 const APP_CSS = resolve(process.cwd(), 'src/App.css');
+const SRC_DIR = resolve(process.cwd(), 'src');
+// Resolved the same way as APP_CSS above rather than via import.meta.url: the
+// jsdom test environment doesn't hand this file a file: URL, so
+// fileURLToPath throws here just as it would for App.css itself.
+const THIS_FILE = resolve(process.cwd(), 'src/styles/legacy-css.test.js');
 
-// 427 lines before the redesign started; 381 after the dead CRA rules went;
-// 345 with ErrorBanner converted; 340 once the shell replaced .main-container;
-// 326 once Header's .title and .latest-update went with it.
-//
-// 328 after the palette flip, and this is the one time the ceiling has gone
-// UP. Selection used to be a teal fill that was byte-identical to the RB
-// position colour; replacing it with contrast and elevation costs two extra
-// declarations. Raising the ceiling for a deliberate, explained reason is the
-// ratchet doing its job - the thing it exists to stop is growth nobody
-// noticed.
-//
-// 341 now that Button.css is deleted: two of its rules were never about
-// buttons (`.clickable-item:hover` and the `.player-add-div` media query)
-// and moved in here rather than being converted or dropped. This is rules
-// relocating out of a deleted stylesheet, not new styling - the ratchet
-// still only trends toward zero across the two files combined.
-//
-// 324 once the weekly lineup moved onto Tailwind as LineupPanel: both
-// `.roster-positions` rules (the base one and the one inside the phone
-// media query) and `.lineup-position` are gone. `.abbr-text`, `.full-text`,
-// and `.avatar-player` stay - PlayerInfoItem still uses them and is not
-// part of this migration.
-//
-// 240 once PlayerInfoItem moved onto Tailwind: `.single-player-item`,
-// `.player-name`, `.player-info`, `.player-info-item`, the four
-// `-available` rules, `.available`, `.search-alert`, `.avatar-player` (both
-// the base rule and its phone media-query override), `.abbr-text` and
-// `.full-text` (both the base rules and the width-breakpoint media query)
-// and `.player-add-div`'s phone media query are all gone. `.QB`/`.RB`/
-// `.WR`/`.TE`, `.draft-pick-rows` (both the base rule and its `:hover`),
-// `.clickable-item:hover` and `.dropdown` stay - ManualPickModal and
-// Dropdown still use them and neither is part of this migration.
-const MAX_LINES = 240;
-
-const CONVERTED = [
-    'error-banner',
-    'warning-banner',
-    'main-container',
-    'latest-update',
-    '.title {',
-    '.single-player-item',
-    '.player-name',
-    '.player-info {',
-    '.player-info-item',
-    '.RB-available',
-    '.WR-available',
-    '.TE-available',
-    '.QB-available',
-    '.available {',
-    '.search-alert',
-    '.avatar-player',
-    '.abbr-text',
-    '.full-text',
-    '.player-add-div',
-];
-
-describe('App.css drain', () => {
-    const css = readFileSync(APP_CSS, 'utf8');
-
-    it(`is no more than ${MAX_LINES} lines`, () => {
-        // trimEnd so this counts the way `wc -l` does - the file ends in a
-        // newline, and an off-by-one here reads as a ratchet that is one line
-        // looser than the number in the comment above says.
-        expect(css.trimEnd().split('\n').length).toBeLessThanOrEqual(MAX_LINES);
+// Walked by hand rather than via a glob dependency: this repo has no existing
+// file-walking utility to reach for, and pulling one in for a single test is
+// more machinery than the test is worth.
+const walk = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            return walk(full);
+        }
+        return ['.js', '.jsx', '.ts', '.tsx'].includes(extname(entry.name)) ? [full] : [];
     });
 
-    it.each(CONVERTED)('has no rules left for the converted %s', (selector) => {
-        expect(css).not.toContain(selector);
+describe('App.css is gone', () => {
+    it('no longer exists on disk', () => {
+        expect(existsSync(APP_CSS)).toBe(false);
+    });
+
+    it('is not imported from anywhere in src', () => {
+        // Excludes this file itself: it necessarily mentions "App.css" by
+        // name (in this very string, and in the comments above), which isn't
+        // an import of it.
+        const importers = walk(SRC_DIR).filter(
+            (file) => file !== THIS_FILE && readFileSync(file, 'utf8').includes('App.css'),
+        );
+        expect(importers).toEqual([]);
     });
 });
 
@@ -92,19 +50,25 @@ describe('App.css drain', () => {
 // UI chrome broke it in the worst possible way - selected filters and the
 // selected panel tab were filled with #00ceb8, which is byte-identical to the
 // RB position colour, and rows hovered to #00d8a7 next door to it. Both are
-// gone; this is what stops them coming back as "just a highlight".
+// gone; this is what stops them coming back as "just a highlight". Still
+// useful post-migration: nothing about App.css's deletion makes this
+// regression class less possible in whatever replaces it.
 describe('position colours are not reused as chrome', () => {
     // Button.css is gone - Button is Tailwind now, and its `alert` variant
     // deliberately fills with the `qb` token (see Button.tsx), so a raw hex
     // guard on that component would either fight the migration or need an
     // exception carved out for it. Button.tsx takes over the guard here.
-    const CHROME_SHEETS = ['src/App.css', 'src/Components/Button/Button.tsx', 'src/index.css'];
+    // App.css dropped out of this list along with the rest of the migration -
+    // there is nothing left at that path to read.
+    const CHROME_SHEETS = ['src/Components/Button/Button.tsx', 'src/index.css'];
 
     it.each(CHROME_SHEETS)('%s does not fill anything with the RB colour', (sheet) => {
         const contents = readFileSync(resolve(process.cwd(), sheet), 'utf8').toLowerCase();
 
-        // The position palette itself is written in rgb() in App.css, so the
-        // hex spelling appearing anywhere means something borrowed the hue.
+        // The position palette itself used to be written in rgb() in App.css,
+        // so the hex spelling appearing anywhere meant something borrowed the
+        // hue. That source is gone, but the hex guard still catches the same
+        // mistake anywhere else it could reappear.
         expect(contents).not.toContain('#00ceb8');
         expect(contents).not.toContain('#00d8a7');
     });
