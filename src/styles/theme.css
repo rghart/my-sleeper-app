@@ -86,6 +86,16 @@
  * through arbitrary-value utilities (`w-[var(--cell-w)]` etc).
  */
 @layer components {
+    /*
+     * The bottom tab bar's height, shared by the bar itself and anything that
+     * has to sit clear of it - the best-available sheet, so far. It was a
+     * literal 56 in one file and a measured 46.5 in the other, which is a
+     * silent drift waiting to happen the first time the bar's padding changes.
+     */
+    :root {
+        --tab-bar-h: 56px;
+    }
+
     .draft-grid[data-zoom='overview'] {
         --cell-w: 23px;
         --cell-h: 23px;
