@@ -389,3 +389,39 @@ describe('DraftPanel', () => {
         expect(global.fetch.mock.calls.length).toBe(4); // now the second tick lands
     });
 });
+
+describe('DraftPanel board view toggle', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        global.fetch = vi.fn(instantFetch);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('renders the feed by default', () => {
+        renderPanel();
+
+        // The feed groups picks into per-round lists; the grid does not.
+        expect(screen.getByRole('list', { name: 'Round 1' })).toBeInTheDocument();
+        expect(button('Feed')).toHaveAttribute('aria-pressed', 'true');
+        expect(button('Grid')).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('switches to the grid view and back on click', async () => {
+        renderPanel();
+
+        await click(button('Grid'));
+
+        expect(screen.queryByRole('list', { name: 'Round 1' })).toBeNull();
+        expect(button('Grid')).toHaveAttribute('aria-pressed', 'true');
+        // The grid's own zoom control is now on screen alongside the toggle.
+        expect(button('Overview')).toBeInTheDocument();
+
+        await click(button('Feed'));
+
+        expect(screen.getByRole('list', { name: 'Round 1' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull();
+    });
+});

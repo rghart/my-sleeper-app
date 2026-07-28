@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import Button from '../Components/Button';
+import SegmentedControl from '../Components/SegmentedControl';
 import PickFeed from './PickFeed';
+import DraftGrid from './DraftGrid';
 import PickClock from '../Components/PickClock';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
+
+const VIEW_OPTIONS = [
+    { value: 'feed', label: 'Feed' },
+    { value: 'grid', label: 'Grid' },
+];
 
 const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList, myDisplayName, updateDraftBoard }) => {
     const { currentDraft, rosterData } = leagueData;
@@ -13,6 +20,9 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
     const [isSyncing, setIsSyncing] = useState(false);
     const [currentDraftId, setCurrentDraftId] = useState(currentDraft.draft_id);
     const [DRAFT_PATH, setDraftPath] = useState(draftPath);
+    // Feed is the default view - the grid is the newer, denser one and
+    // shouldn't change what people already sync a draft against.
+    const [boardView, setBoardView] = useState('feed');
 
     const updateDraftID = (val) => {
         setCurrentDraftId(val);
@@ -124,15 +134,35 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
             </div>
             <div className="player-grid">
                 {currentDraft.built_draft && (
-                    <PickFeed
-                        builtDraft={currentDraft.built_draft}
-                        playerInfo={playerInfo}
-                        rosterInfo={rosterInfo}
-                        rankingPlayersIdsList={rankingPlayersIdsList}
-                        rosterData={rosterData}
-                        myDisplayName={myDisplayName}
-                        onPickChange={handlePickChange}
-                    />
+                    <>
+                        <SegmentedControl
+                            label="Draft board view"
+                            options={VIEW_OPTIONS}
+                            value={boardView}
+                            onChange={setBoardView}
+                        />
+                        {boardView === 'feed' ? (
+                            <PickFeed
+                                builtDraft={currentDraft.built_draft}
+                                playerInfo={playerInfo}
+                                rosterInfo={rosterInfo}
+                                rankingPlayersIdsList={rankingPlayersIdsList}
+                                rosterData={rosterData}
+                                myDisplayName={myDisplayName}
+                                onPickChange={handlePickChange}
+                            />
+                        ) : (
+                            <DraftGrid
+                                builtDraft={currentDraft.built_draft}
+                                playerInfo={playerInfo}
+                                rosterInfo={rosterInfo}
+                                rankingPlayersIdsList={rankingPlayersIdsList}
+                                rosterData={rosterData}
+                                myDisplayName={myDisplayName}
+                                onPickChange={handlePickChange}
+                            />
+                        )}
+                    </>
                 )}
             </div>
         </div>

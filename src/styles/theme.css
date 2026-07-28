@@ -77,3 +77,22 @@
     --color-danger: var(--raw-danger);
     --color-warn: var(--raw-warn);
 }
+
+/*
+ * DraftGrid's two zoom stops. Cell size is runtime state (a click on the
+ * zoom control), not something a fixed set of utility classes can express -
+ * so it lives here as plain custom properties switched by the `data-zoom`
+ * attribute DraftGrid sets on its table root, and the component consumes them
+ * through arbitrary-value utilities (`w-[var(--cell-w)]` etc).
+ */
+@layer components {
+    .draft-grid[data-zoom='overview'] {
+        --cell-w: 23px;
+        --cell-h: 23px;
+    }
+
+    .draft-grid[data-zoom='readable'] {
+        --cell-w: 75px;
+        --cell-h: 38px;
+    }
+}
