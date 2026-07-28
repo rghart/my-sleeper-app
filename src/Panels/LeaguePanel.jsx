@@ -10,6 +10,7 @@ const LeaguePanel = ({
     removeFromLineup,
     rankingPlayersIdsList,
     updateDraftBoard,
+    myDisplayName,
     view,
 }) => {
     return (
@@ -97,6 +98,7 @@ const LeaguePanel = ({
                             playerInfo={playerInfo}
                             rosterInfo={rosterInfo}
                             rankingPlayersIdsList={rankingPlayersIdsList}
+                            myDisplayName={myDisplayName}
                             updateDraftBoard={updateDraftBoard}
                         />
                     )}

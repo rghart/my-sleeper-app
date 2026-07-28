@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import Button from '../Components/Button';
-import DraftRound from './DraftRound';
+import PickFeed from './PickFeed';
 import PickClock from '../Components/PickClock';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
-const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList, updateDraftBoard }) => {
+const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList, myDisplayName, updateDraftBoard }) => {
     const { currentDraft, rosterData } = leagueData;
     const draftPath = DRAFT + currentDraft.draft_id + '/';
     const [isSyncing, setIsSyncing] = useState(false);
@@ -123,19 +123,17 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                 />
             </div>
             <div className="player-grid">
-                {currentDraft.built_draft &&
-                    currentDraft.built_draft.map((round) => (
-                        <div key={round.round} className="draft-round-box">
-                            <DraftRound
-                                round={round}
-                                playerInfo={playerInfo}
-                                rosterInfo={rosterInfo}
-                                rankingPlayersIdsList={rankingPlayersIdsList}
-                                rosterData={rosterData}
-                                onPickChange={handlePickChange}
-                            />
-                        </div>
-                    ))}
+                {currentDraft.built_draft && (
+                    <PickFeed
+                        builtDraft={currentDraft.built_draft}
+                        playerInfo={playerInfo}
+                        rosterInfo={rosterInfo}
+                        rankingPlayersIdsList={rankingPlayersIdsList}
+                        rosterData={rosterData}
+                        myDisplayName={myDisplayName}
+                        onPickChange={handlePickChange}
+                    />
+                )}
             </div>
         </div>
     );
