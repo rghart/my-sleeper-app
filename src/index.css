@@ -1,14 +1,24 @@
 /*
  * Element defaults now come from Tailwind's preflight layer. This file only
- * holds what preflight doesn't cover: the app's background/text colors and
- * font stack, and the one mobile fix (16px form control text to stop iOS
- * from zooming in on focus).
+ * holds what preflight doesn't cover: the page's plane and text colour, the
+ * readable font family, and the one mobile fix (16px form control text to stop
+ * iOS from zooming in on focus).
+ *
+ * The colours go through the raw tokens rather than a `bg-ground` class because
+ * they belong to the document itself - the page has to be the ground plane
+ * before React mounts anything on it, and behind the overscroll area where no
+ * element exists to carry a class.
  */
 @layer base {
     body {
-        background-color: #0f1720;
-        color: #e8edf2;
-        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        background-color: var(--raw-ground);
+        color: var(--raw-ink);
+        font-family:
+            'Archivo',
+            system-ui,
+            -apple-system,
+            'Segoe UI',
+            sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }

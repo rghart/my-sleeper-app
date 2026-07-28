@@ -68,7 +68,7 @@ const BestAvailableSheet = ({ rankingPlayersIdsList, playerInfo, rosterInfo }) =
                                     <span className="text-ink min-w-0 flex-1 truncate text-sm">{player.full_name}</span>
                                     <span className="text-ink-muted shrink-0 text-xs">{player.team}</span>
                                     <span
-                                        className={`text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-semibold ${positionClass(player.position)}`}
+                                        className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-semibold ${positionClass(player.position)}`}
                                     >
                                         {player.position}
                                     </span>

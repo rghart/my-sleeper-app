@@ -1,5 +1,6 @@
 /*
- * Design tokens for the UI redesign.
+ * Design tokens for the UI redesign. The values here are the literal ones from
+ * design-system.md, which is the authority on any of them.
  */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
@@ -9,82 +10,190 @@
 /*
  * Raw values, kept one indirection away from the Tailwind colour names below so
  * a second theme is a matter of redefining this block under a selector rather
- * than touching any call site.
- *
- * The flip has happened: these are the redesign palette now, not the app's
- * former colours. The names arrived first and the values have since changed,
- * in the step that rebuilds the shell.
+ * than touching any call site. This is the only place a hex may appear.
  */
 :root {
-    --raw-ground: #0f1720;
-    --raw-raised: #1b2530;
-    --raw-line: #2c3846;
-    --raw-ink: #e8edf2;
-    --raw-ink-muted: #8fa3b8;
+    /*
+     * Surfaces. `ground` is the default plane - most content sits directly on
+     * it with no card at all. Only two things earn elevation (`raised`): the
+     * clock card and sheets/modals. `chrome` is for chrome only: top bar, tab
+     * bar, drawer.
+     */
+    --raw-ground: #0a0e14;
+    --raw-chrome: #0c1117;
+    --raw-raised: #121820;
+    --raw-raised-2: #182029;
+    --raw-selected: #232e3b;
 
     /*
-     * The accent is named `mine`, not `accent`, because violet is reserved for
-     * "yours" - your picks, your slots, your turn. `bg-mine` on another
-     * manager's pick reads wrong at the call site where `bg-accent` would read
-     * fine, so there is deliberately no generic accent token to reach for.
-     * Nothing consumes this yet.
+     * Hairlines and non-text greys. `line` on raised surfaces and outlined
+     * controls, `line-quiet` on chrome and between list groups.
+     *
+     * `line-mid` and `mark` are not named in design-system.md's table, but its
+     * screen specs use both literally and repeatedly - #1c2530 for the clock
+     * card's progress track, the segmented control's shell, and the rules in
+     * the drawer footer, sheet header and desktop rail; #2a3542 for the sheet's
+     * grab handle and the drawer's idle nav dot. They are here rather than at
+     * the call sites because a hex at a call site is the thing this block
+     * exists to prevent.
      */
-    --raw-mine: #7a6ff0;
+    --raw-line: #212c38;
+    --raw-line-quiet: #161e27;
+    --raw-line-mid: #1c2530;
+    --raw-mark: #2a3542;
 
     /*
-     * Position colours encode data, so they keep the loud end of the spectrum.
-     * Contrast for near-black text on each fill: TE 9.9:1, RB 9.1:1, WR 7.3:1,
-     * QB 5.0:1. QB is the floor - it is the one that breaks AA first if that
-     * hue is ever moved.
+     * Text. `ink-dim` is the darkest grey any text may use - it clears AA on
+     * all three planes (5.2:1 on ground, 5.1:1 on chrome, 4.8:1 on raised).
+     * Anything darker than it in this file is a border or a fill, never text.
      */
-    --raw-qb: #ff2a6d;
-    --raw-rb: #00ceb8;
-    --raw-wr: #58a7ff;
-    --raw-te: #ffae58;
+    --raw-ink: #eef2f6;
+    --raw-ink-muted: #9aabbd;
+    --raw-ink-quiet: #8395a8;
+    --raw-ink-dim: #74869a;
 
-    --raw-danger: #ff7a70;
-    --raw-warn: #e8b154;
+    /*
+     * Position colours encode data, and they are rendered as a tinted tag -
+     * 16% of the base behind a light ink - never as a solid fill. The base is
+     * kept because the draft grid's overview zoom is colour and nothing else,
+     * so a 16% tint there would read as no colour at all.
+     *
+     * Desaturated from the old palette (#ff2a6d / #00ceb8 / #58a7ff / #ffae58)
+     * so the accents below can own the loud end of the spectrum.
+     */
+    --raw-qb: #e35a7d;
+    --raw-qb-tint: rgba(227, 90, 125, 0.16);
+    --raw-qb-ink: #ef8ba7;
+
+    --raw-rb: #3fb8a4;
+    --raw-rb-tint: rgba(63, 184, 164, 0.16);
+    --raw-rb-ink: #5fd3c0;
+
+    --raw-wr: #5b93d6;
+    --raw-wr-tint: rgba(91, 147, 214, 0.16);
+    --raw-wr-ink: #85b2e7;
+
+    --raw-te: #c98f4f;
+    --raw-te-tint: rgba(201, 143, 79, 0.16);
+    --raw-te-ink: #dfae74;
+
+    /* K and DEF carry no hue - only the four skill positions encode data. */
+    --raw-pos-none-tint: rgba(154, 171, 189, 0.12);
+
+    /*
+     * Accents. Never a position hue, and a position hue is never one of these.
+     *
+     * `mine` means "you act here" and owns both senses of that: ownership -
+     * your picks, your slots, your turn - and primary actions. Nothing else may
+     * use it, which is why there is no generic `accent` token to reach for.
+     */
+    --raw-mine: #8b7cf7;
+    --raw-mine-row: rgba(139, 124, 247, 0.1);
+    --raw-mine-chip: rgba(139, 124, 247, 0.16);
+
+    --raw-live: #5fd08a;
+    --raw-live-tint: rgba(95, 208, 138, 0.12);
+
+    --raw-warn: #e0a54a;
+    --raw-warn-tint: rgba(224, 165, 74, 0.14);
+
+    --raw-danger: #ff5f56;
+
+    /* The empty lineup slot's fill - a hint of a row, not a dashed box. */
+    --raw-empty: rgba(154, 171, 189, 0.04);
 }
 
 /* `inline` so the utilities resolve through the variable at runtime, which is
  * what lets the block above be swapped under a selector later. */
 @theme inline {
     --color-ground: var(--raw-ground);
+    --color-chrome: var(--raw-chrome);
     --color-raised: var(--raw-raised);
+    --color-raised-2: var(--raw-raised-2);
+    --color-selected: var(--raw-selected);
+
     --color-line: var(--raw-line);
+    --color-line-quiet: var(--raw-line-quiet);
+    --color-line-mid: var(--raw-line-mid);
+    --color-mark: var(--raw-mark);
+
     --color-ink: var(--raw-ink);
     --color-ink-muted: var(--raw-ink-muted);
+    --color-ink-quiet: var(--raw-ink-quiet);
+    --color-ink-dim: var(--raw-ink-dim);
 
     --color-mine: var(--raw-mine);
+    --color-mine-row: var(--raw-mine-row);
+    --color-mine-chip: var(--raw-mine-chip);
     --color-focus: var(--color-mine);
 
-    --color-qb: var(--raw-qb);
-    --color-rb: var(--raw-rb);
-    --color-wr: var(--raw-wr);
-    --color-te: var(--raw-te);
-
-    --color-danger: var(--raw-danger);
+    --color-live: var(--raw-live);
+    --color-live-tint: var(--raw-live-tint);
     --color-warn: var(--raw-warn);
+    --color-warn-tint: var(--raw-warn-tint);
+    --color-danger: var(--raw-danger);
+
+    --color-qb: var(--raw-qb);
+    --color-qb-tint: var(--raw-qb-tint);
+    --color-qb-ink: var(--raw-qb-ink);
+    --color-rb: var(--raw-rb);
+    --color-rb-tint: var(--raw-rb-tint);
+    --color-rb-ink: var(--raw-rb-ink);
+    --color-wr: var(--raw-wr);
+    --color-wr-tint: var(--raw-wr-tint);
+    --color-wr-ink: var(--raw-wr-ink);
+    --color-te: var(--raw-te);
+    --color-te-tint: var(--raw-te-tint);
+    --color-te-ink: var(--raw-te-ink);
+    --color-pos-none-tint: var(--raw-pos-none-tint);
+
+    --color-empty: var(--raw-empty);
+
+    /*
+     * Two families, and the split is semantic rather than decorative: Archivo
+     * for anything a person reads, IBM Plex Mono for anything countable - pick
+     * numbers, clocks, ranks, teams, counts, uppercase micro-labels. Anything
+     * numeric that updates in place also wants `tabular-nums`.
+     */
+    --font-sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+
+    /*
+     * Four radii and nothing between them. 999px pills use `rounded-full`,
+     * which Tailwind already provides.
+     */
+    --radius-frame: 22px;
+    --radius-card: 14px;
+    --radius-row: 10px;
+    --radius-tag: 6px;
 }
 
 /*
- * DraftGrid's two zoom stops. Cell size is runtime state (a click on the
- * zoom control), not something a fixed set of utility classes can express -
- * so it lives here as plain custom properties switched by the `data-zoom`
- * attribute DraftGrid sets on its table root, and the component consumes them
- * through arbitrary-value utilities (`w-[var(--cell-w)]` etc).
+ * Runtime-switched values and shared chrome measurements. These are plain
+ * custom properties rather than theme names because they are either state (the
+ * grid's zoom stop, set by a click) or a single measurement two unrelated
+ * components have to agree on.
  */
 @layer components {
-    /*
-     * The bottom tab bar's height, shared by the bar itself and anything that
-     * has to sit clear of it - the best-available sheet, so far. It was a
-     * literal 56 in one file and a measured 46.5 in the other, which is a
-     * silent drift waiting to happen the first time the bar's padding changes.
-     */
     :root {
-        --tab-bar-h: 56px;
+        /*
+         * The bottom tab bar's height, shared by the bar itself and anything
+         * that has to sit clear of it - the best-available sheet, so far. It
+         * was a literal 56 in one file and a measured 46.5 in the other, which
+         * is a silent drift waiting to happen the first time the bar's padding
+         * changes.
+         */
+        --tab-bar-h: 60px;
+        --top-bar-h: 56px;
     }
 
+    /*
+     * DraftGrid's two zoom stops. Cell size is runtime state (a click on the
+     * zoom control), not something a fixed set of utility classes can express -
+     * so it lives here as plain custom properties switched by the `data-zoom`
+     * attribute DraftGrid sets on its table root, and the component consumes
+     * them through arbitrary-value utilities (`w-[var(--cell-w)]` etc).
+     */
     .draft-grid[data-zoom='overview'] {
         --cell-w: 23px;
         --cell-h: 23px;
