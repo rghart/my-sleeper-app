@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useBodyScrollLock } from '../useBodyScrollLock.js';
 
 // Focusable elements worth trapping Tab within - close enough to the real
 // definition for a sheet's contents (rows, chips, an input, buttons) without
@@ -21,6 +22,8 @@ const FOCUSABLE_SELECTOR =
 // the set of focusable things in any of these three callers is short.
 const Sheet = ({ title, subtitle, onClose, triggerRef, centerOnDesktop = false, children }) => {
     const panelRef = useRef(null);
+
+    useBodyScrollLock();
 
     useEffect(() => {
         panelRef.current?.focus();
@@ -100,7 +103,7 @@ const Sheet = ({ title, subtitle, onClose, triggerRef, centerOnDesktop = false, 
                         </button>
                     </div>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
             </div>
         </div>
     );
