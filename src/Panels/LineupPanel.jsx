@@ -1,8 +1,12 @@
 import { useRef, useState } from 'react';
 import SlotRow from './SlotRow';
+import { slotAccessibleName, slotOccupantLabel } from './lineupLabels.js';
 import Sheet from '../Components/Sheet';
-import BestAvailable from '../Components/BestAvailable';
+import BestAvailable, { filterBestAvailable } from '../Components/BestAvailable';
 import BestAvailableHandle from '../Components/BestAvailableHandle';
+import ListRow from '../Components/ListRow';
+import PositionTag from '../Components/PositionTag';
+import RankListSwitcher from '../Components/RankListSwitcher';
 
 const LineupPanel = ({
     playerInfo,
@@ -12,15 +16,84 @@ const LineupPanel = ({
     rankingPlayersIdsList,
     myDisplayName,
     addToRoster,
+    fillSlot,
+    savedRankLists,
+    savedRankListsLoading,
+    signedIn,
 }) => {
     const emptyCount = rosterSlots.filter((slot) => !slot.playerId).length;
-    const [isBestAvailableOpen, setIsBestAvailableOpen] = useState(false);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    // null while the sheet was opened from the bottom handle (every open slot
+    // selected); { index, label } while it was opened by tapping a specific
+    // slot - the two are the same view at different starting chip states, per
+    // the design, so this is the one piece of state that tells them apart
+    // rather than two separate sheets.
+    const [scope, setScope] = useState(null);
+    // null means "the live session list" (rankingPlayersIdsList); otherwise a
+    // saved list's route_name, resolved against savedRankLists below.
+    const [rankListId, setRankListId] = useState(null);
+    // Only meaningful for the handle entry point - Sheet returns focus to it
+    // on close. A slot-tap entry has no single stable trigger element to
+    // return to (each SlotRow button is one of many, re-rendered on every
+    // roster change), so triggerRef is left undefined for that path and Sheet
+    // already tolerates that (see its own optional chaining).
     const bestAvailableHandleRef = useRef(null);
 
     // The slots still worth filling, by label - the chip row and the
     // eligibility filter both key off this. Order follows rosterSlots, and
     // duplicates collapse: two open FLX slots must not produce two FLX chips.
     const openSlotLabels = [...new Set(rosterSlots.filter((slot) => !slot.playerId).map((slot) => slot.label))];
+
+    const openFromHandle = () => {
+        setScope(null);
+        setIsSheetOpen(true);
+    };
+
+    const openSlot = (index) => {
+        setScope({ index, label: rosterSlots[index].label });
+        setIsSheetOpen(true);
+    };
+
+    const closeSheet = () => setIsSheetOpen(false);
+
+    // Selecting a candidate for a slot tapped directly fills that exact slot
+    // - the user already chose it - rather than the first eligible open one,
+    // which is what the handle's un-scoped entry point still does.
+    const handleSelect = (player) => {
+        if (scope) {
+            fillSlot(scope.index, player);
+        } else {
+            addToRoster(player);
+        }
+        // The sheet stays open after a fill so several slots can be filled in
+        // a row - only Remove (below) closes it.
+    };
+
+    const handleRemove = () => {
+        removeFromLineup(scope.index);
+        closeSheet();
+    };
+
+    const entries =
+        rankListId && savedRankLists?.[rankListId] ? savedRankLists[rankListId].rank_list : rankingPlayersIdsList;
+
+    // The chip row's full set: the tapped slot's own label plus every other
+    // open slot. A tapped slot can itself be filled (that's what lets
+    // Remove/replace work), so its label is not necessarily already in
+    // openSlotLabels - union rather than reusing that list outright.
+    const sheetEligibleSlots = scope ? [...new Set([scope.label, ...openSlotLabels])] : openSlotLabels;
+    // The subtitle's count is fixed at the sheet's *initial* scope (the
+    // tapped slot alone, or every open slot for the handle) rather than
+    // tracking BestAvailable's own internal chip clicks, which this
+    // component has no view into once the chip row is live.
+    const subtitleEligibleSlots = scope ? [scope.label] : openSlotLabels;
+    const subtitleCount = filterBestAvailable({ entries, playerInfo, eligibleSlots: subtitleEligibleSlots }).length;
+
+    const occupantSlot = scope ? rosterSlots[scope.index] : null;
+    const occupantPlayer = occupantSlot?.playerId ? playerInfo[occupantSlot.playerId] : null;
+
+    const title = scope ? `Fill ${scope.label}` : 'Best available';
+    const subtitle = `${subtitleCount} eligible in this list`;
 
     return (
         <div>
@@ -51,45 +124,24 @@ const LineupPanel = ({
                         slot={slot}
                         index={i}
                         playerInfo={playerInfo}
-                        onRemove={removeFromLineup}
+                        onOpen={openSlot}
                     />
                 ))}
             </ul>
-            {/* Phone only, filtered to the slots still open - the aside
-                covers `md` and up with the desktop rail instead (see
-                AppShell / App's renderAside). Unlike Draft's read-only sheet,
-                there is an unambiguous target here: the first open slot the
-                selected player is eligible for, exactly what
-                addPlayerToRoster (src/lib/roster.js) already computes - so
-                selecting a player here is a real add, and the sheet stays
-                open afterward so several slots can be filled in a row. */}
+            {/* Phone only - the aside covers `md` and up with the desktop
+                rail instead (see AppShell / App's renderAside). This strip is
+                the bottom-handle entry point specifically; every slot row
+                above opens the same sheet directly regardless of whether
+                there is a rank list to show in it (BestAvailable's own empty
+                state covers that), so this block is not the only way in. */}
             {openSlotLabels.length > 0 &&
                 (rankingPlayersIdsList.length > 0 ? (
-                    <>
-                        <BestAvailableHandle
-                            buttonRef={bestAvailableHandleRef}
-                            isExpanded={isBestAvailableOpen}
-                            onClick={() => setIsBestAvailableOpen((open) => !open)}
-                            subtitle={`fills ${openSlotLabels.join(', ')}`}
-                        />
-                        {isBestAvailableOpen && (
-                            <Sheet
-                                title="Best available"
-                                subtitle={`fills ${openSlotLabels.join(', ')}`}
-                                onClose={() => setIsBestAvailableOpen(false)}
-                                triggerRef={bestAvailableHandleRef}
-                            >
-                                <BestAvailable
-                                    entries={rankingPlayersIdsList}
-                                    playerInfo={playerInfo}
-                                    rosterInfo={rosterInfo}
-                                    myDisplayName={myDisplayName}
-                                    eligibleSlots={openSlotLabels}
-                                    onSelect={addToRoster}
-                                />
-                            </Sheet>
-                        )}
-                    </>
+                    <BestAvailableHandle
+                        buttonRef={bestAvailableHandleRef}
+                        isExpanded={isSheetOpen && !scope}
+                        onClick={openFromHandle}
+                        subtitle={`fills ${openSlotLabels.join(', ')}`}
+                    />
                 ) : (
                     <div className="border-line bg-raised border-t md:hidden">
                         <BestAvailable
@@ -100,6 +152,63 @@ const LineupPanel = ({
                         />
                     </div>
                 ))}
+            {isSheetOpen && (
+                <Sheet
+                    title={title}
+                    subtitle={subtitle}
+                    onClose={closeSheet}
+                    triggerRef={scope ? undefined : bestAvailableHandleRef}
+                    headerAction={
+                        <RankListSwitcher
+                            savedRankLists={savedRankLists}
+                            savedRankListsLoading={savedRankListsLoading}
+                            signedIn={signedIn}
+                            rankListId={rankListId}
+                            onSelect={setRankListId}
+                            onPasteNew={() => {
+                                window.location.hash = '#/ranks';
+                            }}
+                            sessionCount={rankingPlayersIdsList.length}
+                        />
+                    }
+                >
+                    {/* A filled slot's occupant renders first, above the
+                        candidates, carrying Remove instead of Add - the same
+                        sheet opens for a filled slot as for an empty one, this
+                        row is the only difference. */}
+                    {occupantSlot?.playerId && (
+                        <div className="border-line-mid border-b px-2 py-2.5">
+                            <ListRow
+                                as="div"
+                                label={slotAccessibleName({ slot: occupantSlot, player: occupantPlayer })}
+                                name={slotOccupantLabel({ slot: occupantSlot, player: occupantPlayer })}
+                                meta={occupantPlayer?.team}
+                                trailing={
+                                    <>
+                                        {occupantPlayer && <PositionTag position={occupantPlayer.position} />}
+                                        <button
+                                            type="button"
+                                            onClick={handleRemove}
+                                            className="bg-danger/15 text-danger shrink-0 rounded-full px-[11px] py-1.5 font-mono text-[11px] font-semibold"
+                                        >
+                                            Remove
+                                        </button>
+                                    </>
+                                }
+                            />
+                        </div>
+                    )}
+                    <BestAvailable
+                        entries={entries}
+                        playerInfo={playerInfo}
+                        rosterInfo={rosterInfo}
+                        myDisplayName={myDisplayName}
+                        eligibleSlots={sheetEligibleSlots}
+                        initialActiveChip={scope ? scope.label : null}
+                        onSelect={handleSelect}
+                    />
+                </Sheet>
+            )}
         </div>
     );
 };

@@ -21,8 +21,22 @@ import {
 import { addPlayerToRoster, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
-import { SLEEPER_USER_ID } from './urls.js';
+import { checkErrors } from './lib/http.js';
+import { auth } from './firebase.js';
+import APP_DB_URLS, { SLEEPER_USER_ID } from './urls.js';
 import BestAvailable, { countAvailable } from './Components/BestAvailable';
+
+const { APP_USERS, TYPE_PARAMS } = APP_DB_URLS;
+
+// The rank-list switcher's "nothing saved yet" state - the same placeholder
+// RanksPanel's own selector has always shown. Lifted alongside the fetch it
+// used to own (see loadSavedRankLists below) so the switcher (in
+// LineupPanel, via the Lineup section) and the selector (in RanksPanel) read
+// off one map rather than two independently-fetched copies of it.
+const DEFAULT_RANK_LIST_SELECTOR = 'default';
+const DEFAULT_SAVED_RANK_LISTS = {
+    [DEFAULT_RANK_LIST_SELECTOR]: { pretty_name: '-- Select saved ranks list', route_name: DEFAULT_RANK_LIST_SELECTOR },
+};
 
 // What, if anything, is currently loading. These states are mutually exclusive
 // - at most one thing loads at a time - which is why this is one field rather
@@ -77,6 +91,8 @@ class App extends React.Component {
         signedInEmail: null,
         season: null,
         myDisplayName: null,
+        savedRankLists: DEFAULT_SAVED_RANK_LISTS,
+        savedRankListsLoading: false,
     };
 
     selectRosterInfo = memoizeRosterInfo();
@@ -97,9 +113,61 @@ class App extends React.Component {
         });
     }
 
+    componentDidUpdate(prevProps, prevState) {
+        // Mirrors the effect RanksPanel used to run on `[signedIn]`: a fresh
+        // sign-in fetches the saved lists, a sign-out (or the initial
+        // not-yet-signed-in render) resets to the placeholder-only map.
+        if (prevState.signedIn !== this.state.signedIn) {
+            this.loadSavedRankLists();
+        }
+    }
+
     componentWillUnmount() {
         this.unsubscribeAuth();
     }
+
+    // Lifted out of RanksPanel's getSavedRankLists effect so the rank-list
+    // switcher (LineupPanel, reached from the Lineup section) and RanksPanel's
+    // own selector can both read the same fetch's result instead of each
+    // running it independently. Uses the raw `fetch` + `checkErrors` pattern
+    // the original effect used, not `fetchRequest` - this is a GET with no
+    // body to swallow errors around, and the original never used fetchRequest
+    // here either.
+    loadSavedRankLists = async () => {
+        if (!this.state.signedIn) {
+            this.setState({ savedRankLists: DEFAULT_SAVED_RANK_LISTS, savedRankListsLoading: false });
+            return;
+        }
+        this.setState({ savedRankListsLoading: true });
+        const result = await fetch(
+            APP_USERS + auth.currentUser.uid + TYPE_PARAMS + (await auth.currentUser.getIdToken(true)),
+        )
+            .then(checkErrors)
+            .then((response) => response.json())
+            .catch((error) => {
+                console.error('Error:', error);
+                return null;
+            });
+        if (result) {
+            this.setState({
+                savedRankLists: { ...DEFAULT_SAVED_RANK_LISTS, ...result },
+                savedRankListsLoading: false,
+            });
+        } else {
+            this.setState({ savedRankListsLoading: false });
+        }
+    };
+
+    // The updater RanksPanel's saveRankList/deleteRankList call instead of
+    // mutating the map directly. Accepting either a plain value or a
+    // prevState -> nextState function mirrors setState's own dual signature -
+    // both callers need the previous value, since both build a new object
+    // from it rather than replacing the whole map.
+    updateSavedRankLists = (updater) => {
+        this.setState((prevState) => ({
+            savedRankLists: typeof updater === 'function' ? updater(prevState.savedRankLists) : updater,
+        }));
+    };
 
     // The whole load chain, from player database through to a built draft
     // board. Each step passes its result to the next as an argument instead of
@@ -289,6 +357,14 @@ class App extends React.Component {
         this.setState((prevState) => addPlayerToRoster({ player, rosterSlots: prevState.rosterSlots }));
     };
 
+    // The slot-scoped sheet's fill action: unlike addToRoster above, the
+    // target slot is already chosen (the user tapped it), so this always
+    // fills or replaces that exact index rather than searching for the first
+    // eligible open one.
+    fillSlot = (slotIndex, player) => {
+        this.setState((prevState) => addPlayerToRoster({ player, rosterSlots: prevState.rosterSlots, slotIndex }));
+    };
+
     removeFromLineup = (i) => {
         this.setState((prevState) => removePlayerFromLineup({ i, rosterSlots: prevState.rosterSlots }));
     };
@@ -390,6 +466,8 @@ class App extends React.Component {
             signedIn,
             signedInEmail,
             myDisplayName,
+            savedRankLists,
+            savedRankListsLoading,
         } = this.state;
         if (loading === LOADING.INITIAL) {
             return <Spinner size="page" />;
@@ -416,6 +494,9 @@ class App extends React.Component {
                     rankingPlayersIdsList={rankingPlayersIdsList}
                     myDisplayName={myDisplayName}
                     lineupSet={lineupSet}
+                    savedRankLists={savedRankLists}
+                    savedRankListsLoading={savedRankListsLoading}
+                    updateSavedRankLists={this.updateSavedRankLists}
                 />
             );
             return (
@@ -483,6 +564,10 @@ class App extends React.Component {
                                                 updateDraftBoard={this.updateDraftBoard}
                                                 myDisplayName={myDisplayName}
                                                 addToRoster={this.addToRoster}
+                                                fillSlot={this.fillSlot}
+                                                savedRankLists={savedRankLists}
+                                                savedRankListsLoading={savedRankListsLoading}
+                                                signedIn={signedIn}
                                             />
                                         );
                                     }}

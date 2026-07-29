@@ -8,7 +8,7 @@ import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Spinner from '../Components/Spinner';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
-import { checkErrors, fetchRequest } from '../lib/http.js';
+import { fetchRequest } from '../lib/http.js';
 import { positionClass } from './pickLabels.js';
 import { usePublishRankList } from '../RankList.jsx';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
@@ -135,18 +135,14 @@ const RanksPanel = ({
     updatePlayerId,
     notFoundPlayers,
     myDisplayName,
+    savedRankLists,
+    updateSavedRankLists,
 }) => {
     const defaultSelector = 'default';
-    const defaultSelectorObj = {
-        pretty_name: '-- Select saved ranks list',
-        route_name: defaultSelector,
-    };
     const [isNewRankList, setIsNewRankList] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [newRankListName, setNewRankListName] = useState('');
     const [currentListVal, setCurrentListVal] = useState(defaultSelector);
-    const [allRankLists, setAllRankLists] = useState({ [defaultSelector]: defaultSelectorObj });
-    const [allListsVals, setAllListsVals] = useState([defaultSelector]);
     const [adp, setADP] = useState({});
     const [adpType, setADPType] = useState();
     const [filters, setFilters] = useState({
@@ -177,6 +173,16 @@ const RanksPanel = ({
         setShowPasteSheet(false);
     };
 
+    // savedRankLists is a prop now (lifted to App - see §6 of the redesign
+    // doc), so every write to it goes through updateSavedRankLists rather
+    // than a local setter. The old version mutated allRankLists in place
+    // (`allRankLists[newRankList].rank_list = ...`, `allRankLists[newRankList]
+    // = {}` + Object.assign) and then called setAllRankLists with that same
+    // reference - which only re-rendered anything because some other state
+    // change happened to force it. Lifted, that bug would have meant nothing
+    // downstream (the switcher, this panel's own selector) ever saw the
+    // update: React bails out of a setState whose value is `===` the
+    // previous one. Both branches below build a brand new object instead.
     const saveRankList = async () => {
         let newRankList;
         let rankListData;
@@ -189,8 +195,7 @@ const RanksPanel = ({
             };
         } else if (!isNewRankList) {
             newRankList = currentListVal;
-            allRankLists[newRankList].rank_list = rankingPlayersIdsList;
-            rankListData = allRankLists[newRankList];
+            rankListData = { ...savedRankLists[newRankList], rank_list: rankingPlayersIdsList };
         } else {
             console.log('List not saved: name for a new rank list should be longer than 3 characters');
             return;
@@ -204,17 +209,9 @@ const RanksPanel = ({
         if (updateResponse && updateResponse.ok) {
             if (isNewRankList) {
                 setIsNewRankList(false);
-                allListsVals.push(newRankList);
-                setAllListsVals(allListsVals);
                 setCurrentListVal(newRankList);
-                allRankLists[newRankList] = {};
-                Object.assign(allRankLists[newRankList], {
-                    rank_list: rankingPlayersIdsList,
-                    pretty_name: newRankListName,
-                    route_name: newRankList,
-                });
             }
-            setAllRankLists(allRankLists);
+            updateSavedRankLists((prevSavedRankLists) => ({ ...prevSavedRankLists, [newRankList]: rankListData }));
             setNewRankListName('');
             console.log(updateResponse.status);
         } else {
@@ -231,12 +228,13 @@ const RanksPanel = ({
         );
         if (updateResponse && updateResponse.ok) {
             setIsNewRankList(false);
-            const deleteIndex = allListsVals.indexOf(currentListVal);
-            allListsVals.splice(deleteIndex, 1);
-            if (allListsVals.length > 0) {
-                setAllListsVals(allListsVals);
-                updateRankList(defaultSelectorObj.route_name);
-            }
+            const deletedListVal = currentListVal;
+            updateSavedRankLists((prevSavedRankLists) => {
+                const nextSavedRankLists = { ...prevSavedRankLists };
+                delete nextSavedRankLists[deletedListVal];
+                return nextSavedRankLists;
+            });
+            updateRankList(defaultSelector);
             console.log(updateResponse.status);
         } else {
             console.log(updateResponse);
@@ -251,12 +249,12 @@ const RanksPanel = ({
             setIsNewRankList(false);
             setCurrentListVal(newListName);
             if (newListName !== defaultSelector) {
-                updateRankingPlayersIdsList(allRankLists[newListName].rank_list);
+                updateRankingPlayersIdsList(savedRankLists[newListName].rank_list);
             } else {
                 updateRankingPlayersIdsList([]);
             }
         },
-        [allRankLists, updateRankingPlayersIdsList],
+        [savedRankLists, updateRankingPlayersIdsList],
     );
 
     const updateFilters = (filterName, filter) => {
@@ -317,43 +315,14 @@ const RanksPanel = ({
         getADP();
     }, []);
 
+    // The saved-lists fetch itself now lives in App (loadSavedRankLists) - it
+    // resets isNewRankList/currentListVal back to the default whenever
+    // signedIn goes false, which App's version of this effect can't reach
+    // into this panel's local state to do, so that half stays here.
     useEffect(() => {
-        const defaultSelectorObj = {
-            [defaultSelector]: { pretty_name: '-- Select saved ranks list', route_name: defaultSelector },
-        };
-        const getSavedRankLists = async () => {
-            const getSavedRankListsResult = await fetch(
-                APP_USERS + auth.currentUser.uid + TYPE_PARAMS + (await auth.currentUser.getIdToken(true)),
-            )
-                .then(checkErrors)
-                .then((response) => response.json())
-                .then((data) => {
-                    return data;
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                });
-
-            if (getSavedRankListsResult) {
-                const rankListNames = Object.keys(getSavedRankListsResult).map(
-                    (key) => getSavedRankListsResult[key].route_name,
-                );
-                rankListNames.unshift(defaultSelector);
-                const updatingRankList = {
-                    ...defaultSelectorObj,
-                    ...getSavedRankListsResult,
-                };
-                setAllRankLists(updatingRankList);
-                setAllListsVals(rankListNames);
-            }
-        };
-        if (signedIn) {
-            getSavedRankLists();
-        } else if (!signedIn) {
+        if (!signedIn) {
             setIsNewRankList(false);
             setCurrentListVal(defaultSelector);
-            setAllRankLists(defaultSelectorObj);
-            setAllListsVals([defaultSelector]);
         }
     }, [signedIn]);
 
@@ -361,14 +330,17 @@ const RanksPanel = ({
     // rank-list selector can live in the pill instead of a dropdown buried in
     // this panel. Memoised to avoid rebuilding the array every render;
     // usePublishRankList compares it by value, so this is an optimisation
-    // rather than the thing that keeps it from looping.
+    // rather than the thing that keeps it from looping. Order follows
+    // savedRankLists' own key order - `default` first, since App always
+    // spreads it as the base of that map - rather than a separately lifted
+    // list of ids.
     const rankListOptions = useMemo(
         () =>
-            allListsVals.map((list) => ({
+            Object.keys(savedRankLists).map((list) => ({
                 value: list,
-                label: allRankLists[list] ? allRankLists[list].pretty_name : 'dunno',
+                label: savedRankLists[list] ? savedRankLists[list].pretty_name : 'dunno',
             })),
-        [allListsVals, allRankLists],
+        [savedRankLists],
     );
     usePublishRankList({ options: rankListOptions, currentValue: currentListVal, onChange: updateRankList });
 
@@ -493,7 +465,7 @@ const RanksPanel = ({
                                 {showExistingListControls && (
                                     <div className="border-line rounded-row flex items-center justify-between gap-2 border p-3">
                                         <p className="text-ink m-0 truncate text-[14px] font-semibold">
-                                            {allRankLists[currentListVal]?.pretty_name}
+                                            {savedRankLists[currentListVal]?.pretty_name}
                                         </p>
                                         <OnFocusButton event={deleteRankList} saveRankList={saveRankList} />
                                     </div>

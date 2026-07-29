@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LineupPanel from './LineupPanel';
 import { buildRosterInfo, decorateRosters } from '../lib/rosterInfo.js';
@@ -47,9 +47,12 @@ const ROSTER_SLOTS = [
     { label: 'WR', playerId: null },
 ];
 
+const SAVED_RANK_LISTS = { default: { pretty_name: '-- Select saved ranks list', route_name: 'default' } };
+
 function renderLineup(overrides = {}) {
     const removeFromLineup = vi.fn();
     const addToRoster = vi.fn();
+    const fillSlot = vi.fn();
     const { unmount } = render(
         <LineupPanel
             playerInfo={PLAYER_INFO}
@@ -59,10 +62,14 @@ function renderLineup(overrides = {}) {
             rankingPlayersIdsList={[]}
             myDisplayName={MY_DISPLAY_NAME}
             addToRoster={addToRoster}
+            fillSlot={fillSlot}
+            savedRankLists={SAVED_RANK_LISTS}
+            savedRankListsLoading={false}
+            signedIn={false}
             {...overrides}
         />,
     );
-    return { removeFromLineup, addToRoster, unmount };
+    return { removeFromLineup, addToRoster, fillSlot, unmount };
 }
 
 describe('LineupPanel', () => {
@@ -81,31 +88,33 @@ describe('LineupPanel', () => {
         expect(screen.getByText('FLX')).toBeVisible();
     });
 
-    it('renders empty slots as bare, non-interactive rows', () => {
+    it('renders every slot, filled or empty, as a real button - both open the scoped sheet now', () => {
         renderLineup();
 
-        // Empty slots have no fill-from-slot action in this app, so they are
-        // not buttons at all - only filled slots get a role of button.
-        expect(screen.queryByRole('button', { name: 'QB, empty' })).toBeNull();
-        expect(screen.queryByRole('button', { name: 'WR, empty' })).toBeNull();
-        expect(screen.getByLabelText('QB, empty')).toBeTruthy();
-        expect(screen.getByLabelText('WR, empty')).toBeTruthy();
+        // A single tap must not be destructive any more: removal moved into
+        // the sheet's own Remove action (see the describe block below), so
+        // every slot - including an empty one, which used to be a bare
+        // non-interactive row - is a button that opens it.
+        expect(screen.getByRole('button', { name: 'QB, empty' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'WR, empty' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'FLX, Germie Bernard, WR' })).toBeTruthy();
     });
 
-    it('calls removeFromLineup with the slot index, and ignores clicks on empty slots', async () => {
+    it('opens the slot-scoped sheet on a tap, titled for that slot, whether the slot is empty or filled', async () => {
         const user = userEvent.setup();
-        const { removeFromLineup } = renderLineup();
+        renderLineup();
 
-        // Empty slots are not buttons, so there is nothing to click - this
-        // just confirms no stray handler exists on them.
-        await user.click(screen.getByLabelText('QB, empty'));
-        expect(removeFromLineup).not.toHaveBeenCalled();
+        await user.click(screen.getByRole('button', { name: 'QB, empty' }));
+        expect(screen.getByRole('dialog', { name: 'Fill QB' })).toBeInTheDocument();
 
+        await user.click(screen.getByRole('button', { name: 'Close' }));
+        expect(screen.queryByRole('dialog')).toBeNull();
+
+        // Tapping a filled slot opens the same sheet, under the same title -
+        // the design doc is explicit that the occupant appears inside it
+        // rather than the slot getting a different sheet altogether.
         await user.click(screen.getByRole('button', { name: 'FLX, Germie Bernard, WR' }));
-        // The index is which slot gets emptied, so passing the wrong one
-        // clears someone else's.
-        expect(removeFromLineup).toHaveBeenCalledTimes(1);
-        expect(removeFromLineup).toHaveBeenCalledWith(1);
+        expect(screen.getByRole('dialog', { name: 'Fill FLX' })).toBeInTheDocument();
     });
 
     it('shows a muted count of unfilled slots, omitted entirely when zero', () => {
@@ -118,7 +127,7 @@ describe('LineupPanel', () => {
         expect(screen.queryByText(/empty$/)).toBeNull();
     });
 
-    it('renders a slot holding an id missing from the player database, and keeps it removable', async () => {
+    it('renders a slot holding an id missing from the player database, and keeps it removable via the sheet', async () => {
         const user = userEvent.setup();
         const slots = [{ label: 'TE', playerId: MISSING_ID }];
         const { removeFromLineup } = renderLineup({ rosterSlots: slots });
@@ -133,7 +142,10 @@ describe('LineupPanel', () => {
         expect(screen.getByText(`Unknown player ${MISSING_ID}`)).toBeVisible();
 
         await user.click(row);
+        await user.click(screen.getByRole('button', { name: 'Remove' }));
         expect(removeFromLineup).toHaveBeenCalledWith(0);
+        // Remove is the one action that closes the sheet - unlike a fill.
+        expect(screen.queryByRole('dialog')).toBeNull();
     });
 
     it('shows the occupant name and team on screen, and a placeholder for an unfilled slot', () => {
@@ -185,5 +197,160 @@ describe('LineupPanel best-available sheet', () => {
         // sheet - it stays open so several slots can be filled in a row.
         expect(dialog).toBeInTheDocument();
         expect(screen.getByRole('dialog', { name: 'Best available' })).toBeInTheDocument();
+    });
+});
+
+describe('LineupPanel slot-scoped sheet', () => {
+    // A free agent RB, absent from the shared fixture's actual free agents -
+    // built by hand so a TE-scoped sheet has a real "hide this one" case to
+    // assert against, rather than only a "show this one".
+    const FREE_AGENT_RB = { id: '55501', name: 'Test Runningback' };
+    const RB_PLAYER_INFO = {
+        ...PLAYER_INFO,
+        [FREE_AGENT_RB.id]: {
+            player_id: FREE_AGENT_RB.id,
+            full_name: FREE_AGENT_RB.name,
+            position: 'RB',
+            fantasy_positions: ['RB'],
+            team: 'FA',
+        },
+    };
+    const TE_AND_RB_SLOTS = [
+        { label: 'TE', playerId: null },
+        { label: 'RB', playerId: null },
+    ];
+    const TE_AND_RB_ENTRIES = [rankEntry(FREE_AGENT_TE.id, 1), rankEntry(FREE_AGENT_RB.id, 2)];
+
+    it('scopes to the tapped slot, showing an eligible TE and hiding an RB', async () => {
+        const user = userEvent.setup();
+        renderLineup({
+            rosterSlots: TE_AND_RB_SLOTS,
+            rankingPlayersIdsList: TE_AND_RB_ENTRIES,
+            playerInfo: RB_PLAYER_INFO,
+        });
+
+        await user.click(screen.getByRole('button', { name: 'TE, empty' }));
+
+        expect(screen.getByRole('dialog', { name: 'Fill TE' })).toBeInTheDocument();
+        expect(screen.getByText(FREE_AGENT_TE.name)).toBeInTheDocument();
+        expect(screen.queryByText(FREE_AGENT_RB.name)).toBeNull();
+    });
+
+    it('widens to every open slot on ALL, without dropping the underlying list', async () => {
+        const user = userEvent.setup();
+        renderLineup({
+            rosterSlots: TE_AND_RB_SLOTS,
+            rankingPlayersIdsList: TE_AND_RB_ENTRIES,
+            playerInfo: RB_PLAYER_INFO,
+        });
+
+        await user.click(screen.getByRole('button', { name: 'TE, empty' }));
+        expect(screen.queryByText(FREE_AGENT_RB.name)).toBeNull();
+
+        await user.click(screen.getByRole('button', { name: 'ALL' }));
+
+        expect(screen.getByText(FREE_AGENT_TE.name)).toBeInTheDocument();
+        expect(screen.getByText(FREE_AGENT_RB.name)).toBeInTheDocument();
+    });
+
+    it('fills the exact tapped slot on Add, not the first eligible open one', async () => {
+        const user = userEvent.setup();
+        const { fillSlot, addToRoster } = renderLineup({
+            // RB (index 0) is also open and eligible for nothing here since
+            // the rank list holds only a TE - so this also proves the fill
+            // isn't accidentally landing on RB by search order.
+            rosterSlots: [
+                { label: 'RB', playerId: null },
+                { label: 'TE', playerId: null },
+            ],
+            rankingPlayersIdsList: [rankEntry(FREE_AGENT_TE.id, 1)],
+        });
+
+        await user.click(screen.getByRole('button', { name: 'TE, empty' }));
+        await user.click(screen.getByRole('button', { name: 'Add' }));
+
+        expect(fillSlot).toHaveBeenCalledWith(1, fixturePlayerInfo[FREE_AGENT_TE.id]);
+        expect(addToRoster).not.toHaveBeenCalled();
+    });
+
+    it("replaces a filled slot's occupant on Add, via fillSlot rather than addToRoster", async () => {
+        const user = userEvent.setup();
+        const { fillSlot, addToRoster } = renderLineup({
+            rosterSlots: [{ label: 'FLX', playerId: STARTER.player_id }],
+            rankingPlayersIdsList: [rankEntry(FREE_AGENT_TE.id, 1)],
+        });
+
+        await user.click(screen.getByRole('button', { name: 'FLX, Germie Bernard, WR' }));
+        // The occupant renders first, with Remove rather than Add - scoped to
+        // the dialog, since the same name still shows in the SlotRow behind
+        // it, which stays mounted underneath the sheet.
+        const dialog = screen.getByRole('dialog', { name: 'Fill FLX' });
+        expect(within(dialog).getByText(STARTER.full_name)).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+
+        await user.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+        expect(fillSlot).toHaveBeenCalledWith(0, fixturePlayerInfo[FREE_AGENT_TE.id]);
+        expect(addToRoster).not.toHaveBeenCalled();
+    });
+});
+
+describe('LineupPanel rank-list switcher', () => {
+    const SAVED_LIST_ID = 'my_rankings';
+    // A different QB from the fixture than FREE_AGENT_QB, so the saved
+    // list's row is distinguishable on screen from the session list's.
+    const SAVED_LIST_QB = { id: '167', name: 'Tom Brady' };
+
+    it('re-filters the rows in place on a list switch, without closing the sheet or losing the slot scope', async () => {
+        const user = userEvent.setup();
+        renderLineup({
+            rosterSlots: [{ label: 'QB', playerId: null }],
+            rankingPlayersIdsList: [rankEntry(FREE_AGENT_QB.id, 1)],
+            signedIn: true,
+            savedRankLists: {
+                ...SAVED_RANK_LISTS,
+                [SAVED_LIST_ID]: {
+                    pretty_name: 'My Rankings',
+                    route_name: SAVED_LIST_ID,
+                    rank_list: [rankEntry(SAVED_LIST_QB.id, 1)],
+                },
+            },
+        });
+
+        await user.click(screen.getByRole('button', { name: 'QB, empty' }));
+        expect(screen.getByText(FREE_AGENT_QB.name)).toBeInTheDocument();
+        expect(screen.queryByText(SAVED_LIST_QB.name)).toBeNull();
+
+        await user.click(screen.getByRole('button', { name: /^Rank list/ }));
+        await user.click(screen.getByRole('button', { name: /^My Rankings/ }));
+
+        // Still open, still scoped to QB, and now showing the saved list's
+        // player instead of the session one - a re-filter, not a reset.
+        expect(screen.getByRole('dialog', { name: 'Fill QB' })).toBeInTheDocument();
+        expect(screen.queryByText(FREE_AGENT_QB.name)).toBeNull();
+        expect(screen.getByText(SAVED_LIST_QB.name)).toBeInTheDocument();
+    });
+
+    it('shows only the session list and the paste action when signed out', async () => {
+        const user = userEvent.setup();
+        renderLineup({
+            rosterSlots: [{ label: 'QB', playerId: null }],
+            rankingPlayersIdsList: [rankEntry(FREE_AGENT_QB.id, 1)],
+            signedIn: false,
+            savedRankLists: {
+                ...SAVED_RANK_LISTS,
+                [SAVED_LIST_ID]: {
+                    pretty_name: 'My Rankings',
+                    route_name: SAVED_LIST_ID,
+                    rank_list: [rankEntry(SAVED_LIST_QB.id, 1)],
+                },
+            },
+        });
+
+        await user.click(screen.getByRole('button', { name: 'QB, empty' }));
+        await user.click(screen.getByRole('button', { name: /^Rank list/ }));
+
+        expect(screen.queryByRole('button', { name: /^My Rankings/ })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Paste a new list' })).toBeInTheDocument();
     });
 });

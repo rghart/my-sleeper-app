@@ -63,6 +63,12 @@ function renderPanel(overrides = {}) {
         updatePlayerId: vi.fn(),
         notFoundPlayers: [],
         myDisplayName: MY_DISPLAY_NAME,
+        // savedRankLists/updateSavedRankLists are lifted to App (see
+        // App.jsx's loadSavedRankLists/updateSavedRankLists) - RanksPanel now
+        // just receives them. signedIn stays false in every test here, so
+        // the map never grows past the placeholder entry.
+        savedRankLists: { default: { pretty_name: '-- Select saved ranks list', route_name: 'default' } },
+        updateSavedRankLists: vi.fn(),
         ...overrides,
     };
     const { container } = render(<RanksPanel {...props} />);

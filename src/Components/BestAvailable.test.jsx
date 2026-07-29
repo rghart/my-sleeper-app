@@ -74,7 +74,24 @@ describe('BestAvailable', () => {
         expect(screen.getByText(FREE_AGENT.name)).toBeInTheDocument();
         expect(screen.getByText(TAKEN_BY_OTHERS.name)).toBeInTheDocument();
         expect(screen.getByText(TAKEN_BY_ME.name)).toBeInTheDocument();
-        expect(screen.getAllByText('Taken')).toHaveLength(2);
+        // Only the one on somebody else's roster. "Taken" means taken *from
+        // you* - see the next test.
+        expect(screen.getAllByText('Taken')).toHaveLength(1);
+    });
+
+    // The lineup sheet exists to fill your starting slots, and the only
+    // players you can start are the ones you already roster - so greying those
+    // out alongside every other manager's would make the sheet useless for its
+    // main job. Same rule PlayerInfoItem has always used.
+    it("keeps the action on your own rostered player and withholds it from someone else's", () => {
+        renderBestAvailable({ onSelect: vi.fn() });
+
+        const mine = screen.getByText(TAKEN_BY_ME.name).closest('li');
+        const theirs = screen.getByText(TAKEN_BY_OTHERS.name).closest('li');
+
+        expect(within(mine).getByRole('button', { name: 'Add' })).toBeInTheDocument();
+        expect(within(theirs).queryByRole('button', { name: 'Add' })).toBeNull();
+        expect(within(theirs).getByText('Taken')).toBeInTheDocument();
     });
 
     it('renders an empty state when there is no rank list at all', () => {

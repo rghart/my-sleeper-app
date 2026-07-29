@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { addPlayerToRoster, getEligiblePositions, removePlayerFromLineup, toRosterSlots } from './roster.js';
+import {
+    addPlayerToRoster,
+    eligiblePositionsForSlot,
+    getEligiblePositions,
+    removePlayerFromLineup,
+    toRosterSlots,
+} from './roster.js';
 
 const makePlayer = (overrides = {}) => ({
     player_id: '1001',
@@ -53,6 +59,55 @@ describe('getEligiblePositions', () => {
         const second = getEligiblePositions(updatedPlayer);
         expect(second).toEqual(first);
         expect(second).toEqual(['RB', 'FLX', 'SFLX']);
+    });
+});
+
+describe('eligiblePositionsForSlot', () => {
+    it('admits RB/WR/TE for FLX, in that order', () => {
+        expect(eligiblePositionsForSlot('FLX')).toEqual(['RB', 'WR', 'TE']);
+    });
+
+    it('admits QB/RB/WR/TE for SFLX, in that order', () => {
+        expect(eligiblePositionsForSlot('SFLX')).toEqual(['QB', 'RB', 'WR', 'TE']);
+    });
+
+    it('admits only itself for a direct slot label - a TE slot admits only TE', () => {
+        expect(eligiblePositionsForSlot('TE')).toEqual(['TE']);
+        expect(eligiblePositionsForSlot('QB')).toEqual(['QB']);
+        expect(eligiblePositionsForSlot('RB')).toEqual(['RB']);
+        expect(eligiblePositionsForSlot('WR')).toEqual(['WR']);
+    });
+
+    it('admits only itself for a slot with no flex mapping at all', () => {
+        expect(eligiblePositionsForSlot('K')).toEqual(['K']);
+        expect(eligiblePositionsForSlot('DEF')).toEqual(['DEF']);
+    });
+
+    // getEligiblePositions (player -> slots) and eligiblePositionsForSlot
+    // (slot -> positions) are two views of the same underlying table. If they
+    // are ever hand-maintained separately, this is the test that notices they
+    // drifted - checked in both directions rather than just one, since a
+    // one-way check would pass even if a slot admitted a position that never
+    // reports being eligible for it.
+    describe('agreement with getEligiblePositions, in both directions', () => {
+        const player = (position) => ({ player_id: '1', position, fantasy_positions: [position] });
+
+        it('every position getEligiblePositions adds a flex slot for is also returned by that slot', () => {
+            for (const position of ['QB', 'RB', 'WR', 'TE']) {
+                const eligibleSlots = getEligiblePositions(player(position));
+                for (const slot of eligibleSlots.filter((label) => label === 'FLX' || label === 'SFLX')) {
+                    expect(eligiblePositionsForSlot(slot)).toContain(position);
+                }
+            }
+        });
+
+        it('every position a flex slot admits also has that slot in its own getEligiblePositions', () => {
+            for (const slot of ['FLX', 'SFLX']) {
+                for (const position of eligiblePositionsForSlot(slot)) {
+                    expect(getEligiblePositions(player(position))).toContain(slot);
+                }
+            }
+        });
     });
 });
 
@@ -122,6 +177,39 @@ describe('addPlayerToRoster', () => {
 
         expect(player).toEqual(clonedPlayer);
         expect(rosterSlots).toEqual(clonedSlots);
+    });
+
+    describe('with a slotIndex', () => {
+        it('fills that exact slot rather than searching for an eligible one', () => {
+            // TE at index 0 would not even be eligible for this RB under the
+            // normal search - the point of slotIndex is to skip that search
+            // entirely, because the user already chose the slot by tapping it.
+            const result = addPlayerToRoster({
+                player: makePlayer({ position: 'RB', fantasy_positions: ['RB'] }),
+                rosterSlots: slots('TE', 'RB'),
+                slotIndex: 0,
+            });
+
+            expect(result.rosterSlots[0]).toEqual({ label: 'TE', playerId: '1001' });
+            expect(result.rosterSlots[1]).toEqual({ label: 'RB', playerId: null });
+        });
+
+        it('replaces an already-filled slot rather than leaving it or looking elsewhere', () => {
+            const taken = slots('QB', 'RB');
+            taken[0] = { label: 'QB', playerId: 'old-occupant' };
+
+            const result = addPlayerToRoster({ player: makePlayer(), rosterSlots: taken, slotIndex: 0 });
+
+            expect(result.rosterSlots[0]).toEqual({ label: 'QB', playerId: '1001' });
+            expect(result.rosterSlots[1].playerId).toBeNull();
+        });
+
+        it('leaves the slots unchanged for an out-of-range index', () => {
+            const rosterSlots = slots('QB', 'RB');
+            const result = addPlayerToRoster({ player: makePlayer(), rosterSlots, slotIndex: 5 });
+
+            expect(result.rosterSlots).toEqual(rosterSlots);
+        });
     });
 
     it('never touches the player database, because it is not given one', () => {
