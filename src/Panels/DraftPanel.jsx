@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import Button from '../Components/Button';
 import SegmentedControl from '../Components/SegmentedControl';
 import PickFeed from './PickFeed';
 import DraftGrid from './DraftGrid';
 import Sheet from '../Components/Sheet';
 import BestAvailable, { countAvailable } from '../Components/BestAvailable';
 import BestAvailableHandle from '../Components/BestAvailableHandle';
-import PickClock from '../Components/PickClock';
+import ClockCard from '../Components/ClockCard';
+import DraftSourceSheet, { readLastMock, writeLastMock } from './DraftSourceSheet';
+import { managerLabel, pickNumberLabel } from './pickLabels.js';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
+import { nextUnpickedPick, picksUntilMine } from '../lib/onTheClock.js';
 import { useSeenPicks } from '../useSeenPicks.js';
 import { usePublishSyncStatus } from '../SyncStatus.jsx';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
@@ -33,10 +35,19 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
     // shouldn't change what people already sync a draft against.
     const [boardView, setBoardView] = useState('feed');
     const [isBestAvailableOpen, setIsBestAvailableOpen] = useState(false);
+    const [isSourceOpen, setIsSourceOpen] = useState(false);
+    // Read once at mount rather than on every render: this is a per-league
+    // memory of the last mock, and only this component writes it.
+    const [lastMockId, setLastMockId] = useState(() => readLastMock(currentDraft.draft_id));
     const bestAvailableHandleRef = useRef(null);
+    const sourceButtonRef = useRef(null);
 
+    // Keyed on the draft actually being read, not the league's own: switching
+    // to a mock and back must not flood the feed with "NEW" flags for picks
+    // that were already seen on the real draft (useSeenPicks keeps one
+    // snapshot per id, so this is the whole of that behaviour).
     const { newPickKeys, markSeen } = useSeenPicks({
-        draftId: currentDraft.draft_id,
+        draftId: currentDraftId,
         builtDraft: currentDraft.built_draft,
     });
 
@@ -44,6 +55,23 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
         setCurrentDraftId(val);
         setDraftPath(DRAFT + val + '/');
     };
+
+    const selectDraftSource = (draftId) => {
+        updateDraftID(draftId);
+        if (draftId !== currentDraft.draft_id) {
+            writeLastMock(currentDraft.draft_id, draftId);
+            setLastMockId(draftId);
+        }
+        setIsSourceOpen(false);
+    };
+
+    const onTheClock = nextUnpickedPick(currentDraft.built_draft);
+    const onTheClockName = onTheClock
+        ? managerLabel({ pick: onTheClock.pick, rosterData, myDisplayName, markYours: false })
+        : 'No pick on the clock';
+    const pickLabel = onTheClock
+        ? `Pick ${pickNumberLabel(onTheClock.round, onTheClock.pick)} · Round ${onTheClock.round.round}`
+        : `${currentDraft.season ?? ''} ${currentDraft.player_pool ?? ''}`.trim();
 
     // `changedKey` is only ever passed when the round object came from a
     // manual pick (see PickFeed.selectPlayer) - the live sync path below
@@ -134,41 +162,44 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
 
     return (
         <div>
-            <div className="overflow-hidden pt-[5px] pr-[15px] pb-[15px] pl-[15px] max-md:w-[95%] max-md:p-[5px]">
-                <p>
-                    <b>Draft ID</b>
-                </p>
-                <input
-                    type="text"
-                    className="border-line text-ink caret-ink-muted m-0 rounded-[10px] border-2 bg-transparent"
-                    value={currentDraftId}
-                    onChange={(e) => updateDraftID(e.target.value)}
+            <ClockCard
+                draft={currentDraft}
+                onTheClockName={onTheClockName}
+                pickLabel={pickLabel}
+                picksUntilMine={picksUntilMine({
+                    builtDraft: currentDraft.built_draft,
+                    rosterData,
+                    myDisplayName,
+                })}
+                sourceLabel={`…${String(currentDraftId).slice(-4)}`}
+                sourceRef={sourceButtonRef}
+                isSourceOpen={isSourceOpen}
+                onOpenSource={() => setIsSourceOpen((open) => !open)}
+                isSyncing={isSyncing}
+                onToggleSync={() => setIsSyncing(!isSyncing)}
+            />
+            {isSourceOpen && (
+                <DraftSourceSheet
+                    leagueDraft={currentDraft}
+                    currentDraftId={currentDraftId}
+                    lastMockId={lastMockId}
+                    onSelect={selectDraftSource}
+                    onClose={() => setIsSourceOpen(false)}
+                    triggerRef={sourceButtonRef}
                 />
-                <div className="mt-2">
-                    <Button text="Update" btnStyle="primary" onClick={getLiveDraft} />
-                </div>
-                <p>
-                    <b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b>
-                </p>
-                <p>Status: {currentDraft.status}</p>
-                <PickClock draft={currentDraft} />
-                <div className="mt-2">
-                    <Button
-                        text={!isSyncing ? 'Sync draft' : 'Stop sync'}
-                        btnStyle={isSyncing ? 'primary-large active' : 'primary-large'}
-                        onClick={() => setIsSyncing(!isSyncing)}
-                    />
-                </div>
-            </div>
+            )}
             <div className="max-h-[600px] overflow-x-visible overflow-y-scroll">
                 {currentDraft.built_draft && (
                     <>
-                        <SegmentedControl
-                            label="Draft board view"
-                            options={VIEW_OPTIONS}
-                            value={boardView}
-                            onChange={setBoardView}
-                        />
+                        <div className="flex items-center justify-between gap-3 px-3.5 pb-2">
+                            <span className="text-ink text-[15px] font-semibold">Picks</span>
+                            <SegmentedControl
+                                label="Draft board view"
+                                options={VIEW_OPTIONS}
+                                value={boardView}
+                                onChange={setBoardView}
+                            />
+                        </div>
                         {boardView === 'feed' ? (
                             <PickFeed
                                 builtDraft={currentDraft.built_draft}

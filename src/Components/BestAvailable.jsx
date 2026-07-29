@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ListRow from './ListRow';
 import PositionTag from './PositionTag';
+import OwnershipFilters, { DEFAULT_OWNERSHIP, matchesOwnership } from './OwnershipFilters';
 import { playerAccessibleName } from './playerInfoLabels.js';
 import { eligiblePositionsForSlot } from '../lib/roster.js';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
@@ -16,8 +17,13 @@ const playerId = (entry) => entry.match_results[0][0];
 // slot its position implies, then checking whether that list intersects
 // `slots`) happened to agree in every case this app exercises, but expressed
 // the relationship backwards.
+//
+// `fantasy_positions` is defaulted rather than dereferenced: a player database
+// entry without one is rare but real, and reading straight through it threw
+// out of the render and took the whole sheet down rather than dropping the one
+// player nothing can be said about.
 const eligibleForAny = (player, slots) =>
-    slots.some((slot) => eligiblePositionsForSlot(slot).some((pos) => player.fantasy_positions.includes(pos)));
+    slots.some((slot) => eligiblePositionsForSlot(slot).some((pos) => (player.fantasy_positions || []).includes(pos)));
 
 /**
  * `entries` narrowed down to the ones with a resolvable player and (when
@@ -25,12 +31,23 @@ const eligibleForAny = (player, slots) =>
  * is exported so a caller's collapsed handle (BestAvailableHandle) can build
  * its own count off the same rule this component renders by - see
  * `countAvailable` below for the "n left" figure specifically.
+ *
+ * `ownership` is optional and defaults to no ownership filtering at all, which
+ * is what keeps `countAvailable` below (and the draft's unfiltered list)
+ * reading exactly as they did before the FILTERS chip existed. Callers that
+ * show the chip pass their scope so the count in a subtitle and the rows under
+ * it can't disagree.
  */
-export function filterBestAvailable({ entries, playerInfo, eligibleSlots }) {
+export function filterBestAvailable({ entries, playerInfo, eligibleSlots, ownership, rosterInfo, myDisplayName }) {
     return entries
         .map((entry) => ({ entry, player: playerInfo[playerId(entry)] }))
         .filter(({ player }) => Boolean(player))
-        .filter(({ player }) => eligibleSlots === null || eligibleForAny(player, eligibleSlots));
+        .filter(({ player }) => eligibleSlots === null || eligibleForAny(player, eligibleSlots))
+        .filter(
+            ({ entry, player }) =>
+                !ownership ||
+                matchesOwnership({ ownership, player, playerId: playerId(entry), rosterInfo, myDisplayName }),
+        );
 }
 
 /**
@@ -68,9 +85,20 @@ const BestAvailable = ({
     myDisplayName,
     eligibleSlots,
     initialActiveChip = null,
+    ownership: controlledOwnership,
+    onOwnershipChange,
     onSelect,
 }) => {
     const [activeChip, setActiveChip] = useState(initialActiveChip);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    // Uncontrolled by default so the draft sheet and the desktop rail keep
+    // working untouched; LineupPanel controls it instead, because its sheet is
+    // mounted only while open and a scope held down here would reset every
+    // time the sheet was reopened - which is precisely what "Reset to default"
+    // exists to do deliberately.
+    const [localOwnership, setLocalOwnership] = useState(DEFAULT_OWNERSHIP);
+    const ownership = controlledOwnership ?? localOwnership;
+    const setOwnership = onOwnershipChange ?? setLocalOwnership;
 
     // No rank list at all is the normal state for a signed-out user (or one
     // who hasn't pasted anything yet), not an edge case of an otherwise-full
@@ -86,30 +114,68 @@ const BestAvailable = ({
 
     const chipLabels = eligibleSlots ? [...new Set(eligibleSlots)] : [];
     const narrowedSlots = eligibleSlots && activeChip ? [activeChip] : eligibleSlots;
-    const rows = filterBestAvailable({ entries, playerInfo, eligibleSlots: narrowedSlots });
+    // The ownership scope only applies where the chip that controls it is
+    // rendered - the lineup's slot-scoped list. The draft's read-only sheet
+    // passes `eligibleSlots: null` and shows the whole ranked board, taken
+    // players included and marked, which is what it is for.
+    const rows = filterBestAvailable({
+        entries,
+        playerInfo,
+        eligibleSlots: narrowedSlots,
+        ownership: eligibleSlots ? ownership : undefined,
+        rosterInfo,
+        myDisplayName,
+    });
 
     return (
         <div className="flex flex-col gap-3">
             {eligibleSlots && (
-                <div className="flex flex-wrap gap-2 px-2 pt-2">
-                    <button
-                        type="button"
-                        className={chipClasses(activeChip === null)}
-                        onClick={() => setActiveChip(null)}
-                    >
-                        ALL
-                    </button>
-                    {chipLabels.map((label) => (
+                // Only the slot chips scroll. FILTERS is pinned to the end
+                // because it is how you get rows back when the list looks
+                // empty - it must not be the thing that has scrolled out of
+                // sight when that happens. A lineup with six distinct slot
+                // labels overflows any phone width, so wrapping the whole row
+                // instead just left the divider stranded mid-air.
+                <div className="flex items-stretch gap-2 px-2 pt-2">
+                    <div className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto">
                         <button
-                            key={label}
                             type="button"
-                            className={chipClasses(activeChip === label)}
-                            onClick={() => setActiveChip(label)}
+                            className={`shrink-0 ${chipClasses(activeChip === null)}`}
+                            onClick={() => setActiveChip(null)}
                         >
-                            {label}
+                            ALL
                         </button>
-                    ))}
+                        {chipLabels.map((label) => (
+                            <button
+                                key={label}
+                                type="button"
+                                className={`shrink-0 ${chipClasses(activeChip === label)}`}
+                                onClick={() => setActiveChip(label)}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    {/* Divided off from the slot chips because it filters a
+                        different axis: those narrow *where* a player could go,
+                        this narrows *whether you can have them*. */}
+                    <span className="bg-line my-0.5 w-px shrink-0" />
+                    <OwnershipFilters
+                        ownership={ownership}
+                        onChange={setOwnership}
+                        isOpen={filtersOpen}
+                        onToggle={() => setFiltersOpen((open) => !open)}
+                    />
                 </div>
+            )}
+            {/* Distinct from the "no rank list yet" message above: there is a
+                list, it just has nothing left in it once the chips and the
+                ownership scope are applied. Saying so beats an empty box under
+                a row of controls the user just touched. */}
+            {rows.length === 0 && (
+                <p className="text-ink-muted m-0 flex min-h-11 items-center px-4 text-sm">
+                    Nothing in this list fits - try another slot chip, or widen FILTERS.
+                </p>
             )}
             <ul className="flex flex-col gap-0.5 px-2 py-2.5">
                 {rows.map(({ entry, player }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRef } from 'react';
 import Sheet from './Sheet';
@@ -127,5 +127,71 @@ describe('Sheet', () => {
         renderSheet({ centerOnDesktop: true });
 
         expect(screen.getByRole('dialog', { name: 'Best available' })).toBeInTheDocument();
+    });
+});
+
+// Dragging the top of a sheet is the gesture every bottom sheet on a phone
+// implies and this one did not have: pulling down dismissed nothing, pushing
+// up expanded nothing, so the grab handle was decoration.
+//
+// jsdom has no PointerEvent constructor and no pointer capture, so these drive
+// the React handlers directly with fireEvent.pointerDown/Move/Up and a plain
+// clientY. That tests the state machine, not the browser's gesture routing -
+// which is the half that can regress silently.
+describe('Sheet drag gesture', () => {
+    const header = () => screen.getByText('Best available').closest('div[class*="border-b"]');
+    const panel = () => screen.getByRole('dialog');
+
+    const drag = (distance) => {
+        const grip = header();
+        fireEvent.pointerDown(grip, { clientY: 400, pointerId: 1 });
+        fireEvent.pointerMove(grip, { clientY: 400 + distance, pointerId: 1 });
+        fireEvent.pointerUp(grip, { clientY: 400 + distance, pointerId: 1 });
+    };
+
+    it('closes on a drag down past the dismiss threshold', () => {
+        const { onClose } = renderSheet();
+
+        drag(160);
+
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays open on a short drag that never reaches the threshold', () => {
+        const { onClose } = renderSheet();
+
+        drag(20);
+
+        expect(onClose).not.toHaveBeenCalled();
+        expect(panel()).toBeInTheDocument();
+    });
+
+    it('expands on a drag up, and the first drag down then only collapses it', () => {
+        const { onClose } = renderSheet();
+
+        const collapsedMaxHeight = panel().style.maxHeight;
+        drag(-80);
+        expect(panel().style.maxHeight).not.toBe(collapsedMaxHeight);
+
+        // A single flick must not take an expanded sheet from full height
+        // straight to gone.
+        drag(160);
+        expect(onClose).not.toHaveBeenCalled();
+        expect(panel().style.maxHeight).toBe(collapsedMaxHeight);
+
+        drag(160);
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a drag that starts on a header control alone, so the control still works', () => {
+        const { onClose } = renderSheet();
+
+        const close = screen.getByRole('button', { name: 'Close' });
+        fireEvent.pointerDown(close, { clientY: 400, pointerId: 1 });
+        fireEvent.pointerMove(close, { clientY: 560, pointerId: 1 });
+        fireEvent.pointerUp(close, { clientY: 560, pointerId: 1 });
+
+        // No drag ran, so nothing was dismissed by the gesture itself.
+        expect(onClose).not.toHaveBeenCalled();
     });
 });

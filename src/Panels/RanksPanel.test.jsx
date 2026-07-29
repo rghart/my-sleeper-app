@@ -82,11 +82,12 @@ const openPasteSheet = async (user) => {
 };
 
 // The four flag toggles (Taken/My players/Only rookies/All players) and the
-// ADP type control both moved into the FILTERS popover (step 6e), which
-// renders as two trees at once - an anchored desktop popover and a phone
-// Sheet, both always in the DOM together the same way AppShell's section nav
-// and tab bar are (see RanksPanel.jsx's comment on FiltersDesktopPopover) -
-// so every query against something inside it comes back twice. `openFilters`
+// ADP type control both live in the FILTERS popover (step 6e). That used to
+// render as two trees at once - an anchored desktop popover plus a phone Sheet
+// - which is why the queries below take the first match; it is one popover at
+// every width now (see Popover.jsx and the regression test at the bottom of
+// this file), and the `getAllBy...[0]` form is kept only so this stays robust
+// to that shape rather than asserting on how many copies exist. `openFilters`
 // is idempotent (checks before clicking) so tests can call it before more
 // than one toggle in the same case without accidentally closing it again.
 const openFilters = async (user) => {
@@ -269,5 +270,59 @@ describe('RanksPanel ADP type picker', () => {
         expect(screen.getAllByRole('button', { name: 'Rookie' })[0]).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getAllByRole('button', { name: 'Startup' })[0]).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByRole('button', { name: 'FILTERS · 1' })).toBeTruthy();
+    });
+});
+
+// The reported bug: with the FILTERS popover open, tapping any control inside
+// it closed the whole thing and the toggle never applied. Cause was the
+// desktop-only popover staying mounted (behind `hidden md:block`) underneath
+// the phone Sheet, where its document-level outside-click listener counted
+// every tap inside the Sheet as "outside" and closed on mousedown - before the
+// click that would have toggled the filter could land.
+//
+// jsdom has no stylesheet, so `hidden md:block` never hid anything here and
+// both copies were always "visible" to a test - which is exactly why the whole
+// suite stayed green while the phone was broken. What this asserts instead is
+// the behaviour: the control still responds, and the popover is still there
+// afterwards.
+describe('RanksPanel FILTERS popover stays open while it is used', () => {
+    it('applies a toggle instead of dismissing itself, twice in a row', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+
+        await user.click(screen.getByRole('button', { name: /^FILTERS/ }));
+        expect(screen.getAllByRole('checkbox', { name: 'Taken' })[0]).toBeInTheDocument();
+
+        await user.click(screen.getAllByRole('checkbox', { name: 'Taken' })[0]);
+
+        // Still open, and the toggle took.
+        expect(screen.getAllByRole('checkbox', { name: 'Taken' })[0].checked).toBe(true);
+
+        await user.click(screen.getAllByRole('checkbox', { name: 'Only rookies' })[0]);
+
+        expect(screen.getAllByRole('checkbox', { name: 'Only rookies' })[0].checked).toBe(true);
+        expect(screen.getAllByRole('checkbox', { name: 'Taken' })[0].checked).toBe(true);
+        expect(screen.getByRole('button', { name: 'FILTERS · 2' })).toBeInTheDocument();
+    });
+
+    it('closes on the chip, on Escape, and on a click outside it', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+
+        const chip = () => screen.getByRole('button', { name: /^FILTERS/ });
+        const isOpen = () => screen.queryAllByRole('checkbox', { name: 'Taken' }).length > 0;
+
+        await user.click(chip());
+        expect(isOpen()).toBe(true);
+        await user.click(chip());
+        expect(isOpen()).toBe(false);
+
+        await user.click(chip());
+        await user.keyboard('{Escape}');
+        expect(isOpen()).toBe(false);
+
+        await user.click(chip());
+        await user.click(screen.getByRole('heading', { name: 'Ranks' }));
+        expect(isOpen()).toBe(false);
     });
 });

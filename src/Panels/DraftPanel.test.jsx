@@ -103,6 +103,16 @@ const settle = async (ms) => {
 };
 
 const button = (name) => screen.getByRole('button', { name });
+
+// One sync tick and no more. The panel's old one-shot "Update" button went
+// with the redesigned clock card - the draft id is edited in the Draft source
+// sheet now and the card carries only the sync toggle - so a single tick is
+// switching sync on and stopping before the next one is due.
+const syncOnce = async () => {
+    await click(button('Sync draft'));
+    await settle(0);
+    await click(button('Stop sync'));
+};
 const urlsFetched = () => global.fetch.mock.calls.map((call) => call[0]);
 
 describe('DraftPanel', () => {
@@ -173,8 +183,7 @@ describe('DraftPanel', () => {
     it('hands updateDraftBoard a reducer rather than a finished board when syncing', async () => {
         const { updateDraftBoard } = renderPanel();
 
-        await click(button('Update'));
-        await settle(0);
+        await syncOnce();
 
         expect(updateDraftBoard).toHaveBeenCalledTimes(1);
         const reducer = updateDraftBoard.mock.calls[0][0];
@@ -246,8 +255,7 @@ describe('DraftPanel', () => {
         global.fetch = failing(livePicksFail);
         const { updateDraftBoard } = renderPanel();
 
-        await click(button('Update'));
-        await settle(0);
+        await syncOnce();
 
         expect(updateDraftBoard).toHaveBeenCalledTimes(1);
         const next = updateDraftBoard.mock.calls[0][0](pristineBoard());
@@ -266,8 +274,7 @@ describe('DraftPanel', () => {
         global.fetch = failing((url) => url.includes('traded_picks'));
         const { updateDraftBoard } = renderPanel();
 
-        await click(button('Update'));
-        await settle(0);
+        await syncOnce();
 
         expect(updateDraftBoard).toHaveBeenCalledTimes(1);
         const next = updateDraftBoard.mock.calls[0][0](pristineBoard());
@@ -314,18 +321,19 @@ describe('DraftPanel', () => {
         );
     });
 
-    it('syncs against the draft id typed into the input rather than the original one', async () => {
+    it('syncs against the draft id pasted into the source sheet rather than the original one', async () => {
         renderPanel();
 
+        await click(button(`Draft source: …${DRAFT_ID.slice(-4)}`));
         await act(async () => {
-            fireEvent.change(screen.getByDisplayValue(DRAFT_ID), { target: { value: 'other456' } });
+            fireEvent.change(screen.getByLabelText('Mock draft ID'), { target: { value: '123456' } });
         });
+        await click(button('Use'));
 
-        await click(button('Update'));
-        await settle(0);
+        await syncOnce();
 
         expect(urlsFetched().length).toBeGreaterThan(0);
-        expect(urlsFetched().every((url) => url.includes('other456'))).toBe(true);
+        expect(urlsFetched().every((url) => url.includes('123456'))).toBe(true);
         expect(urlsFetched().some((url) => url.includes(DRAFT_ID))).toBe(false);
     });
 

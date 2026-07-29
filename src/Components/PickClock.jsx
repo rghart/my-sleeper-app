@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { pickClockMode, pickDeadline, formatTimeLeft } from '../lib/draftClock.js';
+import { pickClockMode, pickDeadline, formatTimeLeft, URGENT_MS } from '../lib/draftClock.js';
 
 // Re-render cadence per mode: a `live` clock ticking seconds needs a 1s
 // timer, `slow` only needs to move once a minute, and `untimed` / `not-started`
@@ -10,6 +10,13 @@ const TICK_MS = {
     slow: 60000,
 };
 
+// The numeral (or the words that replace it) on the clock card. No box of its
+// own any more: the card is the surface, and this only owns what is counted -
+// see ClockCard.jsx for the eyebrow, the manager and the progress bar.
+//
+// The three non-counting modes deliberately render text where the numeral
+// would be rather than a `0:00` computed off arithmetic that has no meaning
+// for them.
 const PickClock = ({ draft }) => {
     const mode = pickClockMode(draft);
     const [, forceTick] = useState(0);
@@ -23,51 +30,31 @@ const PickClock = ({ draft }) => {
         return () => clearInterval(timer);
     }, [mode]);
 
-    const WRAPPER = 'border border-line rounded-[5px] bg-raised px-3 py-2';
+    const STATIC_TEXT = {
+        'not-started': "Draft hasn't started",
+        complete: 'Draft complete',
+        untimed: 'Untimed draft',
+    };
 
-    if (mode === 'not-started') {
-        return (
-            <div className={WRAPPER}>
-                <p className="text-ink-muted text-sm">Draft hasn&apos;t started</p>
-            </div>
-        );
+    if (STATIC_TEXT[mode]) {
+        return <p className="text-ink-muted m-0 shrink-0 text-right text-[15px] font-medium">{STATIC_TEXT[mode]}</p>;
     }
 
-    if (mode === 'complete') {
-        // A finished draft still carries a real `last_picked` and a real
-        // `pick_timer`, so the arithmetic produces a deadline that expired
-        // when the draft did. Saying so beats counting down to it.
-        return (
-            <div className={WRAPPER}>
-                <p className="text-ink-muted text-sm">Draft complete</p>
-            </div>
-        );
-    }
-
-    if (mode === 'untimed') {
-        // Never render a countdown here - there is no deadline to count down
-        // to, and rendering the raw arithmetic anyway is exactly how a bare
-        // `0:00` or `NaN` would leak onto an untimed draft's screen.
-        return (
-            <div className={WRAPPER}>
-                <p className="text-ink-muted text-sm">Untimed draft</p>
-            </div>
-        );
-    }
-
-    const deadline = pickDeadline(draft);
-    const msLeft = deadline - Date.now();
-    // Deliberately not "until autopick": whether an expired pick is
-    // auto-made depends on league settings nobody here has verified.
-    const label = 'Time left';
+    const msLeft = pickDeadline(draft) - Date.now();
+    const urgent = msLeft <= URGENT_MS;
+    // 34px is the design's figure for a `M:SS` countdown. "Time expired" and
+    // the coarse `1d 4h` of a slow draft are words, not a numeral, and at 34px
+    // they collide with the manager's name beside them.
+    const large = mode === 'live' && msLeft > 0;
 
     return (
-        <div className={WRAPPER}>
-            <p className="text-ink text-sm">
-                <span className="text-ink-muted">{label}: </span>
-                <span className="font-semibold tabular-nums">{formatTimeLeft(msLeft, mode)}</span>
-            </p>
-        </div>
+        <p
+            className={`m-0 shrink-0 text-right font-mono font-medium tracking-[-0.02em] tabular-nums ${
+                large ? 'text-[34px]' : 'text-[20px]'
+            } ${urgent ? 'text-danger' : 'text-ink'}`}
+        >
+            {formatTimeLeft(msLeft, mode)}
+        </p>
     );
 };
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Popover from '../Components/Popover';
 import SearchFilterButton from '../Components/SearchFilterButton';
 import OnFocusButton from '../Components/OnFocusButton';
 import PlayerInfoItem from '../Components/PlayerInfoItem';
@@ -46,12 +47,12 @@ const positionChipClass = (active, position) =>
         active ? positionClass(position) : 'border-line text-ink-dim border'
     }`;
 
-// The FILTERS chip's popover/sheet body - toggles plus the ADP type control.
-// Rendered twice by RanksPanel (an anchored desktop popover and a phone
-// Sheet - see the "filters" section below for why), so it's factored out
-// once here rather than kept in sync by hand in two places.
+// The FILTERS chip's popover body - toggles plus the ADP type control. Kept
+// out of the render below purely for legibility now; it used to be factored
+// out because RanksPanel rendered it twice, which is the thing Popover.jsx
+// exists to have stopped.
 const FiltersBody = ({ filters, updateFilters, adpType, setADPType }) => (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-2.5">
         <div className="flex flex-row flex-wrap gap-1.5">
             {FLAG_TOGGLES.map((filter) => (
                 <SearchFilterButton
@@ -65,62 +66,15 @@ const FiltersBody = ({ filters, updateFilters, adpType, setADPType }) => (
         </div>
         <div className="flex flex-col gap-2">
             <p className="text-ink-dim m-0 font-mono text-[11px] tracking-[.08em]">ADP TYPE</p>
-            <SegmentedControl label="ADP type" options={ADP_TYPE_OPTIONS} value={adpType} onChange={setADPType} />
+            {/* Four segments do not fit the popover's width on a phone, and a
+                segmented control that wraps stops reading as one control -
+                the pill shape ends up around two rows. It scrolls instead. */}
+            <div className="no-scrollbar -mx-0.5 overflow-x-auto px-0.5">
+                <SegmentedControl label="ADP type" options={ADP_TYPE_OPTIONS} value={adpType} onChange={setADPType} />
+            </div>
         </div>
     </div>
 );
-
-// The desktop half of the FILTERS control: anchored under the chip rather
-// than centred like Sheet, so it gets its own small close-on-Escape/
-// outside-click/focus-return handling instead of reusing Sheet's (which is
-// built around the bottom-sheet/centred-modal shape, not an anchored one).
-const FiltersDesktopPopover = ({ triggerRef, onClose, children }) => {
-    const popoverRef = useRef(null);
-
-    useEffect(() => {
-        popoverRef.current?.focus();
-        const trigger = triggerRef.current;
-        return () => {
-            trigger?.focus();
-        };
-        // Mount/unmount only, same as Sheet's own focus effect.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                onClose();
-            }
-        };
-        const onPointerDown = (event) => {
-            const popover = popoverRef.current;
-            const trigger = triggerRef.current;
-            if (popover && !popover.contains(event.target) && trigger && !trigger.contains(event.target)) {
-                onClose();
-            }
-        };
-        document.addEventListener('keydown', onKeyDown);
-        document.addEventListener('mousedown', onPointerDown);
-        return () => {
-            document.removeEventListener('keydown', onKeyDown);
-            document.removeEventListener('mousedown', onPointerDown);
-        };
-    }, [onClose, triggerRef]);
-
-    return (
-        <div
-            ref={popoverRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Filters"
-            tabIndex={-1}
-            className="border-line bg-raised rounded-card shadow-float absolute top-full right-0 z-50 mt-2 hidden w-[260px] border outline-none md:block"
-        >
-            {children}
-        </div>
-    );
-};
 
 const RanksPanel = ({
     isLoading,
@@ -418,15 +372,20 @@ const RanksPanel = ({
                             >
                                 FILTERS{nonDefaultFilterCount > 0 ? ` · ${nonDefaultFilterCount}` : ''}
                             </button>
-                            {/* Rendered as two trees (anchored popover for md
-                                and up, Sheet for below it) rather than one
-                                repositioned element - the same "both exist,
-                                only one is visible" shape AppShell already
-                                uses for its section nav vs tab bar. */}
+                            {/* One anchored popover at every width, not a
+                                desktop popover plus a phone Sheet. The two-tree
+                                version left the hidden desktop half mounted on
+                                a phone, where its outside-click listener saw
+                                every tap inside the Sheet as "outside" and
+                                closed the whole control on mousedown - before
+                                the click that would have toggled a filter could
+                                land. See Popover.jsx. */}
                             {filtersOpen && (
-                                <FiltersDesktopPopover
+                                <Popover
                                     triggerRef={filtersChipRef}
                                     onClose={() => setFiltersOpen(false)}
+                                    label="Filters"
+                                    width={280}
                                 >
                                     <FiltersBody
                                         filters={filters}
@@ -434,24 +393,10 @@ const RanksPanel = ({
                                         adpType={adpType}
                                         setADPType={setADPType}
                                     />
-                                </FiltersDesktopPopover>
+                                </Popover>
                             )}
                         </div>
                     </div>
-
-                    {filtersOpen && (
-                        // No `centerOnDesktop`, so Sheet already carries its
-                        // own `md:hidden` - this is the phone half of the
-                        // control; FiltersDesktopPopover above is the other.
-                        <Sheet title="Filters" onClose={() => setFiltersOpen(false)} triggerRef={filtersChipRef}>
-                            <FiltersBody
-                                filters={filters}
-                                updateFilters={updateFilters}
-                                adpType={adpType}
-                                setADPType={setADPType}
-                            />
-                        </Sheet>
-                    )}
 
                     {showPasteSheet && (
                         <Sheet

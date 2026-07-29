@@ -3,6 +3,7 @@ import SlotRow from './SlotRow';
 import { slotAccessibleName, slotOccupantLabel } from './lineupLabels.js';
 import Sheet from '../Components/Sheet';
 import BestAvailable, { filterBestAvailable } from '../Components/BestAvailable';
+import { DEFAULT_OWNERSHIP } from '../Components/OwnershipFilters';
 import BestAvailableHandle from '../Components/BestAvailableHandle';
 import ListRow from '../Components/ListRow';
 import PositionTag from '../Components/PositionTag';
@@ -32,6 +33,11 @@ const LineupPanel = ({
     // null means "the live session list" (rankingPlayersIdsList); otherwise a
     // saved list's route_name, resolved against savedRankLists below.
     const [rankListId, setRankListId] = useState(null);
+    // Held here rather than inside BestAvailable because the sheet is mounted
+    // only while open: a scope kept in the sheet would silently reset itself
+    // every time it was reopened, so switching "Other rosters" on would never
+    // last longer than one visit.
+    const [ownership, setOwnership] = useState(DEFAULT_OWNERSHIP);
     // Only meaningful for the handle entry point - Sheet returns focus to it
     // on close. A slot-tap entry has no single stable trigger element to
     // return to (each SlotRow button is one of many, re-rendered on every
@@ -87,7 +93,14 @@ const LineupPanel = ({
     // tracking BestAvailable's own internal chip clicks, which this
     // component has no view into once the chip row is live.
     const subtitleEligibleSlots = scope ? [scope.label] : openSlotLabels;
-    const subtitleCount = filterBestAvailable({ entries, playerInfo, eligibleSlots: subtitleEligibleSlots }).length;
+    const subtitleCount = filterBestAvailable({
+        entries,
+        playerInfo,
+        eligibleSlots: subtitleEligibleSlots,
+        ownership,
+        rosterInfo,
+        myDisplayName,
+    }).length;
 
     const occupantSlot = scope ? rosterSlots[scope.index] : null;
     const occupantPlayer = occupantSlot?.playerId ? playerInfo[occupantSlot.playerId] : null;
@@ -205,6 +218,8 @@ const LineupPanel = ({
                         myDisplayName={myDisplayName}
                         eligibleSlots={sheetEligibleSlots}
                         initialActiveChip={scope ? scope.label : null}
+                        ownership={ownership}
+                        onOwnershipChange={setOwnership}
                         onSelect={handleSelect}
                     />
                 </Sheet>

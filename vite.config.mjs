@@ -9,7 +9,9 @@ export default defineConfig({
         outDir: 'build',
     },
     server: {
-        port: 3000,
+        // Honours PORT so a second dev server can run alongside one already
+        // holding 3000; 3000 stays the default when nothing sets it.
+        port: Number(process.env.PORT) || 3000,
         open: true,
         // The player DB API allowlists only the deployed origin
         // (https://sleeper-player-db.web.app) for CORS, so a direct browser
