@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Button from './Button';
-import { positionClass } from '../Panels/pickLabels.js';
+import ListRow from './ListRow';
+import PositionTag from './PositionTag';
 import { playerAccessibleName, playerAvailabilityText } from './playerInfoLabels.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
@@ -56,27 +57,20 @@ const PlayerInfoItem = ({
               ? 'Rank matches ADP'
               : `Ranked ${rankedDiff} picks after ADP`;
 
-    return (
-        // Uniform row geometry copied from PickRow/SlotRow: transparent
-        // background, `border-line` by default, `rounded-[5px]`.
-        //
-        // Border precedence: `isMine` (violet, "yours") outranks a
-        // low-confidence match (warn) outranks the default line colour - a
-        // player can be both mine and a weak match, and violet is reserved
-        // for "yours" so it wins the one available border colour.
-        // `role="group"` is what makes the aria-label real. On a bare div -
-        // role `generic` - an aria-label is ignored by most screen readers, so
-        // the name would exist for the tests and for nobody else. The row is a
-        // composite of controls, which is what group is for.
-        <div
-            role="group"
-            aria-label={accessibleName}
-            className={`m-0 flex w-full items-start gap-3 rounded-[5px] border bg-transparent px-3 py-2 ${
-                isMine ? 'border-mine!' : lowConfidenceMatch ? 'border-warn!' : 'border-line'
-            }`}
-        >
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-                {editingPlayer ? (
+    // Editing branch is left exactly as it was before this redesign pass -
+    // only its two position badges swap to the shared PositionTag. The
+    // display (non-editing) branch below is the one this step converts onto
+    // ListRow; the Ranks controls stack that surrounds both is a later step.
+    if (editingPlayer) {
+        return (
+            <div
+                role="group"
+                aria-label={accessibleName}
+                className={`m-0 flex w-full items-start gap-3 rounded-[5px] border bg-transparent px-3 py-2 ${
+                    isMine ? 'border-mine!' : lowConfidenceMatch ? 'border-warn!' : 'border-line'
+                }`}
+            >
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex flex-col gap-2">
                         <select
                             value={player.player_id}
@@ -127,11 +121,7 @@ const PlayerInfoItem = ({
                                                     <span className="min-w-0 flex-1 truncate">
                                                         {candidate.full_name}
                                                     </span>
-                                                    <span
-                                                        className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(candidate.position)}`}
-                                                    >
-                                                        {candidate.position}
-                                                    </span>
+                                                    <PositionTag position={candidate.position} />
                                                     {candidate.team && (
                                                         <span className="text-ink-muted shrink-0 text-xs">
                                                             {candidate.team}
@@ -144,57 +134,111 @@ const PlayerInfoItem = ({
                             </div>
                         )}
                     </div>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={() => setEditingPlayer(true)}
-                        // A single always-visible name replaces the old
-                        // full-text/abbr-text pair, a width-hiding mechanism
-                        // whose hidden fallback shipped a real defect once
-                        // (PR #116).
-                        className="text-ink w-full truncate text-left text-sm font-semibold hover:underline"
-                    >
-                        {player.full_name}
-                    </button>
-                )}
-                <div className="text-ink-muted flex flex-wrap items-center gap-x-2 text-xs">
-                    <span>Rank: {searchData.ranking}</span>
-                    <span>{player.team ? player.team : 'FA'}</span>
-                    <span>{playerAvailabilityText({ taken, rosteredByName })}</span>
-                </div>
-                {adpData && (
-                    <div className="text-ink-muted flex items-center gap-2 text-xs">
-                        <span>ADP: {adpData}</span>
-                        <span>{adpLabel}</span>
+                    <div className="text-ink-muted flex flex-wrap items-center gap-x-2 text-xs">
+                        <span>Rank: {searchData.ranking}</span>
+                        <span>{player.team ? player.team : 'FA'}</span>
+                        <span>{playerAvailabilityText({ taken, rosteredByName })}</span>
                     </div>
-                )}
+                    {adpData && (
+                        <div className="text-ink-muted flex items-center gap-2 text-xs">
+                            <span>ADP: {adpData}</span>
+                            <span>{adpLabel}</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                    <PositionTag position={player.position} />
+                    {/* Neutral, not a colour fill: saturation is reserved for
+                        position data and violet for "yours", so availability -
+                        the thing this row most needs to say - is carried by this
+                        chip's text plus the manager-name/"free agent" line above,
+                        not by tinting the row. */}
+                    {taken && (
+                        <span className="border-line text-ink-muted shrink-0 rounded-[4px] border px-1.5 py-0.5 text-xs font-semibold">
+                            Taken
+                        </span>
+                    )}
+                    {(!taken || isMine) && (
+                        <Button
+                            text={`${inLineup ? 'Added' : 'Add'}`}
+                            isDisabled={inLineup}
+                            btnStyle="player-add-button"
+                            onClick={() => addToRoster(player)}
+                        />
+                    )}
+                </div>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-                <span
-                    className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
+        );
+    }
+
+    // The ADP delta replaces the old two-line "ADP: 3.1" / "Ranked N picks
+    // before ADP" prose. Sign convention: negative (ranked ahead of ADP) is
+    // `text-live`, positive (ranked behind ADP) is `text-warn`, zero is
+    // `text-ink-dim`. Omitted entirely when there is no ADP data.
+    const adpDeltaTone = rankedDiff < 0 ? 'text-live' : rankedDiff > 0 ? 'text-warn' : 'text-ink-dim';
+    const adpDeltaText = rankedDiff > 0 ? `+${rankedDiff}` : `${rankedDiff}`;
+
+    return (
+        <ListRow
+            as="div"
+            label={accessibleName}
+            ordinal={searchData.ranking}
+            ordinalWidth="22px"
+            ordinalClassName="text-right text-[12px] font-medium text-ink-muted"
+            // A single always-visible name replaces the old full-text/abbr-text
+            // pair, a width-hiding mechanism whose hidden fallback shipped a
+            // real defect once (PR #116). It stays a nested button so clicking
+            // the name opens the edit form, same as before.
+            name={
+                <button
+                    type="button"
+                    onClick={() => setEditingPlayer(true)}
+                    className="min-w-0 truncate text-left hover:underline"
                 >
-                    {player.position}
-                </span>
-                {/* Neutral, not a colour fill: saturation is reserved for
-                    position data and violet for "yours", so availability -
-                    the thing this row most needs to say - is carried by this
-                    chip's text plus the manager-name/"free agent" line above,
-                    not by tinting the row. */}
-                {taken && (
-                    <span className="border-line text-ink-muted shrink-0 rounded-[4px] border px-1.5 py-0.5 text-xs font-semibold">
-                        Taken
-                    </span>
-                )}
-                {(!taken || isMine) && (
-                    <Button
-                        text={`${inLineup ? 'Added' : 'Add'}`}
-                        isDisabled={inLineup}
-                        btnStyle="player-add-button"
-                        onClick={() => addToRoster(player)}
-                    />
-                )}
-            </div>
-        </div>
+                    {player.full_name}
+                </button>
+            }
+            nameTone={taken ? 'muted' : 'default'}
+            flag={isMine ? { text: 'YOU', tone: 'mine' } : undefined}
+            leadingDot={lowConfidenceMatch ? 'warn' : undefined}
+            meta={
+                <>
+                    <span>{player.team ? player.team : 'FA'}</span>
+                    <span> · </span>
+                    <span>{playerAvailabilityText({ taken, rosteredByName })}</span>
+                </>
+            }
+            trailing={
+                <>
+                    {adpData && (
+                        <span
+                            data-testid="adp-delta"
+                            className={`w-[34px] shrink-0 text-right font-mono text-[11px] ${adpDeltaTone}`}
+                        >
+                            {adpDeltaText}
+                        </span>
+                    )}
+                    <PositionTag position={player.position} />
+                    {/* Neutral, not a colour fill: saturation is reserved for
+                        position data and violet for "yours", so availability -
+                        the thing this row most needs to say - is carried by the
+                        meta line above, not by tinting the row. */}
+                    {taken && !isMine && (
+                        <span className="text-ink-quiet shrink-0 text-[11px] font-semibold">Taken</span>
+                    )}
+                    {(!taken || isMine) && (
+                        <button
+                            type="button"
+                            disabled={inLineup}
+                            onClick={() => addToRoster(player)}
+                            className="bg-mine-chip text-mine shrink-0 rounded-full px-[11px] py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                        >
+                            {inLineup ? 'Added' : 'Add'}
+                        </button>
+                    )}
+                </>
+            }
+        />
     );
 };
 

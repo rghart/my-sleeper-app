@@ -393,7 +393,7 @@ const RanksPanel = ({
                             </>
                         )}
                     </div>
-                    <div className="max-h-[600px] overflow-x-visible overflow-y-scroll">
+                    <div className="flex max-h-[600px] flex-col gap-0.5 overflow-x-visible overflow-y-scroll px-2">
                         {rankingPlayersIdsList
                             .filter(filterPlayers)
                             .filter((results) =>

@@ -223,7 +223,12 @@ describe('PickFeed manual pick selection', () => {
         // the "you" suffix and the "via" attribution both land on the same row.
         // "you" marks the whole attribution and so comes last: the pick is
         // yours, acquired via aphilliny21.
-        expect(screen.getByText('ryangh via aphilliny21 · you')).toBeTruthy();
+        //
+        // That suffix now lives in the accessible name only. On screen the row
+        // says "yours" twice already - the violet tint and the YOU flag - so
+        // the visible attribution is the plain one.
+        expect(screen.getByRole('button', { name: 'Round 1, pick 1, ryangh via aphilliny21 · you' })).toBeTruthy();
+        expect(screen.getByText('ryangh via aphilliny21')).toBeTruthy();
     });
 });
 
@@ -237,25 +242,34 @@ describe('PickFeed pick numbering', () => {
 });
 
 describe('PickFeed your-pick styling', () => {
-    it('marks the pick belonging to myDisplayName with the accent border, and no one else', () => {
+    it('marks the pick belonging to myDisplayName with the row tint, and no one else', () => {
         renderFeed();
 
         // Board spot 3 in round 1 is roster 1, "ryangh", in this fixture.
-        // Board spot 1 is roster 5, "HEFFinAround305" - not me.
+        // Board spot 1 is roster 5, "HEFFinAround305" - not me. The design
+        // marks "yours" with a row background tint, not a border - see
+        // ListRow's `tone="mine"`.
         const myRow = screen.getByRole('button', { name: /pick 3, ryangh/ });
-        expect(myRow.className).toMatch(/border-mine/);
+        expect(myRow.className).toMatch(/bg-mine-row/);
 
         const someoneElsesRow = screen.getByRole('button', { name: /pick 1, HEFFinAround305/ });
-        expect(someoneElsesRow.className).not.toMatch(/border-mine/);
+        expect(someoneElsesRow.className).not.toMatch(/bg-mine-row/);
     });
 
-    it('labels my own pick "ryangh · you" and leaves everyone else plain', () => {
+    it('keeps "· you" in my pick\'s accessible name but not in its visible text', () => {
         renderFeed();
 
-        expect(screen.getByText('ryangh · you')).toBeInTheDocument();
-        // Pick 1 belongs to roster 5, not me.
+        // The suffix is what a screen reader has instead of the row tint and
+        // the YOU flag, so it stays in the name. Visually it would be the
+        // third time the same row said "yours", so it is not rendered.
+        const myRow = screen.getByRole('button', { name: 'Round 1, pick 3, ryangh · you' });
+        expect(within(myRow).queryByText(/· you/)).toBeNull();
+        expect(within(myRow).getByText('YOU')).toBeInTheDocument();
+
+        // Pick 1 belongs to roster 5, not me - no suffix and no flag.
         const otherRow = screen.getByRole('button', { name: /pick 1,/ });
         expect(within(otherRow).queryByText(/· you/)).toBeNull();
+        expect(within(otherRow).queryByText('YOU')).toBeNull();
     });
 });
 

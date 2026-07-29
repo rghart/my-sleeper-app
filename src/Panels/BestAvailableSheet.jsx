@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { isTaken } from '../lib/rosterInfo.js';
-import { positionClass } from './pickLabels.js';
+import PositionTag from '../Components/PositionTag';
 
 // Mobile-only companion to the Ranks column that already sits beside the
 // board at md+ (see AppShell's SECTIONS_WITH_ASIDE). Below that width there is
@@ -67,11 +67,7 @@ const BestAvailableSheet = ({ rankingPlayersIdsList, playerInfo, rosterInfo }) =
                                     </span>
                                     <span className="text-ink min-w-0 flex-1 truncate text-sm">{player.full_name}</span>
                                     <span className="text-ink-muted shrink-0 text-xs">{player.team}</span>
-                                    <span
-                                        className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-semibold ${positionClass(player.position)}`}
-                                    >
-                                        {player.position}
-                                    </span>
+                                    <PositionTag position={player.position} />
                                 </li>
                             );
                         })}

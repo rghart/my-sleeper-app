@@ -39,7 +39,12 @@ export const pickNumberLabel = (round, pick) => `${round.round}.${String(pick.pi
 // Builds the manager attribution text once so the visible label and the
 // button's accessible name can't drift apart - both read off this same
 // string.
-export const managerLabel = ({ pick, rosterData, myDisplayName }) => {
+// `markYours` exists for the redesigned row, which shows ownership twice
+// otherwise: the row wears the violet "yours" tint and a `YOU` flag beside the
+// name, so a meta line reading "WR · ATL · ryangh · you" says it a third time.
+// It defaults to true, so the accessible name - which has no tint and no flag
+// to lean on, and which every pick test asserts on - is unchanged.
+export const managerLabel = ({ pick, rosterData, myDisplayName, markYours = true }) => {
     const owner = pick.owner_id ? rosterData.find((roster) => roster.roster_id === pick.owner_id) : null;
     if (!owner?.manager_display_name) {
         return 'Pick owner missing';
@@ -51,7 +56,7 @@ export const managerLabel = ({ pick, rosterData, myDisplayName }) => {
     }
     // "you" marks the whole attribution, so it goes last: a traded pick of
     // yours reads "ryangh via crbiehl · you", not "ryangh · you via crbiehl".
-    return owner.manager_display_name === myDisplayName ? `${label} · you` : label;
+    return markYours && owner.manager_display_name === myDisplayName ? `${label} · you` : label;
 };
 
 // Builds the accessible name shared by the feed's rows and the grid's cells:

@@ -98,7 +98,9 @@ describe('PlayerInfoItem', () => {
         renderItem(MY_PLAYER_ID);
 
         expect(screen.getByText(MY_DISPLAY_NAME)).toBeTruthy();
-        expect(screen.getByText('Taken')).toBeTruthy();
+        // The "Taken" label is only for someone else's player now - your own
+        // taken player still gets the Add/Added pill instead, not both.
+        expect(screen.queryByText('Taken')).toBeNull();
         expect(
             screen.getByRole('group', {
                 name: `${playerInfo[MY_PLAYER_ID].full_name}, ${playerInfo[MY_PLAYER_ID].position}, taken by ${MY_DISPLAY_NAME} · you`,
@@ -235,7 +237,12 @@ describe('PlayerInfoItem', () => {
         expect(updatePlayerId).toHaveBeenCalledWith(expect.anything(), true);
     });
 
-    it('reports ranked-before-ADP, matches-ADP, and ranked-after-ADP', () => {
+    // The old two-line "ADP: 15" / "Ranked N picks before ADP" prose is gone
+    // from the display state - it is a single signed delta now (see
+    // ListRow's `trailing` in PlayerInfoItem): negative (ranked ahead of ADP)
+    // in text-live, positive (ranked behind) in text-warn, zero in
+    // text-ink-dim.
+    it('renders the ADP delta signed, coloured by direction: ahead, matching, and behind', () => {
         const { rerender } = render(
             <PlayerInfoItem
                 player={playerInfo[FREE_AGENT_ID]}
@@ -250,7 +257,7 @@ describe('PlayerInfoItem', () => {
                 myDisplayName={MY_DISPLAY_NAME}
             />,
         );
-        expect(screen.getByText('Ranked 5 picks before ADP')).toBeTruthy();
+        expect(screen.getByText('-5')).toHaveClass('text-live');
 
         rerender(
             <PlayerInfoItem
@@ -266,7 +273,7 @@ describe('PlayerInfoItem', () => {
                 myDisplayName={MY_DISPLAY_NAME}
             />,
         );
-        expect(screen.getByText('Rank matches ADP')).toBeTruthy();
+        expect(screen.getByText('0')).toHaveClass('text-ink-dim');
 
         rerender(
             <PlayerInfoItem
@@ -282,6 +289,12 @@ describe('PlayerInfoItem', () => {
                 myDisplayName={MY_DISPLAY_NAME}
             />,
         );
-        expect(screen.getByText('Ranked 5 picks after ADP')).toBeTruthy();
+        expect(screen.getByText('+5')).toHaveClass('text-warn');
+    });
+
+    it('omits the ADP delta column entirely when there is no ADP data', () => {
+        renderItem(FREE_AGENT_ID, { adpData: null });
+
+        expect(screen.queryByTestId('adp-delta')).toBeNull();
     });
 });
