@@ -354,3 +354,133 @@ describe('LineupPanel rank-list switcher', () => {
         expect(screen.getByRole('button', { name: 'Paste a new list' })).toBeInTheDocument();
     });
 });
+
+// The sheet's job is "who can I put here?", and by default that means your own
+// players plus anything unowned. Before the FILTERS chip existed it listed
+// every ranked player eligible for the slot, including ones locked on other
+// managers' rosters, marked "Taken" - visible but unusable, and the majority of
+// a real list mid-season.
+describe('LineupPanel ownership filters', () => {
+    const MINE_WR = { id: '13279', name: 'Carnell Tate' }; // roster 1 - ryangh, rookie
+    const OTHERS_WR = { id: '13294', name: 'Makai Lemon' }; // roster 2
+    const FREE_WR = { id: '536', name: 'Antonio Brown' }; // unowned, 12 years exp
+
+    const openWrSheet = async (user, overrides = {}) => {
+        renderLineup({
+            rankingPlayersIdsList: [rankEntry(MINE_WR.id, 1), rankEntry(OTHERS_WR.id, 2), rankEntry(FREE_WR.id, 3)],
+            ...overrides,
+        });
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        return screen.getByRole('dialog', { name: 'Fill WR' });
+    };
+
+    const openFilters = async (user) => user.click(screen.getByRole('button', { name: /^FILTERS/ }));
+
+    it('hides players on other managers rosters by default, and counts the two live buckets', async () => {
+        const user = userEvent.setup();
+        const dialog = await openWrSheet(user);
+
+        expect(within(dialog).getByText(MINE_WR.name)).toBeInTheDocument();
+        expect(within(dialog).getByText(FREE_WR.name)).toBeInTheDocument();
+        // The whole point: not shown at all, not shown-and-greyed.
+        expect(within(dialog).queryByText(OTHERS_WR.name)).toBeNull();
+        expect(within(dialog).queryByText('Taken')).toBeNull();
+
+        expect(within(dialog).getByRole('button', { name: 'FILTERS · 2' })).toBeInTheDocument();
+    });
+
+    it('shows other rosters once asked, and says so in the chip count', async () => {
+        const user = userEvent.setup();
+        const dialog = await openWrSheet(user);
+
+        await openFilters(user);
+        await user.click(screen.getByRole('checkbox', { name: /Other rosters/ }));
+
+        expect(within(dialog).getByText(OTHERS_WR.name)).toBeInTheDocument();
+        expect(within(dialog).getByText('Taken')).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: 'FILTERS · 3' })).toBeInTheDocument();
+    });
+
+    // Same shape as the bug reported on the Ranks section: a control that
+    // dismissed its own container on mousedown, so the click that would have
+    // toggled it never landed. Two toggles in a row is what proves the popover
+    // survived the first.
+    it('keeps the popover open across successive toggles rather than dismissing itself', async () => {
+        const user = userEvent.setup();
+        await openWrSheet(user);
+
+        await openFilters(user);
+        await user.click(screen.getByRole('checkbox', { name: /Other rosters/ }));
+
+        expect(screen.getByRole('checkbox', { name: /Other rosters/ })).toHaveAttribute('aria-checked', 'true');
+
+        await user.click(screen.getByRole('checkbox', { name: /My players/ }));
+
+        expect(screen.getByRole('checkbox', { name: /My players/ })).toHaveAttribute('aria-checked', 'false');
+        expect(screen.queryByText(MINE_WR.name)).toBeNull();
+    });
+
+    it('drops veterans when rookies only is on, and puts everything back on reset', async () => {
+        const user = userEvent.setup();
+        const dialog = await openWrSheet(user);
+
+        await openFilters(user);
+        await user.click(screen.getByRole('switch', { name: 'Rookies only' }));
+
+        expect(within(dialog).queryByText(FREE_WR.name)).toBeNull();
+        expect(within(dialog).getByText(MINE_WR.name)).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Reset to default' }));
+
+        expect(within(dialog).getByText(FREE_WR.name)).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: 'FILTERS · 2' })).toBeInTheDocument();
+    });
+
+    // Ownership is held by LineupPanel, not by the sheet, precisely because the
+    // sheet is unmounted on close - a scope kept inside it would silently
+    // reset itself every time.
+    it('remembers the scope across closing and reopening the sheet', async () => {
+        const user = userEvent.setup();
+        await openWrSheet(user);
+
+        await openFilters(user);
+        await user.click(screen.getByRole('checkbox', { name: /Other rosters/ }));
+        await user.keyboard('{Escape}'); // closes the popover
+        await user.click(screen.getByRole('button', { name: 'Close' }));
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        const reopened = screen.getByRole('dialog', { name: 'Fill WR' });
+
+        expect(within(reopened).getByText(OTHERS_WR.name)).toBeInTheDocument();
+        expect(within(reopened).getByRole('button', { name: 'FILTERS · 3' })).toBeInTheDocument();
+    });
+});
+
+// The slot chips narrow the list to one slot's eligible positions. This is the
+// other half of "who can I put here?" - FLX admits RB/WR/TE, SFLX adds QB, and
+// a named position slot admits only itself.
+describe('LineupPanel slot chip filtering', () => {
+    const FREE_WR = { id: '536', name: 'Antonio Brown' };
+
+    it('filters to the tapped slot position, and widens again on ALL', async () => {
+        const user = userEvent.setup();
+        renderLineup({
+            rankingPlayersIdsList: [rankEntry(FREE_AGENT_QB.id, 1), rankEntry(FREE_WR.id, 2)],
+        });
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        const dialog = screen.getByRole('dialog', { name: 'Fill WR' });
+
+        expect(within(dialog).getByText(FREE_WR.name)).toBeInTheDocument();
+        expect(within(dialog).queryByText(FREE_AGENT_QB.name)).toBeNull();
+
+        // ALL drops the position filter but keeps the list and the ownership
+        // scope - the QB is only reachable through the other open slot.
+        await user.click(within(dialog).getByRole('button', { name: 'ALL' }));
+        expect(within(dialog).getByText(FREE_AGENT_QB.name)).toBeInTheDocument();
+
+        await user.click(within(dialog).getByRole('button', { name: 'QB' }));
+        expect(within(dialog).getByText(FREE_AGENT_QB.name)).toBeInTheDocument();
+        expect(within(dialog).queryByText(FREE_WR.name)).toBeNull();
+    });
+});

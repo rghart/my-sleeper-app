@@ -143,6 +143,28 @@ export function formatTimeLeft(msLeft, mode) {
     return formatCoarse(msLeft);
 }
 
+/** Under this much time left, the clock card's bar and numeral go `danger`. */
+export const URGENT_MS = 30000;
+
+/**
+ * How much of the current pick's timer is gone, `0`..`1`, or `null` when there
+ * is no timer to be a fraction of (`not-started`, `complete`, `untimed`) -
+ * which is also the signal to render no progress bar at all rather than an
+ * empty one.
+ */
+export function pickProgress(draft, now = Date.now()) {
+    const deadline = pickDeadline(draft);
+    if (deadline === null) {
+        return null;
+    }
+    const total = (draft.settings?.pick_timer ?? 0) * 1000;
+    if (total <= 0) {
+        return null;
+    }
+    const elapsed = total - (deadline - now);
+    return Math.min(1, Math.max(0, elapsed / total));
+}
+
 /**
  * How often to re-poll the sync endpoint: fast for a live-paced draft, slow
  * otherwise. Hammering the endpoint every 3 seconds against a 24-hour clock

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickClockMode, pickDeadline, formatTimeLeft, pollIntervalMs } from './draftClock';
+import { pickClockMode, pickDeadline, formatTimeLeft, pickProgress, pollIntervalMs } from './draftClock';
 
 const NOW = Date.UTC(2026, 6, 27, 12, 0, 0);
 
@@ -235,5 +235,33 @@ describe('pollIntervalMs', () => {
 
     it('polls every 30 seconds when not-started', () => {
         expect(pollIntervalMs({ status: 'pre_draft', start_time: null, last_picked: null, settings: {} })).toBe(30000);
+    });
+});
+
+describe('pickProgress', () => {
+    const NOW = Date.UTC(2026, 6, 27, 12, 0, 0);
+    const live = { status: 'drafting', start_time: NOW, last_picked: null, settings: { pick_timer: 100 } };
+
+    it('is the fraction of the pick timer already gone', () => {
+        expect(pickProgress(live, NOW)).toBe(0);
+        expect(pickProgress(live, NOW + 25000)).toBe(0.25);
+        expect(pickProgress(live, NOW + 100000)).toBe(1);
+    });
+
+    it('clamps rather than running past the ends, so the bar never overflows its track', () => {
+        expect(pickProgress(live, NOW + 500000)).toBe(1);
+        // A clock skew that puts "now" before the pick started must not give a
+        // negative width.
+        expect(pickProgress(live, NOW - 5000)).toBe(0);
+    });
+
+    it('is null wherever there is no timer to be a fraction of', () => {
+        expect(pickProgress({ status: 'pre_draft', start_time: null, last_picked: null, settings: {} })).toBeNull();
+        expect(
+            pickProgress({ status: 'complete', start_time: NOW, last_picked: NOW, settings: { pick_timer: 90 } }),
+        ).toBeNull();
+        expect(
+            pickProgress({ status: 'drafting', start_time: NOW, last_picked: null, settings: { pick_timer: 0 } }),
+        ).toBeNull();
     });
 });

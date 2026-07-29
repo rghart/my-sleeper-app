@@ -47,6 +47,9 @@ const LEAGUE_ID = '1312088290526003200';
 const OTHER_LEAGUE_ID = '9999999999999999999';
 const DRAFT_ID = 'draft123';
 const OTHER_DRAFT_ID = 'draftOther';
+// The clock card's draft-source pill: the only place the active draft id is
+// shown now that the raw "Draft ID" input moved into the Draft source sheet.
+const SOURCE_PILL = `Draft source: …${DRAFT_ID.slice(-4)}`;
 
 // On roster 1 (mine) in the first league, dropped from every roster in the
 // second - so switching leagues must change this player's attribution from
@@ -192,7 +195,7 @@ describe('App', () => {
         // a pick the sync can't legitimately overwrite.
         const manualPickBox = screen.getByText('3.01').closest('button');
 
-        await user.click(screen.getByRole('button', { name: 'Update' }));
+        await user.click(screen.getByRole('button', { name: 'Sync draft' }));
 
         await user.click(manualPickBox);
         await user.type(screen.getByPlaceholderText('Start typing player name to search'), 'Brady');
@@ -259,9 +262,9 @@ describe('App', () => {
     it('survives a draft request that fails', async () => {
         // getSpecificDraft's own catch resolves draftData to undefined on a
         // failed fetch, and DraftPanel reads currentDraft.draft_id
-        // unconditionally to render its "Draft ID" input - so this only
-        // passes if currentDraft fell back to a real object instead of
-        // crashing the render.
+        // unconditionally to label the clock card's draft-source pill - so
+        // this only passes if currentDraft fell back to a real object instead
+        // of crashing the render.
         const rejections = [];
         const recordRejection = (reason) => rejections.push(reason);
         process.on('unhandledRejection', recordRejection);
@@ -279,7 +282,7 @@ describe('App', () => {
 
             render(<App />);
 
-            expect(await screen.findByDisplayValue(DRAFT_ID, {}, { timeout: 5000 })).toBeTruthy();
+            expect(await screen.findByRole('button', { name: SOURCE_PILL }, { timeout: 5000 })).toBeTruthy();
             await new Promise((resolve) => setTimeout(resolve, 0));
 
             expect(rejections).toEqual([]);
@@ -613,11 +616,10 @@ describe('App', () => {
 
         const renderAndSettle = async () => {
             render(<App />);
-            // The draft header renders from currentDraft regardless of whether a
-            // board could be built, so it is the signal that the load chain ran
-            // to completion rather than throwing partway.
-            // Scoped to the <b> header: the panel tab is also called "Draft".
-            return await screen.findByText(/Draft$/, { selector: 'b' }, { timeout: 5000 });
+            // The clock card renders from currentDraft regardless of whether a
+            // board could be built, so its eyebrow is the signal that the load
+            // chain ran to completion rather than throwing partway.
+            return await screen.findByText('On the clock', {}, { timeout: 5000 });
         };
 
         it('renders the panels when the draft response has no settings', async () => {
@@ -625,7 +627,7 @@ describe('App', () => {
 
             await renderAndSettle();
 
-            expect(screen.getByDisplayValue(DRAFT_ID)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: SOURCE_PILL })).toBeInTheDocument();
             // No board, but a live app rather than a permanent loader.
             expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBe(0);
         });
@@ -635,7 +637,7 @@ describe('App', () => {
 
             await renderAndSettle();
 
-            expect(screen.getByDisplayValue(DRAFT_ID)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: SOURCE_PILL })).toBeInTheDocument();
             expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBe(0);
         });
     });
@@ -711,9 +713,10 @@ describe('App', () => {
             return mockFetch(url);
         });
 
-        // Scoped to the <b> header: the panel tab is also called "Draft".
+        // The clock card renders whether or not a board could be built, so its
+        // eyebrow is the signal the load chain finished.
         render(<App />);
-        await screen.findByText(/Draft$/, { selector: 'b' }, { timeout: 5000 });
+        await screen.findByText('On the clock', {}, { timeout: 5000 });
 
         expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBe(0);
         expect(screen.queryByRole('status')).toBeNull();
