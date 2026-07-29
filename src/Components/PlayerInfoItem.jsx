@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Button from './Button';
 import ListRow from './ListRow';
 import PositionTag from './PositionTag';
 import { playerAccessibleName, playerAvailabilityText } from './playerInfoLabels.js';
@@ -66,7 +65,7 @@ const PlayerInfoItem = ({
             <div
                 role="group"
                 aria-label={accessibleName}
-                className={`m-0 flex w-full items-start gap-3 rounded-[5px] border bg-transparent px-3 py-2 ${
+                className={`bg-raised-2 rounded-row m-0 flex w-full items-start gap-3 border px-3 py-2 ${
                     isMine ? 'border-mine!' : lowConfidenceMatch ? 'border-warn!' : 'border-line'
                 }`}
             >
@@ -75,7 +74,7 @@ const PlayerInfoItem = ({
                         <select
                             value={player.player_id}
                             onChange={(e) => updatePlayerInfo(e.target.value)}
-                            className="border-line text-ink w-full appearance-none rounded-[5px] border bg-transparent px-2 py-1 text-sm"
+                            className="border-line text-ink bg-raised-2 rounded-row w-full appearance-none border px-2 py-1 text-sm"
                         >
                             {searchData.match_results.map((result) => (
                                 <option key={result[0]} value={result[0]}>{`${playerInfo[result[0]].full_name} - ${
@@ -84,8 +83,20 @@ const PlayerInfoItem = ({
                             ))}
                         </select>
                         <div className="flex gap-2">
-                            <Button text="Close" btnStyle="primary" onClick={() => setEditingPlayer(false)} />
-                            <Button text="Delete" btnStyle="alert" onClick={() => updatePlayerId(searchData, true)} />
+                            <button
+                                type="button"
+                                onClick={() => setEditingPlayer(false)}
+                                className="border-line text-ink-muted rounded-full border px-3.5 py-2 text-[13px] font-semibold"
+                            >
+                                Close
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => updatePlayerId(searchData, true)}
+                                className="border-line text-danger rounded-full border px-3.5 py-2 text-[13px] font-semibold"
+                            >
+                                Delete
+                            </button>
                         </div>
                         {(isNewRankList || lowConfidenceMatch || editingPlayer) && (
                             <div className="flex flex-col gap-1">
@@ -97,7 +108,7 @@ const PlayerInfoItem = ({
                                     type="text"
                                     onChange={(e) => setSearchValue(e.target.value)}
                                     placeholder="Manually update player"
-                                    className="border-line text-ink w-full rounded-[5px] border bg-transparent px-2 py-1 text-sm"
+                                    className="border-line text-ink bg-raised-2 rounded-row w-full border px-2 py-1 text-sm"
                                 />
                                 {searchValue.length > 2 && (
                                     <div className="flex max-h-[100px] flex-col gap-1 overflow-y-scroll">
@@ -116,7 +127,7 @@ const PlayerInfoItem = ({
                                                     type="button"
                                                     key={candidate.player_id}
                                                     onClick={() => updatePlayerInfo(candidate.player_id)}
-                                                    className="border-line text-ink hover:border-ink-muted flex w-full items-center gap-2 rounded-[4px] border px-2 py-1 text-left text-sm"
+                                                    className="border-line text-ink hover:border-ink-muted rounded-row flex w-full items-center gap-2 border px-2 py-1 text-left text-sm"
                                                 >
                                                     <span className="min-w-0 flex-1 truncate">
                                                         {candidate.full_name}
@@ -154,17 +165,19 @@ const PlayerInfoItem = ({
                         chip's text plus the manager-name/"free agent" line above,
                         not by tinting the row. */}
                     {taken && (
-                        <span className="border-line text-ink-muted shrink-0 rounded-[4px] border px-1.5 py-0.5 text-xs font-semibold">
+                        <span className="border-line text-ink-muted rounded-tag shrink-0 border px-1.5 py-0.5 text-xs font-semibold">
                             Taken
                         </span>
                     )}
                     {(!taken || isMine) && (
-                        <Button
-                            text={`${inLineup ? 'Added' : 'Add'}`}
-                            isDisabled={inLineup}
-                            btnStyle="player-add-button"
+                        <button
+                            type="button"
+                            disabled={inLineup}
                             onClick={() => addToRoster(player)}
-                        />
+                            className="bg-mine-chip text-mine shrink-0 rounded-full px-[11px] py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                        >
+                            {inLineup ? 'Added' : 'Add'}
+                        </button>
                     )}
                 </div>
             </div>

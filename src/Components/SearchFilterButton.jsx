@@ -12,16 +12,12 @@ const SearchFilterButton = ({ checked, handleChange, labelName, name }) => {
             }`}
         >
             {labelName}
-            {/* The `relative` on the label above is what contains this input.
-                index.css still carries `input, select, textarea { width: 85%
-                !important }` below 767px; the old control was display:none so
-                had no box for that to stretch, but sr-only gives it a real
-                one - 319px wide, pushing the page 186px past a 375px
-                viewport. A `w-px!` utility does NOT win that fight: for
-                *important* declarations the cascade reverses layer order, so
-                index.css's `@layer base` beats anything in `@layer utilities`
-                no matter the specificity. Making the label the containing
-                block means 85% is 85% of a chip, which fits. */}
+            {/* index.css used to carry `input, select, textarea { width: 85%
+                !important }` below 767px, which would have given this
+                sr-only checkbox a real box to stretch against - the old
+                control was display:none, so it never had one to stretch.
+                That rule was deleted in step 1 of the redesign, so this is no
+                longer a live concern; sr-only is enough on its own now. */}
             <input className="sr-only" type="checkbox" checked={checked} onChange={handleChange} name={name} />
         </label>
     );

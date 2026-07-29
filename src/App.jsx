@@ -6,6 +6,7 @@ import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import Spinner from './Components/Spinner';
 import { SyncStatusProvider } from './SyncStatus.jsx';
+import { RankListProvider, useRankList } from './RankList.jsx';
 import { SECTIONS, defaultSectionFor } from './sections.js';
 import { currentUserIdentity, observeAuthState, signInAnonymous, signInWithGoogle, signOutUser } from './lib/auth.js';
 import createRankings from './helpers.js';
@@ -40,6 +41,25 @@ const LOADING = {
     INITIAL: 'initial',
     LEAGUE_PANEL: 'leaguePanel',
     RANKS_PANEL: 'ranksPanel',
+};
+
+// The best-available rail's subtitle needs the real rank list name, which
+// only exists in RankList's context - not reachable from a class component's
+// render via a hook. This is the smallest possible wrapper: a function
+// component that reads the context itself and renders exactly the line
+// renderBestAvailableRail used to build from a hardcoded "Ranks" string.
+// Falls back to "Ranks" both before RanksPanel has ever mounted (no list
+// published yet) and while nothing is selected (the default "-- Select saved
+// ranks list" placeholder), so the rail never shows that placeholder text.
+const BestAvailableSubtitle = ({ left }) => {
+    const rankList = useRankList();
+    const selected = rankList?.options?.find((option) => option.value === rankList.currentValue);
+    const listName = selected && selected.value !== 'default' ? selected.label : 'Ranks';
+    return (
+        <p className="text-ink-quiet m-0 font-mono text-[11px]">
+            {listName} · {left} left
+        </p>
+    );
 };
 
 class App extends React.Component {
@@ -309,11 +329,6 @@ class App extends React.Component {
     // lets both render identically). Ranks itself is still reachable as its
     // own section; "Edit list" below is a shortcut there.
     //
-    // `listName` has nowhere to come from yet - RanksPanel keeps its saved
-    // rank list selection as local state and doesn't lift it up, and that
-    // control stack is explicitly the next step, not this one - so this
-    // reads a generic "Ranks" rather than the real list name. Worth revisiting
-    // once RanksPanel's controls move up.
     renderBestAvailableRail = (activeId) => {
         const { playerInfo, leagueData, rankingPlayersIdsList, rosterSlots, myDisplayName } = this.state;
         const rosterInfoValue = this.selectRosterInfo({
@@ -324,7 +339,6 @@ class App extends React.Component {
             activeId === 'lineup'
                 ? [...new Set(rosterSlots.filter((slot) => !slot.playerId).map((slot) => slot.label))]
                 : null;
-        const listName = 'Ranks';
         const left = countAvailable({
             entries: rankingPlayersIdsList,
             playerInfo,
@@ -337,9 +351,7 @@ class App extends React.Component {
                 <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                         <p className="text-ink m-0 text-[16px] font-semibold">Best available</p>
-                        <p className="text-ink-quiet m-0 font-mono text-[11px]">
-                            {listName} · {left} left
-                        </p>
+                        <BestAvailableSubtitle left={left} />
                     </div>
                     <button
                         type="button"
@@ -407,9 +419,10 @@ class App extends React.Component {
                 />
             );
             return (
-                <SyncStatusProvider>
-                    <div>
-                        {/*
+                <RankListProvider>
+                    <SyncStatusProvider>
+                        <div>
+                            {/*
                             The shell renders its own top bar, because the bar's
                             section pills and the tab bar have to share one
                             active id. So this is an either/or, not a stack: the
@@ -420,81 +433,84 @@ class App extends React.Component {
                             Rendering both is what it looked like first, and it
                             put two top bars on the screen.
                         */}
-                        {!loadError && leagueData.currentLeague ? (
-                            <AppShell
-                                sections={SECTIONS}
-                                // The league bundle already carries the draft's status, so this is
-                                // known the moment the shell can mount. Reading it off
-                                // currentDraft instead would be a render too late: that is
-                                // filled by loadDraft, which resolves after the shell is
-                                // already on screen.
-                                defaultSectionId={defaultSectionFor(leagueData.currentLeagueDrafts?.[0]?.status)}
-                                identity={{
-                                    signedIn,
-                                    signedInEmail,
-                                    myDisplayName,
-                                    onSignIn: this.googleSignIn,
-                                    onSignOut: this.signOut,
-                                }}
-                                leagueID={leagueID}
-                                leagueIds={leagueData.leagueIds}
-                                updateLeagueID={this.updateLeagueID}
-                                // Inside the shell rather than above it: the
-                                // shell owns the top bar now, so a banner
-                                // rendered as a sibling would sit above the bar
-                                // instead of under it.
-                                banner={
-                                    draftWarning ? (
+                            {!loadError && leagueData.currentLeague ? (
+                                <AppShell
+                                    sections={SECTIONS}
+                                    // The league bundle already carries the draft's status, so this is
+                                    // known the moment the shell can mount. Reading it off
+                                    // currentDraft instead would be a render too late: that is
+                                    // filled by loadDraft, which resolves after the shell is
+                                    // already on screen.
+                                    defaultSectionId={defaultSectionFor(leagueData.currentLeagueDrafts?.[0]?.status)}
+                                    identity={{
+                                        signedIn,
+                                        signedInEmail,
+                                        myDisplayName,
+                                        onSignIn: this.googleSignIn,
+                                        onSignOut: this.signOut,
+                                    }}
+                                    leagueID={leagueID}
+                                    leagueIds={leagueData.leagueIds}
+                                    updateLeagueID={this.updateLeagueID}
+                                    // Inside the shell rather than above it: the
+                                    // shell owns the top bar now, so a banner
+                                    // rendered as a sibling would sit above the bar
+                                    // instead of under it.
+                                    banner={
+                                        draftWarning ? (
+                                            <ErrorBanner
+                                                message={draftWarning}
+                                                variant="warning"
+                                                onRetry={this.retryDraftLoad}
+                                            />
+                                        ) : null
+                                    }
+                                    renderAside={this.renderBestAvailableRail}
+                                    renderSection={(activeId) => {
+                                        if (activeId === 'ranks') {
+                                            return ranksPanel;
+                                        }
+                                        return (
+                                            <LeaguePanel
+                                                view={activeId === 'lineup' ? 'weekly' : 'draft'}
+                                                leagueData={leagueData}
+                                                rankingPlayersIdsList={rankingPlayersIdsList}
+                                                rosterSlots={rosterSlots}
+                                                playerInfo={playerInfo}
+                                                rosterInfo={rosterInfo}
+                                                isLoading={loading === LOADING.LEAGUE_PANEL}
+                                                removeFromLineup={this.removeFromLineup}
+                                                updateDraftBoard={this.updateDraftBoard}
+                                                myDisplayName={myDisplayName}
+                                                addToRoster={this.addToRoster}
+                                            />
+                                        );
+                                    }}
+                                />
+                            ) : (
+                                <>
+                                    <AppBar
+                                        signedIn={signedIn}
+                                        signedInEmail={signedInEmail}
+                                        myDisplayName={myDisplayName}
+                                        onSignIn={this.googleSignIn}
+                                        onSignOut={this.signOut}
+                                    />
+                                    {loadError ? (
+                                        <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} />
+                                    ) : null}
+                                    {!loadError && draftWarning ? (
                                         <ErrorBanner
                                             message={draftWarning}
                                             variant="warning"
                                             onRetry={this.retryDraftLoad}
                                         />
-                                    ) : null
-                                }
-                                renderAside={this.renderBestAvailableRail}
-                                renderSection={(activeId) => {
-                                    if (activeId === 'ranks') {
-                                        return ranksPanel;
-                                    }
-                                    return (
-                                        <LeaguePanel
-                                            view={activeId === 'lineup' ? 'weekly' : 'draft'}
-                                            leagueData={leagueData}
-                                            rankingPlayersIdsList={rankingPlayersIdsList}
-                                            rosterSlots={rosterSlots}
-                                            playerInfo={playerInfo}
-                                            rosterInfo={rosterInfo}
-                                            isLoading={loading === LOADING.LEAGUE_PANEL}
-                                            removeFromLineup={this.removeFromLineup}
-                                            updateDraftBoard={this.updateDraftBoard}
-                                            myDisplayName={myDisplayName}
-                                            addToRoster={this.addToRoster}
-                                        />
-                                    );
-                                }}
-                            />
-                        ) : (
-                            <>
-                                <AppBar
-                                    signedIn={signedIn}
-                                    signedInEmail={signedInEmail}
-                                    myDisplayName={myDisplayName}
-                                    onSignIn={this.googleSignIn}
-                                    onSignOut={this.signOut}
-                                />
-                                {loadError ? <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} /> : null}
-                                {!loadError && draftWarning ? (
-                                    <ErrorBanner
-                                        message={draftWarning}
-                                        variant="warning"
-                                        onRetry={this.retryDraftLoad}
-                                    />
-                                ) : null}
-                            </>
-                        )}
-                    </div>
-                </SyncStatusProvider>
+                                    ) : null}
+                                </>
+                            )}
+                        </div>
+                    </SyncStatusProvider>
+                </RankListProvider>
             );
         }
     }
