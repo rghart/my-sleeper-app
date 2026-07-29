@@ -1,7 +1,26 @@
+import { useRef, useState } from 'react';
 import SlotRow from './SlotRow';
+import Sheet from '../Components/Sheet';
+import BestAvailable from '../Components/BestAvailable';
+import BestAvailableHandle from '../Components/BestAvailableHandle';
 
-const LineupPanel = ({ playerInfo, rosterSlots, removeFromLineup }) => {
+const LineupPanel = ({
+    playerInfo,
+    rosterInfo,
+    rosterSlots,
+    removeFromLineup,
+    rankingPlayersIdsList,
+    myDisplayName,
+    addToRoster,
+}) => {
     const emptyCount = rosterSlots.filter((slot) => !slot.playerId).length;
+    const [isBestAvailableOpen, setIsBestAvailableOpen] = useState(false);
+    const bestAvailableHandleRef = useRef(null);
+
+    // The slots still worth filling, by label - the chip row and the
+    // eligibility filter both key off this. Order follows rosterSlots, and
+    // duplicates collapse: two open FLX slots must not produce two FLX chips.
+    const openSlotLabels = [...new Set(rosterSlots.filter((slot) => !slot.playerId).map((slot) => slot.label))];
 
     return (
         <div>
@@ -36,6 +55,51 @@ const LineupPanel = ({ playerInfo, rosterSlots, removeFromLineup }) => {
                     />
                 ))}
             </ul>
+            {/* Phone only, filtered to the slots still open - the aside
+                covers `md` and up with the desktop rail instead (see
+                AppShell / App's renderAside). Unlike Draft's read-only sheet,
+                there is an unambiguous target here: the first open slot the
+                selected player is eligible for, exactly what
+                addPlayerToRoster (src/lib/roster.js) already computes - so
+                selecting a player here is a real add, and the sheet stays
+                open afterward so several slots can be filled in a row. */}
+            {openSlotLabels.length > 0 &&
+                (rankingPlayersIdsList.length > 0 ? (
+                    <>
+                        <BestAvailableHandle
+                            buttonRef={bestAvailableHandleRef}
+                            isExpanded={isBestAvailableOpen}
+                            onClick={() => setIsBestAvailableOpen((open) => !open)}
+                            subtitle={`fills ${openSlotLabels.join(', ')}`}
+                        />
+                        {isBestAvailableOpen && (
+                            <Sheet
+                                title="Best available"
+                                subtitle={`fills ${openSlotLabels.join(', ')}`}
+                                onClose={() => setIsBestAvailableOpen(false)}
+                                triggerRef={bestAvailableHandleRef}
+                            >
+                                <BestAvailable
+                                    entries={rankingPlayersIdsList}
+                                    playerInfo={playerInfo}
+                                    rosterInfo={rosterInfo}
+                                    myDisplayName={myDisplayName}
+                                    eligibleSlots={openSlotLabels}
+                                    onSelect={addToRoster}
+                                />
+                            </Sheet>
+                        )}
+                    </>
+                ) : (
+                    <div className="border-line bg-raised border-t md:hidden">
+                        <BestAvailable
+                            entries={[]}
+                            playerInfo={playerInfo}
+                            rosterInfo={rosterInfo}
+                            eligibleSlots={openSlotLabels}
+                        />
+                    </div>
+                ))}
         </div>
     );
 };

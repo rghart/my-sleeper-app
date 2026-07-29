@@ -231,16 +231,28 @@ describe('App', () => {
                 return mockFetch(url);
             });
 
+            const user = userEvent.setup();
             render(<App />);
 
             // The rest of the app must still come up: a failed ADP lookup costs
             // the ADP column, nothing else.
             await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+
+            // RanksPanel - and the ADP effect under test - only mounts on the
+            // Ranks section now that the wide-screen aside beside Draft/Lineup
+            // is the best-available rail rather than a second copy of Ranks
+            // (see App.renderBestAvailableRail).
+            await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
             await new Promise((resolve) => setTimeout(resolve, 0));
 
             expect(rejections).toEqual([]);
         } finally {
             process.off('unhandledRejection', recordRejection);
+            // Every later test in this file assumes it starts on the default
+            // section unless it resets the hash itself - leaving this on
+            // '#/ranks' would silently change what every subsequent test
+            // renders.
+            window.location.hash = '';
         }
     });
 
@@ -363,6 +375,11 @@ describe('App', () => {
         render(<App />);
         await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
+        // RanksPanel only mounts on the Ranks section now that the
+        // wide-screen aside beside Draft/Lineup is the best-available rail
+        // rather than a second copy of Ranks (see App.renderBestAvailableRail).
+        await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
+
         await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), `1. ${SWAPPED_PLAYER.name}`);
         await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -382,6 +399,10 @@ describe('App', () => {
         // The second league has this player on nobody's roster, so the derived
         // flags must follow the new league rather than keeping the stale name.
         await waitFor(async () => expect(await attribution()).toContain('free agent'));
+
+        // Every later test in this file assumes it starts on the default
+        // section unless it resets the hash itself.
+        window.location.hash = '';
     });
 
     it('checks rosters against a player database that has actually loaded', async () => {

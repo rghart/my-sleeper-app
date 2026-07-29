@@ -428,6 +428,74 @@ describe('DraftPanel board view toggle', () => {
     });
 });
 
+// Coverage moved here from the old BestAvailableSheet.test.jsx (deleted with
+// that component): the collapsed/expanded toggle and the "n left" count are
+// now DraftPanel's own composition of BestAvailableHandle + Sheet +
+// BestAvailable rather than one self-contained component, so the tests that
+// used to exercise BestAvailableSheet directly move up a level to here. Real
+// timers and userEvent, same as the new-pick-markers suite below - nothing
+// here touches the sync poll.
+describe('DraftPanel best-available sheet', () => {
+    // 13294 is genuinely taken (roster 2) in the shared fixture - added
+    // alongside the default FREE_AGENT entry so "shown but marked" has
+    // something to prove against "excluded outright".
+    const TAKEN = { id: '13294', name: 'Makai Lemon' };
+
+    it('is collapsed by default', () => {
+        renderPanel();
+
+        const handle = screen.getByRole('button', { name: /Best available/ });
+        expect(handle).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByRole('dialog', { name: 'Best available' })).toBeNull();
+    });
+
+    it('expands and collapses on click, tracked by aria-expanded', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+
+        const handle = () => screen.getByRole('button', { name: /Best available/ });
+        await user.click(handle());
+        expect(handle()).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('dialog', { name: 'Best available' })).toBeInTheDocument();
+
+        await user.click(handle());
+        expect(handle()).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByRole('dialog', { name: 'Best available' })).toBeNull();
+    });
+
+    it('reflects the unrostered count, not the raw list, in the collapsed handle', () => {
+        renderPanel({ rankingPlayersIdsList: [rankEntry(FREE_AGENT.id), rankEntry(TAKEN.id)] });
+
+        expect(screen.getByRole('button', { name: /Best available/ })).toHaveTextContent('1 left');
+    });
+
+    it('shows a taken player marked Taken rather than excluding it, and offers no action at all', async () => {
+        const user = userEvent.setup();
+        renderPanel({ rankingPlayersIdsList: [rankEntry(FREE_AGENT.id), rankEntry(TAKEN.id)] });
+
+        await user.click(screen.getByRole('button', { name: /Best available/ }));
+        const dialog = screen.getByRole('dialog', { name: 'Best available' });
+
+        // Both rows render - taken is marked, not hidden.
+        expect(within(dialog).getByText(FREE_AGENT.name)).toBeInTheDocument();
+        expect(within(dialog).getByText(TAKEN.name)).toBeInTheDocument();
+        expect(within(dialog).getByText('Taken')).toBeInTheDocument();
+
+        // Read-only: recording a pick from here has no unambiguous target
+        // pick to attach to, so there is no Add pill for the untaken player
+        // either - see DraftPanel's own comment on this near its BestAvailable
+        // usage.
+        expect(within(dialog).queryByRole('button', { name: 'Add' })).toBeNull();
+    });
+
+    it('shows the plain empty-list message, not a handle, when there is no rank list yet', () => {
+        renderPanel({ rankingPlayersIdsList: [] });
+
+        expect(screen.queryByRole('button', { name: /Best available/ })).toBeNull();
+        expect(screen.getByText(/No rank list yet/)).toBeInTheDocument();
+    });
+});
+
 // The wiring seam: useSeenPicks lives in DraftPanel, and every piece below it
 // takes newPickKeys as a prop with an empty-Set default. That default means
 // unthreading the prop anywhere between the hook and PickRow leaves the whole

@@ -69,7 +69,7 @@ const AppShell = ({
                         check: below 768px the aside would otherwise stack under the
                         active section, which is the two-panel layout the tab bar
                         exists to replace. */}
-                    {showAside ? <div className="hidden min-w-0 flex-1 md:block">{renderAside()}</div> : null}
+                    {showAside ? <div className="hidden min-w-0 flex-1 md:block">{renderAside(activeId)}</div> : null}
                 </main>
                 {/* Phone only - the same sections render as pills inside AppBar
                     at md and up (see its "Section switcher" nav), so this bar is

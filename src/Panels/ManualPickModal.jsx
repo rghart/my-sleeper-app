@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import Button from '../Components/Button';
+import ListRow from '../Components/ListRow';
 import PositionTag from '../Components/PositionTag';
+import Sheet from '../Components/Sheet';
 import { isTaken } from '../lib/rosterInfo.js';
-
-const HEADING_ID = 'manual-pick-modal-heading';
 
 const ManualPickModal = ({
     round,
@@ -13,6 +13,7 @@ const ManualPickModal = ({
     rankingPlayersIdsList,
     onSelect,
     onClose,
+    triggerRef,
 }) => {
     const [searchValue, setSearchValue] = useState('');
 
@@ -21,79 +22,62 @@ const ManualPickModal = ({
         setSearchValue('');
     };
 
-    // Candidate-row geometry copied from PlayerInfoItem's "manually update
-    // player" search results, not reinvented: both are the same shape, a
-    // scrollable list of players to pick one of, ending in a position chip.
-    const candidateRowClasses =
-        'border-line text-ink hover:border-ink-muted flex w-full items-center gap-2 rounded-[4px] border px-2 py-1 text-left text-sm';
-
-    // `keySuffix` mirrors the old per-item key here (`player_id + i`): the
-    // ranked-list branch below has no guarantee a pasted rank list doesn't
-    // repeat a player_id, and player_id alone would collide if it did.
+    // Candidate rows now go through ListRow/PositionTag, same as every other
+    // player row in the app, rather than the one-off button markup this used
+    // to hand-roll.
     const candidateRow = (player, keySuffix = '') => (
-        <button
-            type="button"
-            key={`${player.player_id}${keySuffix}`}
-            onClick={() => selectPlayer(player.player_id)}
-            className={`${candidateRowClasses} mb-[3px]`}
-        >
-            <span className="min-w-0 flex-1 truncate">
-                {player.full_name} {player.team ? player.team : null}
-            </span>
-            <PositionTag position={player.position} />
-        </button>
+        <li key={`${player.player_id}${keySuffix}`}>
+            <ListRow
+                label={`${player.full_name}${player.team ? `, ${player.team}` : ''}`}
+                onClick={() => selectPlayer(player.player_id)}
+                name={player.full_name}
+                meta={player.team}
+                trailing={<PositionTag position={player.position} />}
+            />
+        </li>
     );
 
     return (
-        // role="dialog" plus aria-labelledby, not previously present at all -
-        // PickFeed.test.jsx and DraftPanel.test.jsx used to find this element
-        // with `closest('div').parentElement`, a structural selector that
-        // only worked because of how many wrapper divs happened to exist.
-        // Giving the modal a real accessible name is what let those tests
-        // move to `getByRole('dialog', ...)` instead.
-        <div
-            role="dialog"
-            aria-labelledby={HEADING_ID}
-            // The old rule positioned this as a panel pinned to the right half
-            // of the screen (`left: 51.1%`), which is a desktop-only shape: at
-            // 375px it rendered half off-screen and clipped. It is a bottom
-            // sheet on phones now - the pattern BestAvailableSheet already
-            // established, sitting clear of the tab bar via `--tab-bar-h` -
-            // and a centred panel from `md` up.
-            className="border-line bg-raised fixed inset-x-0 bottom-[var(--tab-bar-h)] z-[999] flex max-h-[70vh] flex-col gap-2 rounded-t-[10px] border-t p-3 md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[420px] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[10px] md:border"
+        // role="dialog" plus an accessible name, not previously present at
+        // all - PickFeed.test.jsx and DraftPanel.test.jsx used to find this
+        // element with `closest('div').parentElement`, a structural selector
+        // that only worked because of how many wrapper divs happened to
+        // exist. Sheet is what gives this a real `role="dialog"` and name -
+        // see its own comment for why the focus/Escape/scrim handling lives
+        // there rather than being reimplemented here a second time.
+        //
+        // Centred at `md` and up (`centerOnDesktop`) - the one caller of
+        // Sheet that ever renders there, since BestAvailable's sheet is
+        // replaced by the desktop rail instead of going centred.
+        <Sheet
+            title={`Manually select pick ${round.round}.${currentManualPick.pick_number}`}
+            onClose={onClose}
+            triggerRef={triggerRef}
+            centerOnDesktop
         >
-            <div className="flex flex-col gap-2">
-                <h4 id={HEADING_ID} className="text-ink text-sm font-semibold">
-                    Manually select pick {`${round.round}.${currentManualPick.pick_number}`}
-                </h4>
+            {/* Sticky, not part of Sheet's own fixed header: the header
+                contract is title/subtitle/close only, and the search input
+                plus remove/exit controls are this caller's own content - but
+                they still shouldn't scroll out of view behind a long
+                candidate list. */}
+            <div className="bg-raised sticky top-0 z-10 flex flex-col gap-2 px-4 pt-3 pb-2">
                 <input
                     type="text"
                     className="border-line text-ink caret-ink-muted m-0 w-full rounded-[5px] border bg-transparent px-2 py-1 text-sm"
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder="Start typing player name to search"
                 />
-                <Button
-                    text="Exit"
-                    btnStyle="primary"
-                    onClick={() => {
-                        setSearchValue('');
-                        onClose();
-                    }}
-                />
-            </div>
-            {/* The last inline style in this file was `height: 75%` on a
-                percentage of a fixed-position parent - it collapsed to nothing
-                once the parent stopped having a fixed height. A flex child
-                that scrolls needs `min-h-0`, or it refuses to shrink below its
-                content and pushes the sheet past its own max height. */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
                 {currentManualPick.player_id && (
-                    // Destructive action, so it borrows Button's `alert` variant -
-                    // the same QB-fill-plus-text-ground treatment already used for
-                    // every other "delete" affordance in the app, rather than the
-                    // one-off hardcoded `QB` class this row used to reach for.
+                    // Destructive action, so it borrows Button's `alert`
+                    // variant - the same QB-fill-plus-text-ground treatment
+                    // already used for every other "delete" affordance in
+                    // the app, rather than the one-off hardcoded `QB` class
+                    // this row used to reach for.
                     <Button text="Remove pick?" btnStyle="alert" onClick={() => selectPlayer(null)} />
                 )}
+                <Button text="Exit" btnStyle="primary" onClick={onClose} />
+            </div>
+            <ul className="flex flex-col gap-0.5 px-2 pb-3">
                 {searchValue.length < 2 &&
                     rankingPlayersIdsList
                         .filter((result) => !isTaken(rosterInfo, result.match_results[0][0]))
@@ -109,8 +93,8 @@ const ManualPickModal = ({
                         .sort((a, b) => a.years_exp - b.years_exp)
                         .sort((a, b) => a.search_rank - b.search_rank)
                         .map((player) => candidateRow(player))}
-            </div>
-        </div>
+            </ul>
+        </Sheet>
     );
 };
 
