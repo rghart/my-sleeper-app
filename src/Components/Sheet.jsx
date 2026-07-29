@@ -20,7 +20,7 @@ const FOCUSABLE_SELECTOR =
 // mounts that). The one thing Drawer doesn't do is trap Tab within the
 // panel - this does, via a small manual cycle rather than a library, since
 // the set of focusable things in any of these three callers is short.
-const Sheet = ({ title, subtitle, onClose, triggerRef, centerOnDesktop = false, children }) => {
+const Sheet = ({ title, subtitle, onClose, triggerRef, centerOnDesktop = false, headerAction, children }) => {
     const panelRef = useRef(null);
 
     useBodyScrollLock();
@@ -93,6 +93,7 @@ const Sheet = ({ title, subtitle, onClose, triggerRef, centerOnDesktop = false, 
                                 <p className="text-ink-quiet m-0 truncate font-mono text-[11px]">{subtitle}</p>
                             )}
                         </div>
+                        {headerAction}
                         <button
                             type="button"
                             onClick={onClose}

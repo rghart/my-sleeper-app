@@ -2,7 +2,7 @@ import { slotAccessibleName, slotOccupantLabel } from './lineupLabels.js';
 import ListRow from '../Components/ListRow';
 import PositionTag from '../Components/PositionTag';
 
-const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
+const SlotRow = ({ slot, index, playerInfo, onOpen }) => {
     // A slot is occupied whenever it holds a player id, even if that id is
     // missing from the player database (a retired player dropped from it).
     // Keying the occupied state off the id rather than off the lookup means
@@ -16,17 +16,16 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
     const occupantName = slotOccupantLabel({ slot, player });
     const accessibleName = slotAccessibleName({ slot, player });
 
-    // Filled slots remove on click; empty slots have nothing to do. The
-    // design captions empty slots "Tap to fill", but no fill-from-slot action
-    // exists in this app - filling happens from the Ranks panel's Add button.
-    // A control that does nothing is worse than none, so an empty slot is a
-    // plain non-interactive row rather than a button with no effect.
+    // Both states now open the slot-scoped sheet: a filled slot's Remove
+    // action moved there (a single tap must not be destructive), and an empty
+    // slot fills from there too - there is no longer such a thing as a
+    // fill-from-slot-that-does-nothing row.
     if (!slot.playerId) {
         return (
             <li>
                 <ListRow
-                    as="div"
                     label={accessibleName}
+                    onClick={() => onOpen(index)}
                     ordinal={slot.label}
                     ordinalWidth="44px"
                     ordinalClassName="text-[10px] font-semibold tracking-[.08em] text-ink-muted"
@@ -34,6 +33,7 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
                     nameTone="dim"
                     meta="Empty slot"
                     tone="empty"
+                    trailing={<span className="text-ink-dim w-[7px] shrink-0 text-center text-[13px]">›</span>}
                 />
             </li>
         );
@@ -43,7 +43,7 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
         <li>
             <ListRow
                 label={accessibleName}
-                onClick={() => onRemove(index)}
+                onClick={() => onOpen(index)}
                 ordinal={slot.label}
                 ordinalWidth="44px"
                 ordinalClassName="text-[10px] font-semibold tracking-[.08em] text-ink-muted"

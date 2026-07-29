@@ -13,6 +13,10 @@ const LeaguePanel = ({
     updateDraftBoard,
     myDisplayName,
     addToRoster,
+    fillSlot,
+    savedRankLists,
+    savedRankListsLoading,
+    signedIn,
     view,
 }) => {
     return (
@@ -35,6 +39,10 @@ const LeaguePanel = ({
                             rankingPlayersIdsList={rankingPlayersIdsList}
                             myDisplayName={myDisplayName}
                             addToRoster={addToRoster}
+                            fillSlot={fillSlot}
+                            savedRankLists={savedRankLists}
+                            savedRankListsLoading={savedRankListsLoading}
+                            signedIn={signedIn}
                         />
                     )}
                     {view === 'draft' && (

@@ -2,12 +2,22 @@ import { useState } from 'react';
 import ListRow from './ListRow';
 import PositionTag from './PositionTag';
 import { playerAccessibleName } from './playerInfoLabels.js';
-import { getEligiblePositions } from '../lib/roster.js';
+import { eligiblePositionsForSlot } from '../lib/roster.js';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
 const playerId = (entry) => entry.match_results[0][0];
 
-const eligibleForAny = (player, slots) => getEligiblePositions(player).some((pos) => slots.includes(pos));
+// Eligibility expressed from the slot's side, not the player's: for each slot
+// label in `slots`, ask which real positions it admits
+// (eligiblePositionsForSlot), then check whether the player's own positions
+// include any of them. A `TE` slot's admitted-positions list is `['TE']`
+// alone, so this can never let a non-TE through it - the old direction
+// (asking the player which slots it could ever fill, including every flex
+// slot its position implies, then checking whether that list intersects
+// `slots`) happened to agree in every case this app exercises, but expressed
+// the relationship backwards.
+const eligibleForAny = (player, slots) =>
+    slots.some((slot) => eligiblePositionsForSlot(slot).some((pos) => player.fantasy_positions.includes(pos)));
 
 /**
  * `entries` narrowed down to the ones with a resolvable player and (when
@@ -45,8 +55,22 @@ const chipClasses = (active) =>
 // the whole rank list unfiltered and carries no chip row at all; an array
 // (Lineup's open slot labels) filters to players eligible for at least one of
 // them and adds the chip row to narrow further to a single slot.
-const BestAvailable = ({ entries, playerInfo, rosterInfo, myDisplayName, eligibleSlots, onSelect }) => {
-    const [activeChip, setActiveChip] = useState(null);
+// `initialActiveChip` seeds which chip starts pressed - null (ALL) for the
+// bottom handle's "every open slot" entry point, a specific label for a
+// slot-tap entry that opens already scoped to the tapped slot. It only ever
+// matters at mount: LineupPanel remounts this component fresh each time the
+// sheet opens (see LineupPanel.jsx), so there is no need for this to be a
+// controlled prop that keeps tracking a later change from outside.
+const BestAvailable = ({
+    entries,
+    playerInfo,
+    rosterInfo,
+    myDisplayName,
+    eligibleSlots,
+    initialActiveChip = null,
+    onSelect,
+}) => {
+    const [activeChip, setActiveChip] = useState(initialActiveChip);
 
     // No rank list at all is the normal state for a signed-out user (or one
     // who hasn't pasted anything yet), not an edge case of an otherwise-full
@@ -93,6 +117,14 @@ const BestAvailable = ({ entries, playerInfo, rosterInfo, myDisplayName, eligibl
                     const taken = isTaken(rosterInfo, id);
                     const rosteredByName = rosteredBy(rosterInfo, id);
                     const isMine = taken && rosteredByName === myDisplayName;
+                    // "Taken" means taken *from you* - rostered by somebody
+                    // else. Your own players are the whole point of the lineup
+                    // sheet: those are the ones you can actually start, so they
+                    // keep their Add action rather than being greyed out with
+                    // everyone else's. Same rule PlayerInfoItem has always used
+                    // (`!taken || isMine`). On the draft sheet this changes
+                    // nothing, because that sheet passes no onSelect at all.
+                    const unavailable = taken && !isMine;
                     const accessibleName = playerAccessibleName({ player, taken, rosteredByName, isMine });
 
                     return (
@@ -104,7 +136,7 @@ const BestAvailable = ({ entries, playerInfo, rosterInfo, myDisplayName, eligibl
                                 ordinalWidth="20px"
                                 ordinalClassName="text-right text-[12px] text-ink-muted"
                                 name={player.full_name}
-                                nameTone={taken ? 'muted' : 'default'}
+                                nameTone={unavailable ? 'muted' : 'default'}
                                 flag={isMine ? { text: 'YOU', tone: 'mine' } : undefined}
                                 meta={
                                     <>
@@ -116,7 +148,7 @@ const BestAvailable = ({ entries, playerInfo, rosterInfo, myDisplayName, eligibl
                                 trailing={
                                     <>
                                         <PositionTag position={player.position} />
-                                        {taken ? (
+                                        {unavailable ? (
                                             <span className="text-ink-quiet shrink-0 font-mono text-[11px] font-semibold">
                                                 Taken
                                             </span>
