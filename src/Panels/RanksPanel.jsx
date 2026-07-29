@@ -115,7 +115,7 @@ const FiltersDesktopPopover = ({ triggerRef, onClose, children }) => {
             aria-modal="true"
             aria-label="Filters"
             tabIndex={-1}
-            className="border-line bg-raised rounded-card absolute top-full right-0 z-50 mt-2 hidden w-[260px] border outline-none md:block"
+            className="border-line bg-raised rounded-card shadow-float absolute top-full right-0 z-50 mt-2 hidden w-[260px] border outline-none md:block"
         >
             {children}
         </div>

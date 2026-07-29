@@ -144,17 +144,21 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                     value={currentDraftId}
                     onChange={(e) => updateDraftID(e.target.value)}
                 />
-                <Button text="Update" btnStyle="primary" onClick={getLiveDraft} />
+                <div className="mt-2">
+                    <Button text="Update" btnStyle="primary" onClick={getLiveDraft} />
+                </div>
                 <p>
                     <b>{`${currentDraft.season} ${currentDraft.player_pool} Draft`}</b>
                 </p>
                 <p>Status: {currentDraft.status}</p>
                 <PickClock draft={currentDraft} />
-                <Button
-                    text={!isSyncing ? 'Sync draft' : 'Stop sync'}
-                    btnStyle={isSyncing ? 'primary-large active' : 'primary-large'}
-                    onClick={() => setIsSyncing(!isSyncing)}
-                />
+                <div className="mt-2">
+                    <Button
+                        text={!isSyncing ? 'Sync draft' : 'Stop sync'}
+                        btnStyle={isSyncing ? 'primary-large active' : 'primary-large'}
+                        onClick={() => setIsSyncing(!isSyncing)}
+                    />
+                </div>
             </div>
             <div className="max-h-[600px] overflow-x-visible overflow-y-scroll">
                 {currentDraft.built_draft && (

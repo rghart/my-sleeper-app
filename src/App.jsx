@@ -496,16 +496,22 @@ class App extends React.Component {
                                         onSignIn={this.googleSignIn}
                                         onSignOut={this.signOut}
                                     />
-                                    {loadError ? (
-                                        <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} />
-                                    ) : null}
-                                    {!loadError && draftWarning ? (
-                                        <ErrorBanner
-                                            message={draftWarning}
-                                            variant="warning"
-                                            onRetry={this.retryDraftLoad}
-                                        />
-                                    ) : null}
+                                    {/* The banner is a card, so it needs the
+                                        screen's own gutter around it rather
+                                        than sitting flush to the viewport
+                                        edges with its corners rounded. */}
+                                    <div className="p-3.5 md:p-4">
+                                        {loadError ? (
+                                            <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} />
+                                        ) : null}
+                                        {!loadError && draftWarning ? (
+                                            <ErrorBanner
+                                                message={draftWarning}
+                                                variant="warning"
+                                                onRetry={this.retryDraftLoad}
+                                            />
+                                        ) : null}
+                                    </div>
                                 </>
                             )}
                         </div>
