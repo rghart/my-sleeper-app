@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useBodyScrollLock } from '../useBodyScrollLock.js';
 import { SECTIONS, PLANNED_SECTIONS } from '../sections.js';
 import { avatarInitials } from './avatarInitials.js';
 
@@ -27,6 +28,8 @@ const Drawer = ({
     onSignOut,
 }) => {
     const panelRef = useRef(null);
+
+    useBodyScrollLock();
 
     useEffect(() => {
         panelRef.current?.focus();
