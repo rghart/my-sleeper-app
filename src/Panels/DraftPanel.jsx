@@ -9,6 +9,7 @@ import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
 import { useSeenPicks } from '../useSeenPicks.js';
+import { usePublishSyncStatus } from '../SyncStatus.jsx';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
 const VIEW_OPTIONS = [
@@ -20,6 +21,10 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
     const { currentDraft, rosterData } = leagueData;
     const draftPath = DRAFT + currentDraft.draft_id + '/';
     const [isSyncing, setIsSyncing] = useState(false);
+    // The top bar's sync pill reads this through the context, several
+    // components above - see SyncStatus.jsx for why the state itself stays
+    // right here rather than moving up to it.
+    usePublishSyncStatus(isSyncing);
     const [currentDraftId, setCurrentDraftId] = useState(currentDraft.draft_id);
     const [DRAFT_PATH, setDraftPath] = useState(draftPath);
     // Feed is the default view - the grid is the newer, denser one and

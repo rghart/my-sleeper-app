@@ -4,16 +4,31 @@ import userEvent from '@testing-library/user-event';
 import AppShell from './AppShell';
 import { SECTIONS } from '../sections.js';
 
+const LEAGUE_ID = '1312088290526003200';
+const OTHER_LEAGUE_ID = '9999999999999999999';
+const LEAGUE_IDS = [
+    { league_id: LEAGUE_ID, name: 'Test League' },
+    { league_id: OTHER_LEAGUE_ID, name: '4 QB Madness' },
+];
+
 const renderShell = (overrides = {}) =>
     render(
         <AppShell
             sections={SECTIONS}
             renderSection={(activeId) => <div data-testid="section-content">{activeId}</div>}
             renderAside={() => <div data-testid="aside-content">aside</div>}
-            leagueBar={<div data-testid="league-bar">league bar</div>}
+            leagueID={LEAGUE_ID}
+            leagueIds={LEAGUE_IDS}
             {...overrides}
         />,
     );
+
+// The same section buttons render twice - once in AppShell's own phone tab
+// bar, once as pills inside AppBar for md and up (see AppShell.jsx and
+// AppBar.jsx) - so a name alone no longer picks out a single button. Every
+// one of them shares the same accessible name and aria-current, so any of
+// them answers "which section is active" equally well.
+const sectionButtons = (name) => screen.getAllByRole('button', { name });
 
 describe('AppShell', () => {
     beforeEach(() => {
@@ -28,18 +43,22 @@ describe('AppShell', () => {
         renderShell();
 
         expect(screen.getByTestId('section-content')).toHaveTextContent('draft');
-        expect(screen.getByRole('button', { name: 'Draft' })).toHaveAttribute('aria-current', 'page');
+        for (const button of sectionButtons('Draft')) {
+            expect(button).toHaveAttribute('aria-current', 'page');
+        }
     });
 
     it('changes the rendered section and the hash when a tab is clicked', async () => {
         const user = userEvent.setup();
         renderShell();
 
-        await user.click(screen.getByRole('button', { name: 'Lineup' }));
+        await user.click(sectionButtons('Lineup')[0]);
 
         expect(screen.getByTestId('section-content')).toHaveTextContent('lineup');
         expect(window.location.hash).toBe('#/lineup');
-        expect(screen.getByRole('button', { name: 'Lineup' })).toHaveAttribute('aria-current', 'page');
+        for (const button of sectionButtons('Lineup')) {
+            expect(button).toHaveAttribute('aria-current', 'page');
+        }
     });
 
     it('selects the section named by an existing hash on first render', () => {
@@ -48,7 +67,9 @@ describe('AppShell', () => {
         renderShell();
 
         expect(screen.getByTestId('section-content')).toHaveTextContent('lineup');
-        expect(screen.getByRole('button', { name: 'Lineup' })).toHaveAttribute('aria-current', 'page');
+        for (const button of sectionButtons('Lineup')) {
+            expect(button).toHaveAttribute('aria-current', 'page');
+        }
     });
 
     it('falls back to the default section when the hash names an unknown section', () => {
@@ -84,7 +105,9 @@ describe('AppShell', () => {
         renderShell({ defaultSectionId: 'lineup' });
 
         expect(screen.getByTestId('section-content')).toHaveTextContent('lineup');
-        expect(screen.getByRole('button', { name: 'Lineup' })).toHaveAttribute('aria-current', 'page');
+        for (const button of sectionButtons('Lineup')) {
+            expect(button).toHaveAttribute('aria-current', 'page');
+        }
     });
 
     it('lets an existing hash win over a defaultSectionId override', () => {
@@ -95,7 +118,15 @@ describe('AppShell', () => {
         expect(screen.getByTestId('section-content')).toHaveTextContent('ranks');
     });
 
-    it('does not render the leagueBar for a global-scope section', () => {
+    it('shows the league pill for a league-scope section', () => {
+        window.location.hash = '#/draft';
+
+        renderShell();
+
+        expect(screen.getByRole('combobox', { name: 'League' })).toBeTruthy();
+    });
+
+    it('does not render the league pill for a global-scope section', () => {
         // No real global section exists yet - this fixture is the only thing
         // holding the cross-league decision up: a section with scope
         // 'global' must never show the league switcher, since there is no
@@ -106,6 +137,12 @@ describe('AppShell', () => {
         renderShell({ sections: globalSections });
 
         expect(screen.getByTestId('section-content')).toHaveTextContent('manager-analytics');
-        expect(screen.queryByTestId('league-bar')).toBeNull();
+        expect(screen.queryByRole('combobox', { name: 'League' })).toBeNull();
+    });
+
+    it('passes identity through to the top bar', () => {
+        renderShell({ identity: { signedIn: true, signedInEmail: 'someone@example.test', myDisplayName: 'a b' } });
+
+        expect(screen.getByText('AB')).toBeTruthy();
     });
 });

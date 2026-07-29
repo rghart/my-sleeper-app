@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
     fetchDraft,
-    fetchLatestUpdateAttempt,
     fetchLeagueBundle,
     fetchLeagueSeason,
     fetchPlayerData,
@@ -103,7 +102,6 @@ describe('sleeperApi', () => {
             ['fetchDraft', () => fetchDraft('draft123')],
             ['fetchTradedDraftPicks', () => fetchTradedDraftPicks('draft123')],
             ['fetchPlayerData', () => fetchPlayerData()],
-            ['fetchLatestUpdateAttempt', () => fetchLatestUpdateAttempt()],
         ];
 
         for (const [name, call] of cases) {

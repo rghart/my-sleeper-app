@@ -13,6 +13,15 @@ export const SECTIONS = [
 
 export const DEFAULT_SECTION_ID = 'draft';
 
+// Sections the drawer advertises but that don't exist yet. Kept separate from
+// SECTIONS, which drives routing and the tab bar - adding these to SECTIONS
+// would make useHashRoute treat their ids as valid routes with nothing to
+// render for them.
+export const PLANNED_SECTIONS = [
+    { id: 'league-history', label: 'League history' },
+    { id: 'trade-finder', label: 'Trade finder' },
+];
+
 // Which section a fresh load should open on, based on where the current
 // league's draft stands. A completed draft has nothing left to do on the
 // draft board, so the lineup is the more useful landing spot; anything else

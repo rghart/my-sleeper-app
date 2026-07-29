@@ -298,7 +298,7 @@ describe('App', () => {
         // panels render, but both are now the same Spinner component, so the
         // page one is told apart by its accessible name.
         await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Loading your leagues' })).toBeTruthy());
-        expect(screen.queryByText('Sleeper Team Assistant')).toBeNull();
+        expect(screen.queryByText('Team Assistant')).toBeNull();
 
         releaseLeague();
 
@@ -444,7 +444,7 @@ describe('App', () => {
             expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
 
             // The page is not blank and not stuck on a spinner.
-            expect(screen.getByText('Sleeper Team Assistant')).toBeTruthy();
+            expect(screen.getByText('Team Assistant')).toBeTruthy();
             expect(screen.queryByRole('progressbar')).toBeNull();
             await new Promise((resolve) => setTimeout(resolve, 0));
             expect(rejections).toEqual([]);
@@ -739,8 +739,11 @@ describe('App', () => {
 
         render(<App />);
 
-        const lineupTab = await screen.findByRole('button', { name: 'Lineup' }, { timeout: 5000 });
-        await waitFor(() => expect(lineupTab).toHaveAttribute('aria-current', 'page'));
+        // The same section buttons render twice - once in the phone tab bar,
+        // once as pills in the top bar for md and up - so a name alone no
+        // longer picks out a single button.
+        const lineupTabs = await screen.findAllByRole('button', { name: 'Lineup' }, { timeout: 5000 });
+        await waitFor(() => lineupTabs.forEach((tab) => expect(tab).toHaveAttribute('aria-current', 'page')));
     });
 
     it('opens on Draft while the draft is still running', async () => {
@@ -754,8 +757,8 @@ describe('App', () => {
 
         render(<App />);
 
-        const draftTab = await screen.findByRole('button', { name: 'Draft' }, { timeout: 5000 });
-        await waitFor(() => expect(draftTab).toHaveAttribute('aria-current', 'page'));
+        const draftTabs = await screen.findAllByRole('button', { name: 'Draft' }, { timeout: 5000 });
+        await waitFor(() => draftTabs.forEach((tab) => expect(tab).toHaveAttribute('aria-current', 'page')));
     });
 
     it('re-derives the default section when the league is switched', async () => {
@@ -776,13 +779,15 @@ describe('App', () => {
         const user = userEvent.setup();
         render(<App />);
 
-        const draftTab = await screen.findByRole('button', { name: 'Draft' }, { timeout: 5000 });
-        await waitFor(() => expect(draftTab).toHaveAttribute('aria-current', 'page'));
+        const draftTabs = await screen.findAllByRole('button', { name: 'Draft' }, { timeout: 5000 });
+        await waitFor(() => draftTabs.forEach((tab) => expect(tab).toHaveAttribute('aria-current', 'page')));
 
         await user.selectOptions(screen.getByRole('combobox'), OTHER_LEAGUE_ID);
 
         await waitFor(() =>
-            expect(screen.getByRole('button', { name: 'Lineup' })).toHaveAttribute('aria-current', 'page'),
+            screen
+                .getAllByRole('button', { name: 'Lineup' })
+                .forEach((tab) => expect(tab).toHaveAttribute('aria-current', 'page')),
         );
     });
 
