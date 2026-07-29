@@ -221,6 +221,19 @@
      * attribute DraftGrid sets on its table root, and the component consumes
      * them through arbitrary-value utilities (`w-[var(--cell-w)]` etc).
      */
+    /*
+     * The chip rows scroll horizontally when they overflow, but the scrollbar
+     * itself is chrome the design does not have - and on a 14px-tall strip of
+     * chips it reads as a rule under them rather than as an affordance.
+     */
+    .no-scrollbar {
+        scrollbar-width: none;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
     .draft-grid[data-zoom='overview'] {
         --cell-w: 23px;
         --cell-h: 23px;

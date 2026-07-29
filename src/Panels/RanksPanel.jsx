@@ -1,16 +1,126 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SearchFilterButton from '../Components/SearchFilterButton';
 import OnFocusButton from '../Components/OnFocusButton';
 import PlayerInfoItem from '../Components/PlayerInfoItem';
-import Dropdown from '../Components/Dropdown';
 import SegmentedControl from '../Components/SegmentedControl';
+import Sheet from '../Components/Sheet';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
-import Button from '../Components/Button';
 import Spinner from '../Components/Spinner';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 import { checkErrors, fetchRequest } from '../lib/http.js';
+import { positionClass } from './pickLabels.js';
+import { usePublishRankList } from '../RankList.jsx';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
+
+const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+
+const ADP_TYPE_OPTIONS = [
+    { value: 'startup_adp', label: 'Startup' },
+    { value: 'sf_startup_adp', label: 'SF startup' },
+    { value: 'rookie_adp', label: 'Rookie' },
+    { value: 'sf_rookie_adp', label: 'SF rookie' },
+];
+const ADP_TYPE_LABELS = Object.fromEntries(ADP_TYPE_OPTIONS.map((option) => [option.value, option.label]));
+
+// The defaults `filters` starts from, and what "FILTERS" (no count) means -
+// see nonDefaultFilterCount below. showTaken/showMyPlayers/showRookiesOnly/
+// showAllPlayers only: the position toggles (QB/RB/...) get their own chips
+// in the row and are never counted here.
+const DEFAULT_FLAG_FILTERS = {
+    showTaken: false,
+    showMyPlayers: true,
+    showRookiesOnly: false,
+    showAllPlayers: false,
+};
+
+const FLAG_TOGGLES = [
+    { label: 'Taken', name: 'showTaken' },
+    { label: 'My players', name: 'showMyPlayers' },
+    { label: 'Only rookies', name: 'showRookiesOnly' },
+    { label: 'All players', name: 'showAllPlayers' },
+];
+
+const positionChipClass = (active, position) =>
+    `rounded-full px-[11px] py-[7px] font-mono text-[11px] font-semibold tracking-[.08em] ${
+        active ? positionClass(position) : 'border-line text-ink-dim border'
+    }`;
+
+// The FILTERS chip's popover/sheet body - toggles plus the ADP type control.
+// Rendered twice by RanksPanel (an anchored desktop popover and a phone
+// Sheet - see the "filters" section below for why), so it's factored out
+// once here rather than kept in sync by hand in two places.
+const FiltersBody = ({ filters, updateFilters, adpType, setADPType }) => (
+    <div className="flex flex-col gap-4 p-4">
+        <div className="flex flex-row flex-wrap gap-1.5">
+            {FLAG_TOGGLES.map((filter) => (
+                <SearchFilterButton
+                    key={filter.name}
+                    name={filter.label}
+                    handleChange={() => updateFilters(filter.name, !filters[filter.name])}
+                    labelName={filter.label}
+                    checked={filters[filter.name]}
+                />
+            ))}
+        </div>
+        <div className="flex flex-col gap-2">
+            <p className="text-ink-dim m-0 font-mono text-[11px] tracking-[.08em]">ADP TYPE</p>
+            <SegmentedControl label="ADP type" options={ADP_TYPE_OPTIONS} value={adpType} onChange={setADPType} />
+        </div>
+    </div>
+);
+
+// The desktop half of the FILTERS control: anchored under the chip rather
+// than centred like Sheet, so it gets its own small close-on-Escape/
+// outside-click/focus-return handling instead of reusing Sheet's (which is
+// built around the bottom-sheet/centred-modal shape, not an anchored one).
+const FiltersDesktopPopover = ({ triggerRef, onClose, children }) => {
+    const popoverRef = useRef(null);
+
+    useEffect(() => {
+        popoverRef.current?.focus();
+        const trigger = triggerRef.current;
+        return () => {
+            trigger?.focus();
+        };
+        // Mount/unmount only, same as Sheet's own focus effect.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+        const onPointerDown = (event) => {
+            const popover = popoverRef.current;
+            const trigger = triggerRef.current;
+            if (popover && !popover.contains(event.target) && trigger && !trigger.contains(event.target)) {
+                onClose();
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('mousedown', onPointerDown);
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            document.removeEventListener('mousedown', onPointerDown);
+        };
+    }, [onClose, triggerRef]);
+
+    return (
+        <div
+            ref={popoverRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filters"
+            tabIndex={-1}
+            className="border-line bg-raised rounded-card absolute top-full right-0 z-50 mt-2 hidden w-[260px] border outline-none md:block"
+        >
+            {children}
+        </div>
+    );
+};
 
 const RanksPanel = ({
     isLoading,
@@ -37,7 +147,6 @@ const RanksPanel = ({
     const [currentListVal, setCurrentListVal] = useState(defaultSelector);
     const [allRankLists, setAllRankLists] = useState({ [defaultSelector]: defaultSelectorObj });
     const [allListsVals, setAllListsVals] = useState([defaultSelector]);
-    const [rankListType, setRankListType] = useState('new');
     const [adp, setADP] = useState({});
     const [adpType, setADPType] = useState();
     const [filters, setFilters] = useState({
@@ -52,6 +161,10 @@ const RanksPanel = ({
         K: false,
         DEF: false,
     });
+    const [showPasteSheet, setShowPasteSheet] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const pasteButtonRef = useRef(null);
+    const filtersChipRef = useRef(null);
 
     const startSearch = () => {
         updateRankingPlayersIdsList([]);
@@ -59,6 +172,9 @@ const RanksPanel = ({
         setIsNewRankList(true);
         startLoad(searchText);
         setSearchText('');
+        // The sheet has done its job once the list is in. Leaving it up hides
+        // the list the paste just produced behind the thing that produced it.
+        setShowPasteSheet(false);
     };
 
     const saveRankList = async () => {
@@ -120,9 +236,6 @@ const RanksPanel = ({
             if (allListsVals.length > 0) {
                 setAllListsVals(allListsVals);
                 updateRankList(defaultSelectorObj.route_name);
-                if (allListsVals.length < 2) {
-                    setRankListType('new');
-                }
             }
             console.log(updateResponse.status);
         } else {
@@ -130,15 +243,21 @@ const RanksPanel = ({
         }
     };
 
-    const updateRankList = (newListName) => {
-        setIsNewRankList(false);
-        setCurrentListVal(newListName);
-        if (newListName !== defaultSelector) {
-            updateRankingPlayersIdsList(allRankLists[newListName].rank_list);
-        } else {
-            updateRankingPlayersIdsList([]);
-        }
-    };
+    // useCallback here is ordinary hygiene, not a correctness requirement:
+    // usePublishRankList holds the handler in a ref precisely so it does not
+    // care about this identity. The body is otherwise untouched.
+    const updateRankList = useCallback(
+        (newListName) => {
+            setIsNewRankList(false);
+            setCurrentListVal(newListName);
+            if (newListName !== defaultSelector) {
+                updateRankingPlayersIdsList(allRankLists[newListName].rank_list);
+            } else {
+                updateRankingPlayersIdsList([]);
+            }
+        },
+        [allRankLists, updateRankingPlayersIdsList],
+    );
 
     const updateFilters = (filterName, filter) => {
         setFilters({ ...filters, [filterName]: filter });
@@ -226,9 +345,6 @@ const RanksPanel = ({
                 };
                 setAllRankLists(updatingRankList);
                 setAllListsVals(rankListNames);
-                if (rankListNames.length > 1) {
-                    setRankListType('saved');
-                }
             }
         };
         if (signedIn) {
@@ -238,195 +354,223 @@ const RanksPanel = ({
             setCurrentListVal(defaultSelector);
             setAllRankLists(defaultSelectorObj);
             setAllListsVals([defaultSelector]);
-            setRankListType('new');
         }
     }, [signedIn]);
 
+    // Published up to the top bar (see AppBar.jsx/RankList.jsx) so the
+    // rank-list selector can live in the pill instead of a dropdown buried in
+    // this panel. Memoised to avoid rebuilding the array every render;
+    // usePublishRankList compares it by value, so this is an optimisation
+    // rather than the thing that keeps it from looping.
+    const rankListOptions = useMemo(
+        () =>
+            allListsVals.map((list) => ({
+                value: list,
+                label: allRankLists[list] ? allRankLists[list].pretty_name : 'dunno',
+            })),
+        [allListsVals, allRankLists],
+    );
+    usePublishRankList({ options: rankListOptions, currentValue: currentListVal, onChange: updateRankList });
+
+    const filteredResults = rankingPlayersIdsList
+        .filter(filterPlayers)
+        .filter((results) =>
+            Object.entries(filters)
+                .filter((filter) => filter[1] === true)
+                .map((ar) => ar[0])
+                .includes(
+                    !filters.showAllPlayers ? playerInfo[results.match_results[0][0]].position : 'showAllPlayers',
+                ),
+        )
+        .filter((results) => (filters.showRookiesOnly ? playerInfo[results.match_results[0][0]].years_exp < 1 : true));
+
+    const adpTypeLabel = adpType ? ADP_TYPE_LABELS[adpType] : null;
+
+    const nonDefaultFilterCount =
+        Object.entries(DEFAULT_FLAG_FILTERS).filter(([name, def]) => filters[name] !== def).length + (adpType ? 1 : 0);
+
+    const showExistingListControls = !isNewRankList && currentListVal !== defaultSelector;
+
     return (
-        // Panel chrome copied from LeaguePanel rather than reinvented: both
-        // panels are `.panel` in the old sheet, and this is the surviving
-        // instance of that shared geometry now that it's gone. `mt-2` is a
-        // Tailwind spacing-scale match for the old 8px top margin; the other
-        // three sides use arbitrary 3px values because 3px isn't on the scale.
-        <div className="bg-raised mt-2 mr-[3px] mb-[3px] ml-[3px] flex h-full flex-1 flex-col rounded-[10px] pt-[5px] pr-[15px] pb-[15px] pl-[15px] max-md:p-[5px]">
+        <div className="flex h-full flex-1 flex-col gap-3.5 px-3.5 pt-5 pb-2.5">
             {isLoading ? (
                 <Spinner size="panel" />
             ) : (
                 <>
-                    <div className="flex flex-col">
-                        <p>
-                            <b>Player filters</b>
-                        </p>
-                        <div className="flex flex-row" style={{ overflow: 'scroll' }}>
-                            {['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].map((pos, i) => (
-                                <SearchFilterButton
-                                    name={pos}
-                                    handleChange={() => updateFilters(pos, !filters[pos])}
-                                    labelName={pos}
-                                    key={pos + i}
-                                    checked={filters[pos]}
-                                />
-                            ))}
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <h2 className="text-ink m-0 text-[20px] font-bold tracking-[-0.02em]">Ranks</h2>
+                            <p className="text-ink-quiet m-0 truncate font-mono text-[11px]">
+                                {filteredResults.length} {filteredResults.length === 1 ? 'player' : 'players'}
+                                {adpTypeLabel ? ` · ${adpTypeLabel} ADP` : ''}
+                            </p>
                         </div>
-                        <div className="flex flex-row">
-                            {[
-                                { label: 'Taken', name: 'showTaken' },
-                                { label: 'My players', name: 'showMyPlayers' },
-                            ].map((filter) => (
-                                <SearchFilterButton
-                                    name={filter.label}
-                                    handleChange={() => updateFilters(filter.name, !filters[filter.name])}
-                                    labelName={filter.label}
-                                    checked={filters[filter.name]}
-                                    key={filter.name}
-                                />
-                            ))}
+                        <button
+                            type="button"
+                            ref={pasteButtonRef}
+                            onClick={() => {
+                                // Only one overlay at a time - opening this
+                                // over the filters sheet stacks two scrims and
+                                // two grab handles on top of each other.
+                                setFiltersOpen(false);
+                                setShowPasteSheet(true);
+                            }}
+                            className="bg-mine text-ground shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold"
+                        >
+                            Paste list
+                        </button>
+                    </div>
+
+                    <div className="no-scrollbar flex flex-row gap-2 overflow-x-auto">
+                        {POSITIONS.map((position) => (
+                            <button
+                                key={position}
+                                type="button"
+                                aria-pressed={filters[position]}
+                                onClick={() => updateFilters(position, !filters[position])}
+                                className={positionChipClass(filters[position], position)}
+                            >
+                                {position}
+                            </button>
+                        ))}
+                        <div className="relative inline-block shrink-0">
+                            <button
+                                type="button"
+                                ref={filtersChipRef}
+                                aria-expanded={filtersOpen}
+                                onClick={() => {
+                                    setShowPasteSheet(false);
+                                    setFiltersOpen((open) => !open);
+                                }}
+                                className="border-line text-ink-dim rounded-full border px-[11px] py-[7px] font-mono text-[11px] font-semibold tracking-[.08em]"
+                            >
+                                FILTERS{nonDefaultFilterCount > 0 ? ` · ${nonDefaultFilterCount}` : ''}
+                            </button>
+                            {/* Rendered as two trees (anchored popover for md
+                                and up, Sheet for below it) rather than one
+                                repositioned element - the same "both exist,
+                                only one is visible" shape AppShell already
+                                uses for its section nav vs tab bar. */}
+                            {filtersOpen && (
+                                <FiltersDesktopPopover
+                                    triggerRef={filtersChipRef}
+                                    onClose={() => setFiltersOpen(false)}
+                                >
+                                    <FiltersBody
+                                        filters={filters}
+                                        updateFilters={updateFilters}
+                                        adpType={adpType}
+                                        setADPType={setADPType}
+                                    />
+                                </FiltersDesktopPopover>
+                            )}
                         </div>
-                        <div className="flex flex-row">
-                            <SearchFilterButton
-                                name={'Only rookies'}
-                                handleChange={() => updateFilters('showRookiesOnly', !filters['showRookiesOnly'])}
-                                labelName={'Only rookies'}
-                                checked={filters['showRookiesOnly']}
+                    </div>
+
+                    {filtersOpen && (
+                        // No `centerOnDesktop`, so Sheet already carries its
+                        // own `md:hidden` - this is the phone half of the
+                        // control; FiltersDesktopPopover above is the other.
+                        <Sheet title="Filters" onClose={() => setFiltersOpen(false)} triggerRef={filtersChipRef}>
+                            <FiltersBody
+                                filters={filters}
+                                updateFilters={updateFilters}
+                                adpType={adpType}
+                                setADPType={setADPType}
                             />
-                            <SearchFilterButton
-                                name={'All players'}
-                                handleChange={() => updateFilters('showAllPlayers', !filters['showAllPlayers'])}
-                                labelName={'All players'}
-                                checked={filters['showAllPlayers']}
-                            />
-                        </div>
-                        <p>
-                            <b>ADP type</b>
-                        </p>
-                        {/* Same shape as the view-toggle SegmentedControl already used in
-                            DraftPanel, reused rather than re-styled: four flat text
-                            options standing in for what used to be four `.radio-label`
-                            divs wired up by hand. */}
-                        <SegmentedControl
-                            label="ADP type"
-                            options={[
-                                { value: 'startup_adp', label: 'Startup' },
-                                { value: 'sf_startup_adp', label: 'SF startup' },
-                                { value: 'rookie_adp', label: 'Rookie' },
-                                { value: 'sf_rookie_adp', label: 'SF rookie' },
-                            ]}
-                            value={adpType}
-                            onChange={setADPType}
-                        />
-                        {signedIn && allListsVals.length > 1 && (
-                            <SegmentedControl
-                                label="Rank list source"
-                                options={[
-                                    {
-                                        value: 'new',
-                                        label: (
-                                            <>
-                                                <span className="block">New</span>
-                                                <span className="block text-xs font-normal">Rank list</span>
-                                            </>
-                                        ),
-                                    },
-                                    {
-                                        value: 'saved',
-                                        label: (
-                                            <>
-                                                <span className="block">Saved</span>
-                                                <span className="block text-xs font-normal">Rank lists</span>
-                                            </>
-                                        ),
-                                    },
-                                ]}
-                                value={rankListType}
-                                onChange={setRankListType}
-                            />
-                        )}
-                        {rankListType === 'saved' && (
-                            <div>
-                                <Dropdown currentValue={currentListVal} updateCurrentValue={updateRankList}>
-                                    {allListsVals.map((list) => (
-                                        <option key={list} value={list}>
-                                            {allRankLists[list] ? allRankLists[list].pretty_name : 'dunno'}
-                                        </option>
-                                    ))}
-                                </Dropdown>
-                                {currentListVal !== defaultSelector && (
-                                    <OnFocusButton event={deleteRankList} saveRankList={saveRankList} />
-                                )}
-                            </div>
-                        )}
-                        {rankListType === 'new' && (
-                            <>
-                                {signedIn && isNewRankList && (
-                                    <div>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter new list name..."
-                                            className="border-line text-ink caret-ink-muted m-0 rounded-[10px] border-2 bg-transparent"
-                                            value={newRankListName}
-                                            onChange={(e) => setNewRankListName(e.target.value)}
-                                        />
-                                        <Button
-                                            text="Save"
-                                            btnStyle="primary"
-                                            isDisabled={newRankListName.length < 3 ? true : false}
-                                            onClick={saveRankList}
-                                        />
+                        </Sheet>
+                    )}
+
+                    {showPasteSheet && (
+                        <Sheet
+                            title="Paste list"
+                            subtitle="One player per line."
+                            onClose={() => setShowPasteSheet(false)}
+                            triggerRef={pasteButtonRef}
+                            centerOnDesktop
+                        >
+                            <div className="flex flex-col gap-3 p-4">
+                                {showExistingListControls && (
+                                    <div className="border-line rounded-row flex items-center justify-between gap-2 border p-3">
+                                        <p className="text-ink m-0 truncate text-[14px] font-semibold">
+                                            {allRankLists[currentListVal]?.pretty_name}
+                                        </p>
+                                        <OnFocusButton event={deleteRankList} saveRankList={saveRankList} />
                                     </div>
                                 )}
                                 {!isNewRankList && (
                                     <>
                                         <textarea
-                                            className="border-line text-ink caret-ink-muted mt-2 mr-[3px] h-[100px] w-[85%] rounded-[10px] border-2 bg-transparent"
+                                            className="border-line bg-raised-2 text-ink caret-ink-muted rounded-row w-full border p-3"
                                             placeholder="Copy + Paste rankings here..."
                                             value={searchText}
                                             onChange={(e) => setSearchText(e.target.value)}
                                         />
-                                        <Button
-                                            text="Submit"
-                                            btnStyle="primary-large"
-                                            isDisabled={searchText.length < 6 ? true : false}
+                                        <button
+                                            type="button"
+                                            disabled={searchText.length < 6}
                                             onClick={startSearch}
-                                        />
+                                            className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
+                                        >
+                                            Submit
+                                        </button>
                                     </>
                                 )}
-                            </>
-                        )}
-                    </div>
-                    <div className="flex max-h-[600px] flex-col gap-0.5 overflow-x-visible overflow-y-scroll px-2">
-                        {rankingPlayersIdsList
-                            .filter(filterPlayers)
-                            .filter((results) =>
-                                Object.entries(filters)
-                                    .filter((filter) => filter[1] === true)
-                                    .map((ar) => ar[0])
-                                    .includes(
-                                        !filters.showAllPlayers
-                                            ? playerInfo[results.match_results[0][0]].position
-                                            : 'showAllPlayers',
-                                    ),
-                            )
-                            .filter((results) =>
-                                filters.showRookiesOnly ? playerInfo[results.match_results[0][0]].years_exp < 1 : true,
-                            )
-                            .map((results, i) => (
-                                <PlayerInfoItem
-                                    key={`${results.match_results[0]}${i}`}
-                                    player={playerInfo[results.match_results[0][0]]}
-                                    playerInfo={playerInfo}
-                                    rosterInfo={rosterInfo}
-                                    lineupSet={lineupSet}
-                                    isNewRankList={isNewRankList}
-                                    addToRoster={addToRoster}
-                                    updatePlayerId={updatePlayerId}
-                                    searchData={results}
-                                    adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
-                                    myDisplayName={myDisplayName}
-                                />
-                            ))}
-                        {notFoundPlayers.map((item, index) => (
-                            <p key={`${item}-${index}`}>{item}</p>
+                                {signedIn && isNewRankList && (
+                                    <div className="flex flex-col gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Enter new list name..."
+                                            className="border-line bg-raised-2 text-ink caret-ink-muted rounded-row border p-3"
+                                            value={newRankListName}
+                                            onChange={(e) => setNewRankListName(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={newRankListName.length < 3}
+                                            onClick={saveRankList}
+                                            className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </Sheet>
+                    )}
+
+                    <div className="flex flex-col gap-0.5 px-2">
+                        {filteredResults.map((results, i) => (
+                            <PlayerInfoItem
+                                key={`${results.match_results[0]}${i}`}
+                                player={playerInfo[results.match_results[0][0]]}
+                                playerInfo={playerInfo}
+                                rosterInfo={rosterInfo}
+                                lineupSet={lineupSet}
+                                isNewRankList={isNewRankList}
+                                addToRoster={addToRoster}
+                                updatePlayerId={updatePlayerId}
+                                searchData={results}
+                                adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
+                                myDisplayName={myDisplayName}
+                            />
                         ))}
+                        {notFoundPlayers.length > 0 && (
+                            <div className="flex flex-col gap-1 px-1 pt-3">
+                                <p className="text-ink-dim m-0 font-mono text-[11px]">
+                                    {notFoundPlayers.length} pasted line{notFoundPlayers.length === 1 ? '' : 's'}{' '}
+                                    matched nothing
+                                </p>
+                                {notFoundPlayers.map((item, index) => (
+                                    <p
+                                        key={`${item}-${index}`}
+                                        className="text-ink-dim m-0 truncate font-mono text-[11px]"
+                                    >
+                                        {item}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </>
             )}

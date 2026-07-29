@@ -69,9 +69,40 @@ function renderPanel(overrides = {}) {
     return { ...props, container };
 }
 
+// The paste box moved from the page into a sheet opened by the "Paste list"
+// pill (step 6d) - every test that needs the textarea has to open it first.
+const openPasteSheet = async (user) => {
+    await user.click(screen.getByRole('button', { name: 'Paste list' }));
+};
+
+// The four flag toggles (Taken/My players/Only rookies/All players) and the
+// ADP type control both moved into the FILTERS popover (step 6e), which
+// renders as two trees at once - an anchored desktop popover and a phone
+// Sheet, both always in the DOM together the same way AppShell's section nav
+// and tab bar are (see RanksPanel.jsx's comment on FiltersDesktopPopover) -
+// so every query against something inside it comes back twice. `openFilters`
+// is idempotent (checks before clicking) so tests can call it before more
+// than one toggle in the same case without accidentally closing it again.
+const openFilters = async (user) => {
+    if (screen.queryAllByRole('checkbox', { name: 'Taken' }).length === 0) {
+        await user.click(screen.getByRole('button', { name: /^FILTERS/ }));
+    }
+};
+
 // The filter controls are <label> elements wrapping a checkbox, so the
-// accessible name is what to click rather than the label text node.
-const toggle = (user, name) => user.click(screen.getByRole('checkbox', { name }));
+// accessible name is what to click rather than the label text node. Takes
+// the first of the two (popover + sheet) matches - see openFilters above.
+const toggleFlag = async (user, name) => {
+    await openFilters(user);
+    await user.click(screen.getAllByRole('checkbox', { name })[0]);
+};
+
+// Position chips are plain toggle buttons now (aria-pressed), not checkboxes,
+// and they live in the always-visible chip row rather than behind FILTERS -
+// see RanksPanel.jsx's positionChipClass/POSITIONS.
+const togglePosition = async (user, position) => {
+    await user.click(screen.getByRole('button', { name: position }));
+};
 
 const visiblePlayers = () =>
     [FREE_AGENT, OTHERS_PLAYER, MY_PLAYER].filter((p) => screen.queryByText(p.name) !== null).map((p) => p.name);
@@ -92,6 +123,7 @@ describe('RanksPanel loading', () => {
         const user = userEvent.setup();
         const { startLoad } = renderPanel();
 
+        await openPasteSheet(user);
         await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), 'Ja  rr Chase');
         await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -117,7 +149,7 @@ describe('RanksPanel player filters', () => {
     it('shows every player once Taken is on alongside My players', async () => {
         renderPanel();
 
-        await toggle(user, 'Taken');
+        await toggleFlag(user, 'Taken');
 
         expect(visiblePlayers()).toEqual([FREE_AGENT.name, OTHERS_PLAYER.name, MY_PLAYER.name]);
     });
@@ -125,7 +157,7 @@ describe('RanksPanel player filters', () => {
     it('shows only free agents when both Taken and My players are off', async () => {
         renderPanel();
 
-        await toggle(user, 'My players');
+        await toggleFlag(user, 'My players');
 
         expect(visiblePlayers()).toEqual([FREE_AGENT.name]);
     });
@@ -136,8 +168,8 @@ describe('RanksPanel player filters', () => {
         // of the league without their own roster in the way.
         renderPanel();
 
-        await toggle(user, 'Taken');
-        await toggle(user, 'My players');
+        await toggleFlag(user, 'Taken');
+        await toggleFlag(user, 'My players');
 
         expect(visiblePlayers()).toEqual([FREE_AGENT.name, OTHERS_PLAYER.name]);
     });
@@ -148,7 +180,7 @@ describe('RanksPanel player filters', () => {
         // for the TE that remains.
         renderPanel();
 
-        await toggle(user, 'WR');
+        await togglePosition(user, 'WR');
 
         expect(visiblePlayers()).toEqual([FREE_AGENT.name]);
     });
@@ -160,31 +192,76 @@ describe('RanksPanel player filters', () => {
         // underlying input.
         renderPanel();
 
-        expect(screen.getByRole('checkbox', { name: 'Taken' }).checked).toBe(false);
+        await openFilters(user);
+        expect(screen.getAllByRole('checkbox', { name: 'Taken' })[0].checked).toBe(false);
 
-        await toggle(user, 'Taken');
+        await toggleFlag(user, 'Taken');
 
-        expect(screen.getByRole('checkbox', { name: 'Taken' }).checked).toBe(true);
+        expect(screen.getAllByRole('checkbox', { name: 'Taken' })[0].checked).toBe(true);
         // WR defaults on (see the top-of-file position filter defaults) and is
-        // untouched by toggling Taken.
-        expect(screen.getByRole('checkbox', { name: 'WR' }).checked).toBe(true);
+        // untouched by toggling Taken. It's a button now (aria-pressed), not a
+        // checkbox - see togglePosition above.
+        expect(screen.getByRole('button', { name: 'WR' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('marks a position chip pressed once toggled on, with its own position colours', async () => {
+        renderPanel();
+
+        expect(screen.getByRole('button', { name: 'K' })).toHaveAttribute('aria-pressed', 'false');
+
+        await togglePosition(user, 'K');
+
+        expect(screen.getByRole('button', { name: 'K' })).toHaveAttribute('aria-pressed', 'true');
+        // Off by default and untouched by turning K on.
+        expect(screen.getByRole('button', { name: 'WR' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'DEF' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('counts non-default filters on the FILTERS chip, and shows no count when everything is default', async () => {
+        renderPanel();
+
+        // Nothing has been touched yet: showTaken/showMyPlayers/
+        // showRookiesOnly/showAllPlayers and adpType are all still their
+        // initial values, so the chip carries no count.
+        expect(screen.getByRole('button', { name: 'FILTERS' })).toBeTruthy();
+
+        await toggleFlag(user, 'Taken');
+
+        expect(screen.getByRole('button', { name: 'FILTERS · 1' })).toBeTruthy();
+
+        await toggleFlag(user, 'Only rookies');
+
+        expect(screen.getByRole('button', { name: 'FILTERS · 2' })).toBeTruthy();
+
+        // My players defaults to true, so turning it off is a third
+        // non-default filter, not a fourth toggle back toward zero.
+        await toggleFlag(user, 'My players');
+
+        expect(screen.getByRole('button', { name: 'FILTERS · 3' })).toBeTruthy();
     });
 });
 
 describe('RanksPanel ADP type picker', () => {
-    it('has no ADP type selected by default, then reflects the pressed option', async () => {
+    it('has no ADP type selected by default, then reflects the pressed option, and counts toward FILTERS', async () => {
         // adpType starts as undefined - no `.radio-label.checked` div in the old
         // markup, no `aria-pressed` segment here - and a click should move
-        // exactly one segment into the pressed state.
+        // exactly one segment into the pressed state. The control now lives in
+        // the FILTERS popover, which renders twice (desktop popover + phone
+        // sheet) - see openFilters/toggleFlag above - so every query takes the
+        // first of the two matches.
         const user = userEvent.setup();
         renderPanel();
 
-        expect(screen.getByRole('button', { name: 'Startup' })).toHaveAttribute('aria-pressed', 'false');
-        expect(screen.getByRole('button', { name: 'Rookie' })).toHaveAttribute('aria-pressed', 'false');
+        await openFilters(user);
 
-        await user.click(screen.getByRole('button', { name: 'Rookie' }));
+        expect(screen.getAllByRole('button', { name: 'Startup' })[0]).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getAllByRole('button', { name: 'Rookie' })[0]).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'FILTERS' })).toBeTruthy();
 
-        expect(screen.getByRole('button', { name: 'Rookie' })).toHaveAttribute('aria-pressed', 'true');
-        expect(screen.getByRole('button', { name: 'Startup' })).toHaveAttribute('aria-pressed', 'false');
+        await user.click(screen.getAllByRole('button', { name: 'Rookie' })[0]);
+
+        expect(screen.getAllByRole('button', { name: 'Rookie' })[0]).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getAllByRole('button', { name: 'Startup' })[0]).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'FILTERS · 1' })).toBeTruthy();
     });
 });

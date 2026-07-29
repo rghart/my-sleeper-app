@@ -380,6 +380,9 @@ describe('App', () => {
         // rather than a second copy of Ranks (see App.renderBestAvailableRail).
         await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
 
+        // The paste box moved into a sheet opened by the "Paste list" pill
+        // (step 6d) - open it before reaching for the textarea.
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
         await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), `1. ${SWAPPED_PLAYER.name}`);
         await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -394,7 +397,13 @@ describe('App', () => {
 
         expect(await attribution()).toContain('taken by ryangh');
 
+        // The Ranks section's top-bar pill is the rank list, not the league,
+        // while RanksPanel is mounted (step 6a) - the league switcher is
+        // reachable again from another section, so switch there and back
+        // rather than expecting a league combobox on this one.
+        await user.click(screen.getAllByRole('button', { name: 'Draft' })[0]);
         await user.selectOptions(screen.getByDisplayValue('Test League'), OTHER_LEAGUE_ID);
+        await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
 
         // The second league has this player on nobody's roster, so the derived
         // flags must follow the new league rather than keeping the stale name.

@@ -16,12 +16,12 @@ const LeaguePanel = ({
     view,
 }) => {
     return (
-        // Panel chrome copied from RanksPanel's own conversion of `.panel` -
-        // both were `.panel` in the old sheet and must keep matching geometry.
-        // `.league-panel` only ever zeroed out the padding side of it (and lost
-        // that override on phones, where `.panel`'s `!important` rule won), so
-        // `p-0` plus the same `max-md:p-[5px]` reproduces both halves.
-        <div className="bg-raised mt-2 mr-[3px] mb-[3px] ml-[3px] flex h-full flex-1 flex-col rounded-[10px] p-0 max-md:p-[5px]">
+        // No card. The redesign puts lists directly on the ground plane -
+        // "no cards around lists" is one of design-system.md's hard rules, and
+        // the rounded `bg-raised` box this used to wear was the last of the
+        // old `.panel` chrome. Elevation is now reserved for the two surfaces
+        // that earn it: the clock card and sheets.
+        <div className="flex h-full flex-1 flex-col">
             {isLoading ? (
                 <Spinner size="panel" />
             ) : (

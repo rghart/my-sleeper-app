@@ -1,8 +1,10 @@
 import { useId, useRef, useState } from 'react';
 import LeaguePill from './LeaguePill';
+import SelectPill from './Pill';
 import Drawer from './Drawer';
 import { avatarInitials } from './avatarInitials.js';
 import { useSyncStatus } from '../SyncStatus.jsx';
+import { useRankList } from '../RankList.jsx';
 
 // The top bar. Rendered twice in this app on purpose: bare, by App, above
 // the loading spinner and the error banner (no league yet, so no nav and no
@@ -28,6 +30,7 @@ const AppBar = ({
     const hamburgerRef = useRef(null);
     const drawerId = useId();
     const isSyncing = useSyncStatus();
+    const rankList = useRankList();
 
     const showLeaguePill = Boolean(leagueIds && leagueIds.length);
     const showSectionPills = Boolean(sections && sections.length);
@@ -56,7 +59,20 @@ const AppBar = ({
 
                 <span className="bg-line-mid hidden h-[22px] w-px md:block" />
 
-                {showLeaguePill ? (
+                {/* On the Ranks section, RanksPanel publishes a rank list -
+                    see RankList.jsx - and that replaces the league pill
+                    rather than sitting beside it: the list is what you're
+                    scoped to there, not the league. It disappears by itself
+                    when RanksPanel unmounts, which is also what brings the
+                    league pill back. */}
+                {rankList ? (
+                    <SelectPill
+                        ariaLabel="Rank list"
+                        value={rankList.currentValue}
+                        onChange={rankList.onChange}
+                        options={rankList.options}
+                    />
+                ) : showLeaguePill ? (
                     <LeaguePill leagueID={leagueID} leagueIds={leagueIds} updateLeagueID={updateLeagueID} />
                 ) : null}
 
