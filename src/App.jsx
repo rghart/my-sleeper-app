@@ -2,17 +2,16 @@ import React from 'react';
 import AppBar from './Components/AppBar';
 import AppShell from './Components/AppShell';
 import ErrorBanner from './Components/ErrorBanner';
-import LeagueBar from './Components/LeagueBar';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import Spinner from './Components/Spinner';
+import { SyncStatusProvider } from './SyncStatus.jsx';
 import { SECTIONS, defaultSectionFor } from './sections.js';
 import { currentUserIdentity, observeAuthState, signInAnonymous, signInWithGoogle, signOutUser } from './lib/auth.js';
 import createRankings from './helpers.js';
 import { buildDraftRounds } from './lib/draft.js';
 import {
     fetchDraft,
-    fetchLatestUpdateAttempt,
     fetchLeagueBundle,
     fetchLeagueSeason,
     fetchPlayerData,
@@ -53,7 +52,6 @@ class App extends React.Component {
         leagueID: '1312088290526003200',
         rosterSlots: [],
         notFoundPlayers: [],
-        lastUpdate: null,
         signedIn: false,
         signedInEmail: null,
         season: null,
@@ -87,17 +85,6 @@ class App extends React.Component {
     // writing it to state and reading it back: #96 and #98 were both a read of
     // a value that had not settled, and neither is expressible in this shape.
     loadEverything = async () => {
-        // Deliberately not awaited, matching the original: this is a display-only
-        // timestamp and the player database is the critical path, so serialising
-        // the two would add a whole round trip to every cold start. The guard
-        // keeps a failed request from replacing the null default with undefined,
-        // which renders as 'Invalid Date' rather than being ignored.
-        fetchLatestUpdateAttempt().then((lastUpdate) => {
-            if (lastUpdate !== undefined) {
-                this.setState({ lastUpdate });
-            }
-        });
-
         const playerInfo = await fetchPlayerData();
         if (playerInfo) {
             this.setState({ playerInfo });
@@ -317,7 +304,6 @@ class App extends React.Component {
     render() {
         const {
             playerInfo,
-            lastUpdate,
             loading,
             rankingPlayersIdsList,
             rosterSlots,
@@ -358,58 +344,93 @@ class App extends React.Component {
                 />
             );
             return (
-                <div>
-                    <AppBar
-                        signedIn={signedIn}
-                        signedInEmail={signedInEmail}
-                        lastUpdate={lastUpdate}
-                        onSignIn={this.googleSignIn}
-                        onSignOut={this.signOut}
-                    />
-                    {loadError ? <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} /> : null}
-                    {!loadError && draftWarning ? (
-                        <ErrorBanner message={draftWarning} variant="warning" onRetry={this.retryDraftLoad} />
-                    ) : null}
-                    {!loadError && leagueData.currentLeague ? (
-                        <AppShell
-                            sections={SECTIONS}
-                            // The league bundle already carries the draft's status, so this is
-                            // known the moment the shell can mount. Reading it off
-                            // currentDraft instead would be a render too late: that is
-                            // filled by loadDraft, which resolves after the shell is
-                            // already on screen.
-                            defaultSectionId={defaultSectionFor(leagueData.currentLeagueDrafts?.[0]?.status)}
-                            leagueBar={
-                                <LeagueBar
-                                    leagueName={leagueData.currentLeague.name}
-                                    leagueID={leagueID}
-                                    leagueIds={leagueData.leagueIds}
-                                    updateLeagueID={this.updateLeagueID}
-                                />
-                            }
-                            renderAside={() => ranksPanel}
-                            renderSection={(activeId) => {
-                                if (activeId === 'ranks') {
-                                    return ranksPanel;
+                <SyncStatusProvider>
+                    <div>
+                        {/*
+                            The shell renders its own top bar, because the bar's
+                            section pills and the tab bar have to share one
+                            active id. So this is an either/or, not a stack: the
+                            bare bar below covers the states where there is no
+                            shell yet - still loading a league, or a load error
+                            that replaced everything under it - and the shell
+                            takes over the moment there is a league to navigate.
+                            Rendering both is what it looked like first, and it
+                            put two top bars on the screen.
+                        */}
+                        {!loadError && leagueData.currentLeague ? (
+                            <AppShell
+                                sections={SECTIONS}
+                                // The league bundle already carries the draft's status, so this is
+                                // known the moment the shell can mount. Reading it off
+                                // currentDraft instead would be a render too late: that is
+                                // filled by loadDraft, which resolves after the shell is
+                                // already on screen.
+                                defaultSectionId={defaultSectionFor(leagueData.currentLeagueDrafts?.[0]?.status)}
+                                identity={{
+                                    signedIn,
+                                    signedInEmail,
+                                    myDisplayName,
+                                    onSignIn: this.googleSignIn,
+                                    onSignOut: this.signOut,
+                                }}
+                                leagueID={leagueID}
+                                leagueIds={leagueData.leagueIds}
+                                updateLeagueID={this.updateLeagueID}
+                                // Inside the shell rather than above it: the
+                                // shell owns the top bar now, so a banner
+                                // rendered as a sibling would sit above the bar
+                                // instead of under it.
+                                banner={
+                                    draftWarning ? (
+                                        <ErrorBanner
+                                            message={draftWarning}
+                                            variant="warning"
+                                            onRetry={this.retryDraftLoad}
+                                        />
+                                    ) : null
                                 }
-                                return (
-                                    <LeaguePanel
-                                        view={activeId === 'lineup' ? 'weekly' : 'draft'}
-                                        leagueData={leagueData}
-                                        rankingPlayersIdsList={rankingPlayersIdsList}
-                                        rosterSlots={rosterSlots}
-                                        playerInfo={playerInfo}
-                                        rosterInfo={rosterInfo}
-                                        isLoading={loading === LOADING.LEAGUE_PANEL}
-                                        removeFromLineup={this.removeFromLineup}
-                                        updateDraftBoard={this.updateDraftBoard}
-                                        myDisplayName={myDisplayName}
+                                renderAside={() => ranksPanel}
+                                renderSection={(activeId) => {
+                                    if (activeId === 'ranks') {
+                                        return ranksPanel;
+                                    }
+                                    return (
+                                        <LeaguePanel
+                                            view={activeId === 'lineup' ? 'weekly' : 'draft'}
+                                            leagueData={leagueData}
+                                            rankingPlayersIdsList={rankingPlayersIdsList}
+                                            rosterSlots={rosterSlots}
+                                            playerInfo={playerInfo}
+                                            rosterInfo={rosterInfo}
+                                            isLoading={loading === LOADING.LEAGUE_PANEL}
+                                            removeFromLineup={this.removeFromLineup}
+                                            updateDraftBoard={this.updateDraftBoard}
+                                            myDisplayName={myDisplayName}
+                                        />
+                                    );
+                                }}
+                            />
+                        ) : (
+                            <>
+                                <AppBar
+                                    signedIn={signedIn}
+                                    signedInEmail={signedInEmail}
+                                    myDisplayName={myDisplayName}
+                                    onSignIn={this.googleSignIn}
+                                    onSignOut={this.signOut}
+                                />
+                                {loadError ? <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} /> : null}
+                                {!loadError && draftWarning ? (
+                                    <ErrorBanner
+                                        message={draftWarning}
+                                        variant="warning"
+                                        onRetry={this.retryDraftLoad}
                                     />
-                                );
-                            }}
-                        />
-                    ) : null}
-                </div>
+                                ) : null}
+                            </>
+                        )}
+                    </div>
+                </SyncStatusProvider>
             );
         }
     }

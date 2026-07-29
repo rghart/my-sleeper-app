@@ -1,9 +1,8 @@
-import { auth } from '../firebase.js';
 import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { LATEST_UPDATE_ATTEMPT, ACTIVE_PLAYERS } = APP_DB_URLS;
+const { ACTIVE_PLAYERS } = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
 
 // Every function here returns its data instead of writing it to state. That is
@@ -15,18 +14,6 @@ const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_P
 // Failures resolve to `undefined` rather than rejecting, matching fetchRequest
 // in http.js. Callers must check before reading - that is the contract, and
 // ignoring it is what caused #101 and #103.
-
-/**
- * When the player database was last refreshed. Display-only.
- */
-export async function fetchLatestUpdateAttempt() {
-    return await fetch(LATEST_UPDATE_ATTEMPT + (await auth.currentUser.getIdToken(true)))
-        .then(checkErrors)
-        .then((response) => response.json())
-        .catch((error) => {
-            console.error('Error:', error);
-        });
-}
 
 /**
  * The whole player database, keyed by player id.

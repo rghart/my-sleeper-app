@@ -1,33 +1,117 @@
-import AccountMenu from './AccountMenu';
+import { useId, useRef, useState } from 'react';
+import LeaguePill from './LeaguePill';
+import Drawer from './Drawer';
+import { avatarInitials } from './avatarInitials.js';
+import { useSyncStatus } from '../SyncStatus.jsx';
 
-// The top bar, plus the player-database timestamp that sits under it.
-// Rendered by App above AppShell, not inside it: AppShell only renders once
-// league data exists, and this has to stay on screen during loading and when
-// the error banner has replaced everything else.
-const AppBar = ({ signedIn, signedInEmail, lastUpdate, onSignIn, onSignOut }) => {
+// The top bar. Rendered twice in this app on purpose: bare, by App, above
+// the loading spinner and the error banner (no league yet, so no nav and no
+// league pill to show); and by AppShell, with the nav and league-pill props
+// filled in, once a shell actually exists to navigate.
+//
+// The hamburger's drawer lives here too, since the hamburger is what opens
+// it - see Drawer.jsx for why it is mounted only while open.
+const AppBar = ({
+    signedIn,
+    signedInEmail,
+    myDisplayName,
+    onSignIn,
+    onSignOut,
+    sections,
+    activeId,
+    onNavigate,
+    leagueID,
+    leagueIds,
+    updateLeagueID,
+}) => {
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const hamburgerRef = useRef(null);
+    const drawerId = useId();
+    const isSyncing = useSyncStatus();
+
+    const showLeaguePill = Boolean(leagueIds && leagueIds.length);
+    const showSectionPills = Boolean(sections && sections.length);
+    const initials = avatarInitials(myDisplayName);
+
     return (
         <>
-            <div className="flex flex-row items-center justify-between px-[3px] py-0">
-                <h1 className="text-ink mb-1.5 ml-[3px] text-lg font-bold">Sleeper Team Assistant</h1>
-                <AccountMenu
+            <div className="bg-chrome border-line-quiet flex h-14 items-center gap-2.5 border-b px-3.5 md:h-[60px] md:gap-4 md:px-5">
+                <button
+                    type="button"
+                    aria-label="Open menu"
+                    aria-expanded={drawerOpen}
+                    aria-controls={drawerId}
+                    ref={hamburgerRef}
+                    onClick={() => setDrawerOpen(true)}
+                    className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 py-1.5"
+                >
+                    <span className="bg-ink-muted block h-[1.5px] w-[18px] rounded-[2px]" />
+                    <span className="bg-ink-muted block h-[1.5px] w-[18px] rounded-[2px]" />
+                    <span className="bg-ink-muted block h-[1.5px] w-[18px] rounded-[2px]" />
+                </button>
+
+                <span className="text-ink hidden text-[15px] font-bold tracking-[-0.02em] md:block">
+                    Team Assistant
+                </span>
+
+                <span className="bg-line-mid hidden h-[22px] w-px md:block" />
+
+                {showLeaguePill ? (
+                    <LeaguePill leagueID={leagueID} leagueIds={leagueIds} updateLeagueID={updateLeagueID} />
+                ) : null}
+
+                {showSectionPills ? (
+                    <nav aria-label="Section switcher" className="ml-5 hidden items-center gap-0.5 md:flex">
+                        {sections.map((section) => {
+                            const isActive = section.id === activeId;
+                            return (
+                                <button
+                                    key={section.id}
+                                    type="button"
+                                    aria-current={isActive ? 'page' : undefined}
+                                    onClick={() => onNavigate(section.id)}
+                                    className={`rounded-full px-3.5 py-[7px] text-[13px] ${
+                                        isActive ? 'bg-selected text-ink font-semibold' : 'text-ink-dim font-medium'
+                                    }`}
+                                >
+                                    {section.label}
+                                </button>
+                            );
+                        })}
+                    </nav>
+                ) : null}
+
+                <div className="ml-auto flex items-center gap-2.5">
+                    {isSyncing ? (
+                        <span className="bg-live-tint flex items-center gap-1.5 rounded-full px-2.5 py-1">
+                            <span className="bg-live animate-live-pulse h-1.5 w-1.5 rounded-full motion-reduce:animate-none" />
+                            <span className="text-live font-mono text-[10px] font-semibold tracking-[.1em]">
+                                <span className="md:hidden">SYNC</span>
+                                <span className="hidden md:inline">SYNCING</span>
+                            </span>
+                        </span>
+                    ) : null}
+
+                    <span className="bg-raised-2 border-line text-ink-muted flex h-[30px] w-[30px] items-center justify-center rounded-full border font-mono text-[11px] font-semibold md:h-8 md:w-8">
+                        {initials}
+                    </span>
+                </div>
+            </div>
+
+            {drawerOpen ? (
+                <Drawer
+                    id={drawerId}
+                    onClose={() => setDrawerOpen(false)}
+                    triggerRef={hamburgerRef}
+                    activeId={activeId}
+                    onNavigate={onNavigate}
+                    myDisplayName={myDisplayName}
+                    leagueCount={leagueIds ? leagueIds.length : 0}
                     signedIn={signedIn}
                     signedInEmail={signedInEmail}
                     onSignIn={onSignIn}
                     onSignOut={onSignOut}
                 />
-            </div>
-            {/*
-                Rendered only once there is a timestamp. `lastUpdate` starts as
-                null and the request for it is deliberately not awaited, so
-                this used to spend the first moments of every load showing
-                `new Date(null).toString()` - "Wed Dec 31 1969". It also stays
-                hidden if that request fails, which is honest: an absent line
-                beats a confidently wrong date.
-            */}
-            {lastUpdate ? (
-                <p className="text-ink-muted m-0 mr-2 ml-[3px] text-xs">
-                    <i>Latest player DB update attempt: {new Date(lastUpdate).toString()}</i>
-                </p>
             ) : null}
         </>
     );

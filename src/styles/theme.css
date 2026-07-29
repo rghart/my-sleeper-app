@@ -101,6 +101,11 @@
 
     /* The empty lineup slot's fill - a hint of a row, not a dashed box. */
     --raw-empty: rgba(154, 171, 189, 0.04);
+
+    /* The drawer's full-screen scrim. Named "heavy" because it is darker than
+     * any surface tint above - it has to read as a modal backdrop rather than
+     * a tint on the page behind it. */
+    --raw-scrim-heavy: rgba(7, 9, 13, 0.72);
 }
 
 /* `inline` so the utilities resolve through the variable at runtime, which is
@@ -148,6 +153,7 @@
     --color-pos-none-tint: var(--raw-pos-none-tint);
 
     --color-empty: var(--raw-empty);
+    --color-scrim-heavy: var(--raw-scrim-heavy);
 
     /*
      * Two families, and the split is semantic rather than decorative: Archivo
@@ -166,6 +172,21 @@
     --radius-card: 14px;
     --radius-row: 10px;
     --radius-tag: 6px;
+
+    /* The live-sync pill's dot. `motion-reduce:animate-none` (Spinner's
+     * idiom) is what actually disables it for prefers-reduced-motion - this
+     * is just the timing curve design-system.md calls for. */
+    --animate-live-pulse: live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
 }
 
 /*
