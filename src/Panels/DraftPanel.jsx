@@ -3,7 +3,9 @@ import Button from '../Components/Button';
 import SegmentedControl from '../Components/SegmentedControl';
 import PickFeed from './PickFeed';
 import DraftGrid from './DraftGrid';
-import BestAvailableSheet from './BestAvailableSheet';
+import Sheet from '../Components/Sheet';
+import BestAvailable, { countAvailable } from '../Components/BestAvailable';
+import BestAvailableHandle from '../Components/BestAvailableHandle';
 import PickClock from '../Components/PickClock';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
@@ -30,6 +32,8 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
     // Feed is the default view - the grid is the newer, denser one and
     // shouldn't change what people already sync a draft against.
     const [boardView, setBoardView] = useState('feed');
+    const [isBestAvailableOpen, setIsBestAvailableOpen] = useState(false);
+    const bestAvailableHandleRef = useRef(null);
 
     const { newPickKeys, markSeen } = useSeenPicks({
         draftId: currentDraft.draft_id,
@@ -183,11 +187,53 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                                 onPickChange={handlePickChange}
                             />
                         )}
-                        <BestAvailableSheet
-                            rankingPlayersIdsList={rankingPlayersIdsList}
-                            playerInfo={playerInfo}
-                            rosterInfo={rosterInfo}
-                        />
+                        {/* Phone only - the aside covers `md` and up (see
+                            AppShell's SECTIONS_WITH_ASIDE / App's renderAside).
+                            Read-only: unlike Lineup's sheet, there is no
+                            unambiguous pick to attach a tap here to, so this
+                            never records anything - see DraftPanel's own
+                            comment on that near the top of the file for why. */}
+                        {rankingPlayersIdsList.length > 0 ? (
+                            <>
+                                <BestAvailableHandle
+                                    buttonRef={bestAvailableHandleRef}
+                                    isExpanded={isBestAvailableOpen}
+                                    onClick={() => setIsBestAvailableOpen((open) => !open)}
+                                    subtitle={`${countAvailable({
+                                        entries: rankingPlayersIdsList,
+                                        playerInfo,
+                                        rosterInfo,
+                                        eligibleSlots: null,
+                                    })} left`}
+                                />
+                                {isBestAvailableOpen && (
+                                    <Sheet
+                                        title="Best available"
+                                        subtitle={`${rankingPlayersIdsList.length} ranked`}
+                                        onClose={() => setIsBestAvailableOpen(false)}
+                                        triggerRef={bestAvailableHandleRef}
+                                    >
+                                        <BestAvailable
+                                            entries={rankingPlayersIdsList}
+                                            playerInfo={playerInfo}
+                                            rosterInfo={rosterInfo}
+                                            myDisplayName={myDisplayName}
+                                            eligibleSlots={null}
+                                            onSelect={null}
+                                        />
+                                    </Sheet>
+                                )}
+                            </>
+                        ) : (
+                            <div className="border-line bg-raised border-t md:hidden">
+                                <BestAvailable
+                                    entries={[]}
+                                    playerInfo={playerInfo}
+                                    rosterInfo={rosterInfo}
+                                    eligibleSlots={null}
+                                />
+                            </div>
+                        )}
                     </>
                 )}
             </div>

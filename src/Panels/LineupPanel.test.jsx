@@ -2,6 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LineupPanel from './LineupPanel';
+import { buildRosterInfo, decorateRosters } from '../lib/rosterInfo.js';
+import rosterFlagsFixture from '../lib/__fixtures__/roster-flags-2026.json';
+
+const { rosterDataRaw, managerData, playerInfo: fixturePlayerInfo } = rosterFlagsFixture;
+const rosterData = decorateRosters({ rosterData: rosterDataRaw, managerData });
+const rosterInfo = buildRosterInfo({ rosterData, builtDraft: null });
+const MY_DISPLAY_NAME = 'ryangh';
 
 const STARTER = {
     player_id: '13274',
@@ -12,8 +19,23 @@ const STARTER = {
     team: 'LV',
 };
 
-const PLAYER_INFO = { [STARTER.player_id]: STARTER };
+const PLAYER_INFO = { ...fixturePlayerInfo, [STARTER.player_id]: STARTER };
 const MISSING_ID = '999999';
+
+// Both free agents in the shared roster-flags fixture, so no second fixture
+// has to be maintained. FREE_AGENT_TE is eligible for neither QB nor WR (no
+// FLX among ROSTER_SLOTS' open slots below), so it exercises "the handle
+// shows regardless of eligibility" without being a candidate to add;
+// FREE_AGENT_QB is eligible for the open QB slot and is what the Add test
+// selects.
+const FREE_AGENT_TE = { id: '13307', name: 'Marlin Klein' };
+const FREE_AGENT_QB = { id: '289', name: 'Drew Brees' };
+
+const rankEntry = (playerId, ranking) => ({
+    match_results: [[playerId, '0.000']],
+    ranking,
+    search_string: 'a pasted rank line',
+});
 
 // The filled slot is deliberately a FLX holding a WR: the label and the
 // occupant's position must differ, or rendering the position instead of the
@@ -27,15 +49,20 @@ const ROSTER_SLOTS = [
 
 function renderLineup(overrides = {}) {
     const removeFromLineup = vi.fn();
+    const addToRoster = vi.fn();
     const { unmount } = render(
         <LineupPanel
             playerInfo={PLAYER_INFO}
+            rosterInfo={rosterInfo}
             rosterSlots={ROSTER_SLOTS}
             removeFromLineup={removeFromLineup}
+            rankingPlayersIdsList={[]}
+            myDisplayName={MY_DISPLAY_NAME}
+            addToRoster={addToRoster}
             {...overrides}
         />,
     );
-    return { removeFromLineup, unmount };
+    return { removeFromLineup, addToRoster, unmount };
 }
 
 describe('LineupPanel', () => {
@@ -121,5 +148,42 @@ describe('LineupPanel', () => {
         // redesign removes.
         expect(screen.getAllByText('Add player')).toHaveLength(2);
         expect(screen.getAllByText('Empty slot')).toHaveLength(2);
+    });
+});
+
+describe('LineupPanel best-available sheet', () => {
+    it('shows the handle, filtered to the open slots, when there are open slots and a rank list', () => {
+        renderLineup({ rankingPlayersIdsList: [rankEntry(FREE_AGENT_TE.id, 1)] });
+
+        // ROSTER_SLOTS has two open slots: QB and WR.
+        expect(screen.getByRole('button', { name: /Best available/ })).toHaveTextContent('fills QB, WR');
+    });
+
+    it('hides the handle entirely once every slot is filled', () => {
+        renderLineup({ rosterSlots: [{ label: 'QB', playerId: STARTER.player_id }] });
+
+        expect(screen.queryByRole('button', { name: /Best available/ })).toBeNull();
+    });
+
+    it('shows the plain empty-list message, not a handle, when there is no rank list yet', () => {
+        renderLineup({ rankingPlayersIdsList: [] });
+
+        expect(screen.queryByRole('button', { name: /Best available/ })).toBeNull();
+        expect(screen.getByText(/No rank list yet/)).toBeInTheDocument();
+    });
+
+    it('fills the first eligible open slot on Add, and the sheet stays open', async () => {
+        const user = userEvent.setup();
+        const { addToRoster } = renderLineup({ rankingPlayersIdsList: [rankEntry(FREE_AGENT_QB.id, 1)] });
+
+        await user.click(screen.getByRole('button', { name: /Best available/ }));
+        const dialog = screen.getByRole('dialog', { name: 'Best available' });
+        await user.click(screen.getByRole('button', { name: 'Add' }));
+
+        expect(addToRoster).toHaveBeenCalledWith(fixturePlayerInfo[FREE_AGENT_QB.id]);
+        // Unlike the Draft sheet, adding a player here does not close the
+        // sheet - it stays open so several slots can be filled in a row.
+        expect(dialog).toBeInTheDocument();
+        expect(screen.getByRole('dialog', { name: 'Best available' })).toBeInTheDocument();
     });
 });

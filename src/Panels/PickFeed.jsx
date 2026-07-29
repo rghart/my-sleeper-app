@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import RoundSection from './RoundSection';
 import ManualPickModal from './ManualPickModal';
 import { applyManualPick } from '../lib/liveDraft.js';
@@ -19,8 +19,17 @@ const PickFeed = ({
     newPickKeys = new Set(),
 }) => {
     const [activePick, setActivePick] = useState(null);
+    // Whatever had focus at the moment a pick was opened - Sheet returns
+    // focus to it on close, same as Drawer.jsx does for the hamburger.
+    // Captured on the fly rather than via a ref prop threaded through
+    // PickRow, since the trigger can be any one of a whole round's worth of
+    // pick buttons.
+    const triggerRef = useRef(null);
 
-    const openPick = (round, pick) => setActivePick({ round, pick });
+    const openPick = (round, pick) => {
+        triggerRef.current = document.activeElement;
+        setActivePick({ round, pick });
+    };
     const closeModal = () => setActivePick(null);
 
     const selectPlayer = (playerID) => {
@@ -59,6 +68,7 @@ const PickFeed = ({
                     rankingPlayersIdsList={rankingPlayersIdsList}
                     onSelect={selectPlayer}
                     onClose={closeModal}
+                    triggerRef={triggerRef}
                 />
             )}
         </div>

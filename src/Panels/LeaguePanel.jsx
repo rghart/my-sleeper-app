@@ -12,6 +12,7 @@ const LeaguePanel = ({
     rankingPlayersIdsList,
     updateDraftBoard,
     myDisplayName,
+    addToRoster,
     view,
 }) => {
     return (
@@ -28,8 +29,12 @@ const LeaguePanel = ({
                     {view === 'weekly' && (
                         <LineupPanel
                             playerInfo={playerInfo}
+                            rosterInfo={rosterInfo}
                             rosterSlots={rosterSlots}
                             removeFromLineup={removeFromLineup}
+                            rankingPlayersIdsList={rankingPlayersIdsList}
+                            myDisplayName={myDisplayName}
+                            addToRoster={addToRoster}
                         />
                     )}
                     {view === 'draft' && (

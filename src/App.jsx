@@ -21,6 +21,7 @@ import { addPlayerToRoster, removePlayerFromLineup, toRosterSlots } from './lib/
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
 import { SLEEPER_USER_ID } from './urls.js';
+import BestAvailable, { countAvailable } from './Components/BestAvailable';
 
 // What, if anything, is currently loading. These states are mutually exclusive
 // - at most one thing loads at a time - which is why this is one field rather
@@ -301,6 +302,68 @@ class App extends React.Component {
         }
     };
 
+    // The wide-screen aside for the Draft and Lineup sections. Ranks used to
+    // render here in full; the redesign replaces that with a narrower "best
+    // available" rail that shows the same BestAvailable rows the phone sheet
+    // does (see BestAvailable.jsx - splitting the rows out of Sheet is what
+    // lets both render identically). Ranks itself is still reachable as its
+    // own section; "Edit list" below is a shortcut there.
+    //
+    // `listName` has nowhere to come from yet - RanksPanel keeps its saved
+    // rank list selection as local state and doesn't lift it up, and that
+    // control stack is explicitly the next step, not this one - so this
+    // reads a generic "Ranks" rather than the real list name. Worth revisiting
+    // once RanksPanel's controls move up.
+    renderBestAvailableRail = (activeId) => {
+        const { playerInfo, leagueData, rankingPlayersIdsList, rosterSlots, myDisplayName } = this.state;
+        const rosterInfoValue = this.selectRosterInfo({
+            rosterData: leagueData.rosterData,
+            builtDraft: leagueData.currentDraft?.built_draft,
+        });
+        const eligibleSlots =
+            activeId === 'lineup'
+                ? [...new Set(rosterSlots.filter((slot) => !slot.playerId).map((slot) => slot.label))]
+                : null;
+        const listName = 'Ranks';
+        const left = countAvailable({
+            entries: rankingPlayersIdsList,
+            playerInfo,
+            rosterInfo: rosterInfoValue,
+            eligibleSlots,
+        });
+
+        return (
+            <div className="bg-raised border-line rounded-card flex flex-col gap-3.5 border p-[18px]">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                        <p className="text-ink m-0 text-[16px] font-semibold">Best available</p>
+                        <p className="text-ink-quiet m-0 font-mono text-[11px]">
+                            {listName} · {left} left
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            window.location.hash = '#/ranks';
+                        }}
+                        className="border-line text-ink-muted shrink-0 rounded-full border px-3 py-1.5 text-[13px] font-semibold"
+                    >
+                        Edit list
+                    </button>
+                </div>
+                <div className="bg-line-mid h-px w-full" />
+                <BestAvailable
+                    entries={rankingPlayersIdsList}
+                    playerInfo={playerInfo}
+                    rosterInfo={rosterInfoValue}
+                    myDisplayName={myDisplayName}
+                    eligibleSlots={eligibleSlots}
+                    onSelect={activeId === 'lineup' ? this.addToRoster : null}
+                />
+            </div>
+        );
+    };
+
     render() {
         const {
             playerInfo,
@@ -389,7 +452,7 @@ class App extends React.Component {
                                         />
                                     ) : null
                                 }
-                                renderAside={() => ranksPanel}
+                                renderAside={this.renderBestAvailableRail}
                                 renderSection={(activeId) => {
                                     if (activeId === 'ranks') {
                                         return ranksPanel;
@@ -406,6 +469,7 @@ class App extends React.Component {
                                             removeFromLineup={this.removeFromLineup}
                                             updateDraftBoard={this.updateDraftBoard}
                                             myDisplayName={myDisplayName}
+                                            addToRoster={this.addToRoster}
                                         />
                                     );
                                 }}

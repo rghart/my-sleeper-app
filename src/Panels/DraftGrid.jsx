@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import ManualPickModal from './ManualPickModal';
 import SegmentedControl from '../Components/SegmentedControl';
 import { applyManualPick } from '../lib/liveDraft.js';
@@ -95,10 +95,16 @@ const DraftGrid = ({
 }) => {
     const [zoom, setZoom] = useState('overview');
     const [activePick, setActivePick] = useState(null);
+    // See PickFeed's identical comment - Sheet returns focus to whichever
+    // cell button was open when it closes.
+    const triggerRef = useRef(null);
 
     const teamColumns = useMemo(() => buildTeamColumns(builtDraft), [builtDraft]);
 
-    const openPick = (round, pick) => setActivePick({ round, pick });
+    const openPick = (round, pick) => {
+        triggerRef.current = document.activeElement;
+        setActivePick({ round, pick });
+    };
     const closeModal = () => setActivePick(null);
 
     const selectPlayer = (playerID) => {
@@ -211,6 +217,7 @@ const DraftGrid = ({
                     rankingPlayersIdsList={rankingPlayersIdsList}
                     onSelect={selectPlayer}
                     onClose={closeModal}
+                    triggerRef={triggerRef}
                 />
             )}
         </div>
