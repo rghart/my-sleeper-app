@@ -1,5 +1,7 @@
-import { managerLabel, pickAccessibleName, pickNumberLabel, positionClass } from './pickLabels.js';
+import { managerLabel, pickAccessibleName, pickNumberLabel } from './pickLabels.js';
 import { pickKey } from '../lib/seenPicks.js';
+import ListRow from '../Components/ListRow';
+import PositionTag from '../Components/PositionTag';
 
 const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect, newPickKeys = new Set() }) => {
     // The player database is a snapshot and a drafted player can be absent
@@ -16,47 +18,43 @@ const PickRow = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect,
     const isNew = newPickKeys.has(pickKey(round, pick));
     const accessibleName = pickAccessibleName({ round, pick, player, manager, isNew });
 
+    // The visible attribution drops the "· you" the accessible name keeps: on
+    // screen the row already says it twice, with the violet tint and the YOU
+    // flag, and "WR · ATL · ryangh · you" would be a third.
+    const visibleManager = managerLabel({ pick, rosterData, myDisplayName, markYours: false });
+
+    // Manager used to sit above the player name to stop a long attribution
+    // ("CHood20 via kpresley") from truncating the name. It moves into the
+    // mono meta line instead - the meta line already truncates independently
+    // of the name, which is the actual fix for the same problem.
+    const meta = player ? [player.position, player.team, visibleManager].filter(Boolean).join(' · ') : visibleManager;
+
+    // One flag slot, and a pick can be both yours and unseen. NEW wins:
+    // ownership is already carried by the row's violet tint, so spending the
+    // flag on YOU would say that twice and leave "new" - which nothing else on
+    // the row encodes, and which stops being true on the next visit - unsaid.
+    let flag;
+    if (isNew) {
+        flag = { text: 'NEW', tone: 'live' };
+    } else if (isMine) {
+        flag = { text: 'YOU', tone: 'mine' };
+    }
+
     return (
         <li>
-            <button
-                type="button"
-                aria-label={accessibleName}
+            <ListRow
+                label={accessibleName}
                 onClick={() => onSelect(pick)}
-                className={`flex min-h-11 w-full items-center gap-3 rounded-[5px] border px-3 py-2 text-left ${
-                    isMine ? 'border-mine! bg-mine/10!' : 'border-line'
-                }`}
-            >
-                <span className="text-ink-muted w-12 shrink-0 text-sm tabular-nums">{pickNumber}</span>
-                {/* Manager above player rather than beside it. Sharing one line
-                    meant a long attribution ate the name: "CHood20 via kpresley"
-                    truncated "KC Concepcion" on a 375px screen. Stacked, each
-                    gets the full width of the row. */}
-                <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                    <span className="text-ink-muted truncate text-xs">{manager}</span>
-                    {pick.player_id && (
-                        <span className="text-ink truncate text-sm">
-                            {player ? player.full_name : `Unknown player ${pick.player_id}`}
-                        </span>
-                    )}
-                </span>
-                {player && (
-                    <span
-                        className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
-                    >
-                        {player.position}
-                    </span>
-                )}
-                {/* Neutral, not a saturated position colour or `bg-mine` -
-                    both are already spoken for (position data and "yours"
-                    respectively), so "new" gets the one high-contrast chip
-                    left: ink-on-ground, same geometry as the position badge
-                    above. */}
-                {isNew && (
-                    <span className="bg-ink text-ground shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold">
-                        NEW
-                    </span>
-                )}
-            </button>
+                ordinal={pickNumber}
+                ordinalWidth="34px"
+                name={
+                    pick.player_id ? (player ? player.full_name : `Unknown player ${pick.player_id}`) : visibleManager
+                }
+                flag={flag}
+                meta={pick.player_id ? meta : undefined}
+                tone={isMine ? 'mine' : undefined}
+                trailing={player && <PositionTag position={player.position} />}
+            />
         </li>
     );
 };

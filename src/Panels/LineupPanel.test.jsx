@@ -109,13 +109,17 @@ describe('LineupPanel', () => {
         expect(removeFromLineup).toHaveBeenCalledWith(0);
     });
 
-    it('shows the occupant name and team on screen, and Empty for an unfilled slot', () => {
+    it('shows the occupant name and team on screen, and a placeholder for an unfilled slot', () => {
         renderLineup();
 
         expect(screen.getByText(STARTER.full_name)).toBeVisible();
         // The second line is the team alone - there is no schedule data in
         // this app, so an opponent here would have to be invented.
         expect(screen.getByText(STARTER.team)).toBeVisible();
-        expect(screen.getAllByText('Empty')).toHaveLength(2);
+        // An empty slot reads "Add player" / "Empty slot" rather than a
+        // dashed box - the dashed border was exactly the blockiness this
+        // redesign removes.
+        expect(screen.getAllByText('Add player')).toHaveLength(2);
+        expect(screen.getAllByText('Empty slot')).toHaveLength(2);
     });
 });

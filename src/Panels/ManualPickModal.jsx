@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Button from '../Components/Button';
-import { positionClass } from './pickLabels.js';
+import PositionTag from '../Components/PositionTag';
 import { isTaken } from '../lib/rosterInfo.js';
 
 const HEADING_ID = 'manual-pick-modal-heading';
@@ -40,11 +40,7 @@ const ManualPickModal = ({
             <span className="min-w-0 flex-1 truncate">
                 {player.full_name} {player.team ? player.team : null}
             </span>
-            <span
-                className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
-            >
-                {player.position}
-            </span>
+            <PositionTag position={player.position} />
         </button>
     );
 

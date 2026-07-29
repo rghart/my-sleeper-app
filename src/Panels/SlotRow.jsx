@@ -1,5 +1,6 @@
-import { positionClass } from './pickLabels.js';
 import { slotAccessibleName, slotOccupantLabel } from './lineupLabels.js';
+import ListRow from '../Components/ListRow';
+import PositionTag from '../Components/PositionTag';
 
 const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
     // A slot is occupied whenever it holds a player id, even if that id is
@@ -15,38 +16,6 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
     const occupantName = slotOccupantLabel({ slot, player });
     const accessibleName = slotAccessibleName({ slot, player });
 
-    // Shared classes for the row geometry - copied from PickRow rather than
-    // reinvented. min-h-14 rather than min-h-11 because the filled row's two
-    // stacked lines already exceed 44px: the floor is what makes an empty and
-    // a filled row agree on height instead of merely both clearing the 44px
-    // touch minimum.
-    const rowClasses =
-        'm-0 flex min-h-14 w-full items-center gap-3 rounded-[5px] border bg-transparent px-3 py-2 text-left';
-
-    const content = (
-        <>
-            <span className="text-ink-muted w-12 shrink-0 text-sm">{slot.label}</span>
-            {slot.playerId ? (
-                <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                    <span className="text-ink truncate text-sm">{occupantName}</span>
-                    {/* No opponent/schedule data is available here, so only the
-                        team renders on the second line - inventing an opponent
-                        would be worse than leaving the line short. */}
-                    {player?.team && <span className="text-ink-muted truncate text-xs">{player.team}</span>}
-                </span>
-            ) : (
-                <span className="text-ink-muted flex min-w-0 flex-1 flex-col text-sm">Empty</span>
-            )}
-            {player && (
-                <span
-                    className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${positionClass(player.position)}`}
-                >
-                    {player.position}
-                </span>
-            )}
-        </>
-    );
-
     // Filled slots remove on click; empty slots have nothing to do. The
     // design captions empty slots "Tap to fill", but no fill-from-slot action
     // exists in this app - filling happens from the Ranks panel's Add button.
@@ -55,27 +24,36 @@ const SlotRow = ({ slot, index, playerInfo, onRemove }) => {
     if (!slot.playerId) {
         return (
             <li>
-                {/* role="group" so the aria-label is actually exposed: on a
-                    bare div - role `generic` - most screen readers drop it,
-                    which would leave the name working in tests and nowhere
-                    else. The filled row below is a button and needs no role. */}
-                <div role="group" aria-label={accessibleName} className={`${rowClasses} border-line border-dashed`}>
-                    {content}
-                </div>
+                <ListRow
+                    as="div"
+                    label={accessibleName}
+                    ordinal={slot.label}
+                    ordinalWidth="44px"
+                    ordinalClassName="text-[10px] font-semibold tracking-[.08em] text-ink-muted"
+                    name="Add player"
+                    nameTone="dim"
+                    meta="Empty slot"
+                    tone="empty"
+                />
             </li>
         );
     }
 
     return (
         <li>
-            <button
-                type="button"
-                aria-label={accessibleName}
+            <ListRow
+                label={accessibleName}
                 onClick={() => onRemove(index)}
-                className={`${rowClasses} border-line`}
-            >
-                {content}
-            </button>
+                ordinal={slot.label}
+                ordinalWidth="44px"
+                ordinalClassName="text-[10px] font-semibold tracking-[.08em] text-ink-muted"
+                name={occupantName}
+                // No opponent/schedule data is available here, so only the
+                // team renders on the meta line - inventing an opponent would
+                // be worse than leaving the line short.
+                meta={player?.team}
+                trailing={player && <PositionTag position={player.position} />}
+            />
         </li>
     );
 };
