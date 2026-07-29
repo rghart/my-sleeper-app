@@ -8,7 +8,7 @@ const OnFocusButton = ({ event, ...rest }) => {
         <>
             {!isFocused && <Button text="Edit" onClick={() => setIsFocused(true)} btnStyle="primary" />}
             {isFocused && (
-                <div>
+                <div className="flex flex-row gap-2">
                     <Button text="Delete" onClick={event} btnStyle="alert" />
                     <Button
                         text="Save"

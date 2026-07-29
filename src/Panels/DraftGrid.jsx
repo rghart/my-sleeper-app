@@ -39,12 +39,24 @@ const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, zoom, on
     const accessibleName = pickAccessibleName({ round, pick, player, manager });
     const isMade = Boolean(pick.player_id);
 
-    // A made pick fills with the position colour (near-black text on top of
-    // it); an unmade one stays a dashed, unfilled cell so the two can never be
-    // confused for one another, even at a glance in overview mode.
+    // A made pick fills with the position colour. Near-black text (`text-ground`)
+    // reads on all four skill-position fills - measured 5.55:1 (QB), 7.92:1
+    // (RB), 6.07:1 (WR), 6.93:1 (TE) against the design's raw hex values, all
+    // clearing AA and all but QB/WR clearing AAA. K/DEF (and any pick missing
+    // a position) fall back to `positionFillClass`'s neutral `bg-line`, which
+    // `text-ground` measured at only 1.36:1 on - so that one case takes
+    // `text-ink` instead, measured at 12.6:1.
+    //
+    // An unmade cell used to be a dashed, unfilled box; that reads as an
+    // "empty slot" everywhere else in the app via a quiet tint instead
+    // (`--raw-empty`, literally "a hint of a row, not a dashed box" in
+    // theme.css), so this cell uses the same token rather than its own
+    // one-off dashed treatment. Either way it stays visibly distinct from a
+    // made cell's saturated fill, even at a glance in overview mode.
+    const hasHueFill = ['QB', 'RB', 'WR', 'TE'].includes(player?.position);
     const stateClasses = isMade
-        ? `text-ground ${positionFillClass(player?.position)}`
-        : 'border border-dashed border-line text-ink-muted';
+        ? `${hasHueFill ? 'text-ground' : 'text-ink'} ${positionFillClass(player?.position)}`
+        : 'bg-empty border border-line-quiet text-ink-muted';
 
     // Violet marks "yours" as an outline, not a fill, so the position colour
     // underneath a made pick still shows through. `!` because outline and
@@ -123,8 +135,9 @@ const DraftGrid = ({
     };
 
     const headerCellClasses =
-        'border-line bg-ground text-ink sticky top-0 z-10 border p-1 text-xs font-semibold truncate';
-    const gutterCellClasses = 'border-line bg-ground text-ink sticky left-0 z-10 w-10 border p-1 text-xs font-semibold';
+        'border-line-quiet bg-ground text-ink-muted sticky top-0 z-10 border p-1 font-mono text-[11px] font-semibold tracking-[.08em] uppercase truncate';
+    const gutterCellClasses =
+        'border-line-quiet bg-ground text-ink-muted sticky left-0 z-10 w-10 border p-1 font-mono text-[11px] font-semibold tracking-[.08em] uppercase';
 
     return (
         <div>
@@ -186,7 +199,7 @@ const DraftGrid = ({
                                         return (
                                             <td
                                                 key={team.boardSpot}
-                                                className="border-line h-[var(--cell-h)] w-[var(--cell-w)] border"
+                                                className="border-line-quiet h-[var(--cell-h)] w-[var(--cell-w)] border"
                                             />
                                         );
                                     }

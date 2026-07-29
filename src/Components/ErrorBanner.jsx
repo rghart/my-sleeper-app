@@ -13,23 +13,27 @@ import Button from './Button';
 // unreachable, and a sabotage that made the button unconditional passed the
 // whole suite. Untested speculative generality is worse than the one-line
 // change it would save if a retryless notice ever turns up.
-// First component converted onto Tailwind. The 10px radius, 15px padding and 3px
-// margins are legacy geometry carried over verbatim to keep this change
-// invisible; they become scale values when the shell is rebuilt.
-//
-// The border style is set on the left edge specifically, via an arbitrary
-// value, rather than with the `border-solid` utility, which applies to all
-// four sides.
-const BANNER =
-    'mx-[3px] mt-2 mb-[3px] flex flex-row flex-wrap items-center justify-between gap-3 rounded-[10px] border-l-4 [border-left-style:solid] bg-raised px-[15px] py-3';
+// The shell is rebuilt now, so the legacy 10px radius / 15px padding / 3px
+// margins carried over verbatim from this component's original stylesheet
+// conversion become the scale values the shell already uses elsewhere:
+// `rounded-card`, a raised surface, a 1px `border-line` shell, and a 6px
+// leading dot in the variant's tone (danger/warn) instead of the old 4px
+// left border - the dot marks the banner's tone without needing a
+// border-side utility of its own.
+const BANNER = 'border-line bg-raised rounded-card flex flex-row flex-wrap items-center gap-3 border p-4';
+
+const DOT_TONE = {
+    warning: 'bg-warn',
+    error: 'bg-danger',
+};
 
 const ErrorBanner = ({ message, onRetry, variant = 'error' }) => {
-    const className = `${BANNER} ${variant === 'warning' ? 'border-l-warn' : 'border-l-danger'}`;
     const role = variant === 'warning' ? 'status' : 'alert';
     return (
-        <div className={className} role={role}>
-            <p className="m-0">{message}</p>
-            <Button text="Retry" btnStyle="primary" onClick={onRetry} />
+        <div className={BANNER} role={role}>
+            <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT_TONE[variant]}`} />
+            <p className="text-ink m-0 flex-1">{message}</p>
+            <Button text="Retry" btnStyle="active" onClick={onRetry} />
         </div>
     );
 };

@@ -62,7 +62,7 @@ const AppShell = ({
                 {/* Above `main` rather than inside it: `main` turns into a row
                     at md, and a banner in there would become a column beside
                     the section instead of a strip across the top of it. */}
-                {banner}
+                <div className="px-3.5 pt-3.5 md:p-0">{banner}</div>
                 <main className="order-2 flex flex-1 flex-col gap-4 pb-[var(--tab-bar-h)] md:order-2 md:flex-row md:pb-0">
                     <div className="min-w-0 flex-1">{renderSection(activeId)}</div>
                     {/* Wide screens only. `hidden md:block` rather than a JS width

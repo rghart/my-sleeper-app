@@ -111,6 +111,12 @@
      * sheet sits above content the user is more likely to still be tracking
      * (the board, the lineup) than the drawer's full-page nav does. */
     --raw-scrim: rgba(7, 9, 13, 0.55);
+
+    /* Elevation is flat by default - depth comes from the surface steps and
+     * the scrim, not shadows. The one exception is a floating layer that has
+     * no scrim of its own (the rank-list popover, the Ranks FILTERS popover),
+     * which earns this shadow plus its own 1px border instead. */
+    --raw-shadow-float: 0 12px 32px rgba(3, 6, 10, 0.55);
 }
 
 /* `inline` so the utilities resolve through the variable at runtime, which is
@@ -160,6 +166,8 @@
     --color-empty: var(--raw-empty);
     --color-scrim-heavy: var(--raw-scrim-heavy);
     --color-scrim: var(--raw-scrim);
+
+    --shadow-float: var(--raw-shadow-float);
 
     /*
      * Two families, and the split is semantic rather than decorative: Archivo
