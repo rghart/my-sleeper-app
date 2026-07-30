@@ -134,3 +134,101 @@ describe('ClockCard', () => {
         expect(onOpenSource).toHaveBeenCalledTimes(1);
     });
 });
+
+// A draft that isn't counting anything down gets a different card, not the
+// countdown's card with its numeral swapped for a word. What Ryan
+// screenshotted was the latter: `ON THE CLOCK` over `No pick on the clock`,
+// which says the same non-fact twice, above a full-width violet Sync button on
+// a board that had already finished.
+describe('ClockCard at rest', () => {
+    const completeDraft = {
+        status: 'complete',
+        season: '2026',
+        player_pool: 'Rookie',
+        start_time: NOW - 86400000,
+        last_picked: NOW - 3600000,
+        settings: { pick_timer: 43200 },
+    };
+
+    const renderResting = (overrides = {}) =>
+        render(
+            <ClockCard
+                draft={completeDraft}
+                onTheClockName="No pick on the clock"
+                pickLabel="2026 Rookie"
+                picksUntilMine={null}
+                picksMade={48}
+                syncedLabel="synced 2m ago"
+                sourceLabel="…3201"
+                onOpenSource={vi.fn()}
+                onToggleSync={vi.fn()}
+                {...overrides}
+            />,
+        );
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(NOW);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('leads with the state, and never repeats it as a headline under an On-the-clock eyebrow', () => {
+        renderResting();
+
+        expect(screen.getByText('Draft complete')).toBeVisible();
+        expect(screen.queryByText('On the clock')).toBeNull();
+        expect(screen.queryByText('No pick on the clock')).toBeNull();
+    });
+
+    it('takes its eyebrow from the draft itself', () => {
+        renderResting();
+
+        // Rendered uppercase by CSS; the text stays as written.
+        expect(screen.getByText('2026 Rookie')).toBeVisible();
+    });
+
+    it('counts the picks and says when sync last landed', () => {
+        renderResting();
+
+        expect(screen.getByText('48 picks · synced 2m ago')).toBeVisible();
+    });
+
+    it('omits the sync half until a sync has actually landed', () => {
+        renderResting({ syncedLabel: null });
+
+        expect(screen.getByText('48 picks')).toBeVisible();
+        expect(screen.queryByText(/synced/)).toBeNull();
+    });
+
+    it('drops sync to a secondary pill that still answers to the same name', () => {
+        const onToggleSync = vi.fn();
+        renderResting({ onToggleSync });
+
+        // Reads SYNC, named "Sync draft" - the same action the counting-down
+        // card spells out, so neither a screen reader nor a test sees two
+        // different features.
+        const sync = screen.getByRole('button', { name: 'Sync draft' });
+        // Exactly "Sync", not "Sync draft": `toHaveTextContent` is a substring
+        // match, so it passes on the counting-down card's full-width button too
+        // and proves nothing about which shape rendered.
+        expect(sync.textContent).toBe('Sync');
+        sync.click();
+        expect(onToggleSync).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders no countdown and no progress bar', () => {
+        const { container } = renderResting();
+
+        expect(screen.queryByText(/Time expired/)).toBeNull();
+        expect(container.querySelector('[class*="bg-line-mid"]')).toBeNull();
+    });
+
+    it('never claims a turn is coming on a draft with no clock', () => {
+        renderResting({ picksUntilMine: 2 });
+
+        expect(screen.queryByText(/YOU IN/)).toBeNull();
+    });
+});

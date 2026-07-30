@@ -16,6 +16,11 @@ const STARTER = {
     first_name: 'Germie',
     last_name: 'Bernard',
     position: 'WR',
+    // Needed for the eligibility filter, which reads `fantasy_positions`
+    // rather than `position` - a slot's admitted positions are checked against
+    // this list, so an occupant without one is eligible for nothing and never
+    // appears as a candidate at all.
+    fantasy_positions: ['WR'],
     team: 'LV',
 };
 
@@ -177,11 +182,20 @@ describe('LineupPanel best-available sheet', () => {
         expect(screen.queryByRole('button', { name: /Best available/ })).toBeNull();
     });
 
-    it('shows the plain empty-list message, not a handle, when there is no rank list yet', () => {
+    // Same reasoning as DraftPanel's: the handle opens whether or not a list
+    // is loaded, because the switcher that loads one lives inside the sheet.
+    it('still opens, with a rank-list switcher inside, when no list is selected yet', async () => {
+        const user = userEvent.setup();
         renderLineup({ rankingPlayersIdsList: [] });
 
-        expect(screen.queryByRole('button', { name: /Best available/ })).toBeNull();
-        expect(screen.getByText(/No rank list yet/)).toBeInTheDocument();
+        const handle = screen.getByRole('button', { name: /Best available/ });
+        expect(handle).toHaveTextContent('Paste a rank list');
+
+        await user.click(handle);
+        const dialog = screen.getByRole('dialog', { name: 'Best available' });
+
+        expect(within(dialog).getByRole('button', { name: /^Rank list/ })).toBeInTheDocument();
+        expect(within(dialog).getByText(/No rank list selected/)).toBeInTheDocument();
     });
 
     it('fills the first eligible open slot on Add, and the sheet stays open', async () => {
@@ -482,5 +496,76 @@ describe('LineupPanel slot chip filtering', () => {
         await user.click(within(dialog).getByRole('button', { name: 'QB' }));
         expect(within(dialog).getByText(FREE_AGENT_QB.name)).toBeInTheDocument();
         expect(within(dialog).queryByText(FREE_WR.name)).toBeNull();
+    });
+});
+
+// Adding a player who already fills another slot would silently move them:
+// fillSlot writes the id into the tapped slot and never checks the rest of the
+// lineup, so the same player would end up in two slots on screen and one of
+// them would be a lie. The list says so instead.
+describe('LineupPanel already-started players', () => {
+    const buildLineupSet = (slots) => new Set(slots.filter((slot) => slot.playerId).map((slot) => slot.playerId));
+
+    it('offers no Add for a player already in a slot, and says why in the name', async () => {
+        const user = userEvent.setup();
+        // STARTER is a WR sitting in the FLX slot of ROSTER_SLOTS, so opening
+        // the open WR slot lists him as a candidate for it.
+        renderLineup({
+            rankingPlayersIdsList: [rankEntry(STARTER.player_id, 1)],
+            lineupSet: buildLineupSet(ROSTER_SLOTS),
+        });
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        const dialog = screen.getByRole('dialog', { name: 'Fill WR' });
+
+        const row = within(dialog).getByRole('button', { name: 'Started' });
+        expect(row).toBeDisabled();
+        expect(within(dialog).queryByRole('button', { name: 'Add' })).toBeNull();
+        // Disabled controls announce inconsistently, so the state is in the
+        // row's own name too.
+        expect(
+            within(dialog).getByText(STARTER.full_name).closest('[aria-label]').getAttribute('aria-label'),
+        ).toContain('already started');
+    });
+
+    it('leaves a player who is on your roster but not in the lineup addable', async () => {
+        const user = userEvent.setup();
+        renderLineup({
+            rankingPlayersIdsList: [rankEntry(STARTER.player_id, 1)],
+            // Same roster, nobody in a slot.
+            lineupSet: buildLineupSet([{ label: 'WR', playerId: null }]),
+        });
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        const dialog = screen.getByRole('dialog', { name: 'Fill WR' });
+
+        expect(within(dialog).getByRole('button', { name: 'Add' })).toBeEnabled();
+    });
+
+    it('fills the slot when nothing is blocking it, proving the block above is not vacuous', async () => {
+        const user = userEvent.setup();
+        const { fillSlot } = renderLineup({
+            rankingPlayersIdsList: [rankEntry(STARTER.player_id, 1)],
+            lineupSet: new Set(),
+        });
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        await user.click(screen.getByRole('button', { name: 'Add' }));
+
+        expect(fillSlot).toHaveBeenCalledWith(2, expect.objectContaining({ player_id: STARTER.player_id }));
+    });
+});
+
+// The handle is pinned above the tab bar rather than sitting where the content
+// happens to end - on a short lineup it was floating mid-screen. It shares its
+// anchor with the sheet it opens, so the two line up.
+describe('LineupPanel handle placement', () => {
+    it('anchors the handle to the tab bar, and leaves its height clear at the end of the list', () => {
+        renderLineup({ rankingPlayersIdsList: [rankEntry(FREE_AGENT_QB.id, 1)] });
+
+        const handle = screen.getByRole('button', { name: /Best available/ });
+        expect(handle.className).toMatch(/fixed/);
+        expect(handle.className).toMatch(/bottom-\[var\(--tab-bar-h\)\]/);
+        expect(screen.getByRole('list').className).toMatch(/pb-\[var\(--handle-h\)\]/);
     });
 });

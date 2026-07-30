@@ -616,10 +616,13 @@ describe('App', () => {
 
         const renderAndSettle = async () => {
             render(<App />);
-            // The clock card renders from currentDraft regardless of whether a
-            // board could be built, so its eyebrow is the signal that the load
-            // chain ran to completion rather than throwing partway.
-            return await screen.findByText('On the clock', {}, { timeout: 5000 });
+            // The clock card's draft-source pill renders from currentDraft
+            // regardless of whether a board could be built, so it is the signal
+            // that the load chain ran to completion rather than throwing
+            // partway. (Its eyebrow is not: that reads `ON THE CLOCK` only
+            // while a clock is counting, and a draft with no `settings` is
+            // untimed, so the eyebrow becomes the season instead.)
+            return await screen.findByRole('button', { name: SOURCE_PILL }, { timeout: 5000 });
         };
 
         it('renders the panels when the draft response has no settings', async () => {
@@ -714,9 +717,9 @@ describe('App', () => {
         });
 
         // The clock card renders whether or not a board could be built, so its
-        // eyebrow is the signal the load chain finished.
+        // draft-source pill is the signal the load chain finished.
         render(<App />);
-        await screen.findByText('On the clock', {}, { timeout: 5000 });
+        await screen.findByRole('button', { name: SOURCE_PILL }, { timeout: 5000 });
 
         expect(screen.queryAllByRole('button', { name: /^Round \d+, pick \d+/ }).length).toBe(0);
         expect(screen.queryByRole('status')).toBeNull();

@@ -7,11 +7,13 @@ import BestAvailable, { countAvailable } from '../Components/BestAvailable';
 import BestAvailableHandle from '../Components/BestAvailableHandle';
 import ClockCard from '../Components/ClockCard';
 import DraftSourceSheet, { readLastMock, writeLastMock } from './DraftSourceSheet';
+import RankListSwitcher from '../Components/RankListSwitcher';
 import { managerLabel, pickNumberLabel } from './pickLabels.js';
 import { SLEEPER_API_URLS } from '../urls';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
 import { nextUnpickedPick, picksUntilMine } from '../lib/onTheClock.js';
+import { agoLabel } from '../lib/relativeTime.js';
 import { useSeenPicks } from '../useSeenPicks.js';
 import { usePublishSyncStatus } from '../SyncStatus.jsx';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
@@ -21,7 +23,17 @@ const VIEW_OPTIONS = [
     { value: 'grid', label: 'Grid' },
 ];
 
-const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList, myDisplayName, updateDraftBoard }) => {
+const DraftPanel = ({
+    leagueData,
+    playerInfo,
+    rosterInfo,
+    rankingPlayersIdsList,
+    myDisplayName,
+    updateDraftBoard,
+    savedRankLists,
+    savedRankListsLoading,
+    signedIn,
+}) => {
     const { currentDraft, rosterData } = leagueData;
     const draftPath = DRAFT + currentDraft.draft_id + '/';
     const [isSyncing, setIsSyncing] = useState(false);
@@ -39,6 +51,15 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
     // Read once at mount rather than on every render: this is a per-league
     // memory of the last mock, and only this component writes it.
     const [lastMockId, setLastMockId] = useState(() => readLastMock(currentDraft.draft_id));
+    // When the last sync landed, for the resting clock card's "synced 2m ago".
+    // Set from the sync itself rather than from the poll's schedule, so a tick
+    // that failed does not claim to have refreshed anything.
+    const [lastSyncedAt, setLastSyncedAt] = useState(null);
+    // null means "whatever list the session currently has"
+    // (rankingPlayersIdsList); otherwise a saved list's route_name. Local to
+    // this panel on purpose - the draft sheet can be reading a different list
+    // than the Ranks section is editing, same as the Lineup sheet's.
+    const [rankListId, setRankListId] = useState(null);
     const bestAvailableHandleRef = useRef(null);
     const sourceButtonRef = useRef(null);
 
@@ -64,6 +85,16 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
         }
         setIsSourceOpen(false);
     };
+
+    const entries =
+        rankListId && savedRankLists?.[rankListId] ? savedRankLists[rankListId].rank_list : rankingPlayersIdsList;
+
+    const picksMade = currentDraft.built_draft
+        ? currentDraft.built_draft.reduce(
+              (total, round) => total + round.picks.filter((pick) => pick.player_id).length,
+              0,
+          )
+        : null;
 
     const onTheClock = nextUnpickedPick(currentDraft.built_draft);
     const onTheClockName = onTheClock
@@ -122,6 +153,14 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                     tradedPicks: tradedPicks || [],
                 }).built_draft,
         );
+
+        // Only when something actually came back. Both fetches swallow their
+        // own failures above, so a tick where the network was down still
+        // reaches this line - and stamping it then would let the card claim a
+        // fresh sync off a request that returned nothing.
+        if (livePicks || tradedPicks) {
+            setLastSyncedAt(Date.now());
+        }
     };
 
     const getLiveDraftRef = useRef(getLiveDraft);
@@ -171,6 +210,8 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                     rosterData,
                     myDisplayName,
                 })}
+                picksMade={picksMade}
+                syncedLabel={agoLabel(lastSyncedAt) ? `synced ${agoLabel(lastSyncedAt)}` : null}
                 sourceLabel={`…${String(currentDraftId).slice(-4)}`}
                 sourceRef={sourceButtonRef}
                 isSourceOpen={isSourceOpen}
@@ -188,7 +229,15 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                     triggerRef={sourceButtonRef}
                 />
             )}
-            <div className="max-h-[600px] overflow-x-visible overflow-y-scroll">
+            {/* No inner scroll box. This used to be a `max-h-[600px]`
+                overflow-y-scroll region, which on a phone clipped the board
+                partway down the screen and left the rest of the viewport
+                empty - and it was the reason the best-available handle sat in
+                the middle of the page rather than at the bottom of it. The
+                page is the scroller now; the handle is pinned above the tab
+                bar and this leaves its height clear at the end of the
+                content. */}
+            <div className="pb-[var(--handle-h)] md:pb-0">
                 {currentDraft.built_draft && (
                     <>
                         <div className="flex items-center justify-between gap-3 px-3.5 pb-2">
@@ -222,56 +271,60 @@ const DraftPanel = ({ leagueData, playerInfo, rosterInfo, rankingPlayersIdsList,
                                 onPickChange={handlePickChange}
                             />
                         )}
-                        {/* Phone only - the aside covers `md` and up (see
-                            AppShell's SECTIONS_WITH_ASIDE / App's renderAside).
-                            Read-only: unlike Lineup's sheet, there is no
-                            unambiguous pick to attach a tap here to, so this
-                            never records anything - see DraftPanel's own
-                            comment on that near the top of the file for why. */}
-                        {rankingPlayersIdsList.length > 0 ? (
-                            <>
-                                <BestAvailableHandle
-                                    buttonRef={bestAvailableHandleRef}
-                                    isExpanded={isBestAvailableOpen}
-                                    onClick={() => setIsBestAvailableOpen((open) => !open)}
-                                    subtitle={`${countAvailable({
-                                        entries: rankingPlayersIdsList,
-                                        playerInfo,
-                                        rosterInfo,
-                                        eligibleSlots: null,
-                                    })} left`}
-                                />
-                                {isBestAvailableOpen && (
-                                    <Sheet
-                                        title="Best available"
-                                        subtitle={`${rankingPlayersIdsList.length} ranked`}
-                                        onClose={() => setIsBestAvailableOpen(false)}
-                                        triggerRef={bestAvailableHandleRef}
-                                    >
-                                        <BestAvailable
-                                            entries={rankingPlayersIdsList}
-                                            playerInfo={playerInfo}
-                                            rosterInfo={rosterInfo}
-                                            myDisplayName={myDisplayName}
-                                            eligibleSlots={null}
-                                            onSelect={null}
-                                        />
-                                    </Sheet>
-                                )}
-                            </>
-                        ) : (
-                            <div className="border-line bg-raised border-t md:hidden">
-                                <BestAvailable
-                                    entries={[]}
-                                    playerInfo={playerInfo}
-                                    rosterInfo={rosterInfo}
-                                    eligibleSlots={null}
-                                />
-                            </div>
-                        )}
                     </>
                 )}
             </div>
+            {/* Phone only - the aside covers `md` and up (see AppShell's
+                SECTIONS_WITH_ASIDE / App's renderAside). Read-only: unlike
+                Lineup's sheet, there is no unambiguous pick to attach a tap
+                here to, so this never records anything.
+
+                Rendered whether or not a list is loaded. It used to be an
+                either/or - a handle when there were entries, and otherwise a
+                flat strip carrying "paste one in the Ranks section" - which
+                left a signed-in user with saved lists no way to reach them
+                from this screen at all. The sheet's own switcher is that way,
+                so the handle has to open even when there is nothing in it yet. */}
+            <BestAvailableHandle
+                buttonRef={bestAvailableHandleRef}
+                isExpanded={isBestAvailableOpen}
+                onClick={() => setIsBestAvailableOpen((open) => !open)}
+                subtitle={
+                    entries.length > 0
+                        ? `${countAvailable({ entries, playerInfo, rosterInfo, eligibleSlots: null })} left`
+                        : 'Paste a rank list'
+                }
+            />
+            {isBestAvailableOpen && (
+                <Sheet
+                    title="Best available"
+                    subtitle={entries.length > 0 ? `${entries.length} ranked` : 'No list selected'}
+                    onClose={() => setIsBestAvailableOpen(false)}
+                    triggerRef={bestAvailableHandleRef}
+                    headerAction={
+                        <RankListSwitcher
+                            savedRankLists={savedRankLists}
+                            savedRankListsLoading={savedRankListsLoading}
+                            signedIn={signedIn}
+                            rankListId={rankListId}
+                            onSelect={setRankListId}
+                            onPasteNew={() => {
+                                window.location.hash = '#/ranks';
+                            }}
+                            sessionCount={rankingPlayersIdsList.length}
+                        />
+                    }
+                >
+                    <BestAvailable
+                        entries={entries}
+                        playerInfo={playerInfo}
+                        rosterInfo={rosterInfo}
+                        myDisplayName={myDisplayName}
+                        eligibleSlots={null}
+                        onSelect={null}
+                    />
+                </Sheet>
+            )}
         </div>
     );
 };

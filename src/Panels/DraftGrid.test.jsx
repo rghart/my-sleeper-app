@@ -8,10 +8,15 @@ import rosterFlagsFixture from '../lib/__fixtures__/roster-flags-2026.json';
 import goldenDraft from '../lib/__fixtures__/golden-draft-output.json';
 
 // DraftGrid is the second view of the same board PickFeed already covers, so
-// this file only asserts what's specific to the grid: every pick shows up as
-// a cell at both zoom stops, the accessible name matches the feed's builder
-// exactly (both read off pickLabels.js, so they cannot drift), "mine" marking,
-// unmade-vs-made, and that a cell opens the same modal.
+// this file only asserts what's specific to the grid: every pick shows up as a
+// cell, the accessible name matches the feed's builder exactly (both read off
+// pickLabels.js, so they cannot drift), "mine" marking, unmade-vs-made, column
+// identity on a snake board, and that a cell opens the same modal.
+//
+// There is one density. The overview zoom stop - 23px colour blocks with no
+// text - is deleted rather than restyled, so the tests that used to switch
+// between the two are gone with it; what replaced them is the key row, which is
+// what makes a 5px dot legible now that the dot is the grid's whole tag.
 
 const { rosterDataRaw, managerData, playerInfo, builtDraft } = rosterFlagsFixture;
 
@@ -58,24 +63,9 @@ const expectedNameFor = (pick) => {
     return pickAccessibleName({ round, pick, player, manager });
 };
 
-const setZoom = async (user, label) => {
-    await user.click(screen.getByRole('button', { name: label }));
-};
-
 describe('DraftGrid cell coverage', () => {
-    it('renders every pick in the round as a cell in overview mode', () => {
+    it('renders every pick in the round as a cell', () => {
         renderGrid();
-
-        round.picks.forEach((pick) => {
-            expect(screen.getByRole('button', { name: expectedNameFor(pick) })).toBeInTheDocument();
-        });
-    });
-
-    it('renders every pick in the round as a cell in readable mode too', async () => {
-        const user = userEvent.setup();
-        renderGrid();
-
-        await setZoom(user, 'Readable');
 
         round.picks.forEach((pick) => {
             expect(screen.getByRole('button', { name: expectedNameFor(pick) })).toBeInTheDocument();
@@ -91,10 +81,33 @@ describe('DraftGrid cell coverage', () => {
         expect(unmadePick.player_id).toBeNull();
         expect(screen.getByRole('button', { name: 'Round 1, pick 1, HEFFinAround305' })).toBeInTheDocument();
     });
+
+    it('names every manager column, and the round rail in full rather than as R1', () => {
+        renderGrid();
+
+        expect(screen.getByText('HEFFinAround305')).toBeVisible();
+        // Visibly "R1" - the rail is 30px wide - but named "Round 1", so a
+        // screen reader reaching it says something useful.
+        expect(screen.getByLabelText('Round 1')).toHaveTextContent('R1');
+    });
+});
+
+describe('DraftGrid position key', () => {
+    // The grid is the only place a position hue appears outside a tag or a
+    // filter chip, so it is the only place that needs a key. Without it a 5px
+    // coloured dot is undecodable.
+    it('explains all four hued positions, and marks which column is yours', () => {
+        renderGrid();
+
+        ['QB', 'RB', 'WR', 'TE'].forEach((position) => {
+            expect(screen.getByText(position)).toBeVisible();
+        });
+        expect(screen.getByText('YOU')).toBeVisible();
+    });
 });
 
 describe('DraftGrid your-pick marking', () => {
-    it('outlines my own pick and leaves everyone else unmarked', () => {
+    it('marks my own cell and leaves everyone else unmarked', () => {
         renderGrid();
 
         const myPick = round.picks.find((pick) => pick.pick_number === 3);
@@ -103,16 +116,22 @@ describe('DraftGrid your-pick marking', () => {
         const myCell = screen.getByRole('button', { name: expectedNameFor(myPick) });
         const othersCell = screen.getByRole('button', { name: expectedNameFor(othersPick) });
 
-        expect(myCell.className).toMatch(/outline-mine/);
-        expect(othersCell.className).not.toMatch(/outline-mine/);
+        // Yours is a violet fill plus a violet edge now, not an inset outline
+        // over a saturated position fill - there is no position fill left to
+        // show through.
+        expect(myCell.className).toMatch(/border-mine-edge/);
+        expect(othersCell.className).not.toMatch(/border-mine-edge/);
+
+        // The visual encoding is colour-only, so the meaning also has to be in
+        // the name - which it is, via managerLabel's "· you".
+        expect(myCell.getAttribute('aria-label')).toContain('· you');
+        expect(othersCell.getAttribute('aria-label')).not.toContain('· you');
     });
 });
 
 describe('DraftGrid unmade vs made picks', () => {
-    it('renders an unmade pick as empty in readable mode rather than as a made pick', async () => {
-        const user = userEvent.setup();
+    it('renders an unmade pick as its pick number alone rather than as a made pick', () => {
         renderGrid();
-        await setZoom(user, 'Readable');
 
         const unmadePick = round.picks.find((pick) => pick.pick_number === 1);
         const cell = screen.getByRole('button', { name: expectedNameFor(unmadePick) });
@@ -126,19 +145,18 @@ describe('DraftGrid unmade vs made picks', () => {
         expect(cell.textContent).not.toContain('—');
     });
 
-    it('renders a made pick with the player visible in readable mode', async () => {
-        const user = userEvent.setup();
+    it('renders a made pick as a short name over its team and pick', () => {
         const filledRound = {
             ...round,
             picks: round.picks.map((pick) => (pick.pick_number === 1 ? { ...pick, player_id: FREE_AGENT.id } : pick)),
         };
         renderGrid({ builtDraft: [filledRound] });
-        await setZoom(user, 'Readable');
 
         const filledPick = filledRound.picks.find((pick) => pick.pick_number === 1);
         const cell = screen.getByRole('button', { name: expectedNameFor(filledPick) });
 
         expect(within(cell).getByText('M.Klein')).toBeInTheDocument();
+        expect(within(cell).getByText(`${playerInfo[FREE_AGENT.id].team} · 1.01`)).toBeInTheDocument();
     });
 });
 
@@ -150,8 +168,13 @@ describe('DraftGrid column identity on a snake board', () => {
     const snakeBoard = goldenDraft.snake.built_draft;
     const snakeRound2 = snakeBoard[1];
 
-    it('puts a pick in its board_spot column, not its pick_number column', async () => {
-        const user = userEvent.setup();
+    // Note what this does and does not pin down. Round 1 of a snake is not
+    // reversed, so `buildTeamColumns` (which reads round 1) produces the same
+    // column order whether it sorts by board_spot or pick_number - that half is
+    // not observable here. What is observable is the lookup: finding each
+    // round's pick by pick_number instead of board_spot puts round 2's picks in
+    // the wrong columns, which is what this asserts.
+    it('puts a pick in its board_spot column, not its pick_number column', () => {
         render(
             <DraftGrid
                 builtDraft={snakeBoard}
@@ -163,19 +186,20 @@ describe('DraftGrid column identity on a snake board', () => {
                 onPickChange={vi.fn()}
             />,
         );
-        await setZoom(user, 'Readable');
 
         const reversed = snakeRound2.picks.find((pick) => pick.pick_number === 1);
         expect(reversed.board_spot).not.toBe(reversed.pick_number);
 
-        const row = screen.getByRole('rowheader', { name: 'Round 2' }).closest('tr');
-        const cells = within(row).getAllByRole('button');
+        // The board is a CSS grid rather than a table now, so the row's cells
+        // are read off their own names in DOM order - which is column order,
+        // since the columns are built sorted by board_spot.
+        const rowCells = screen.getAllByRole('button', { name: /^Round 2,/ });
         const columnIndex = snakeBoard[0].picks
             .map((pick) => pick.board_spot)
             .sort((a, b) => a - b)
             .indexOf(reversed.board_spot);
 
-        expect(cells[columnIndex].getAttribute('aria-label')).toContain('pick 1,');
+        expect(rowCells[columnIndex].getAttribute('aria-label')).toContain('pick 1,');
     });
 });
 
@@ -191,21 +215,12 @@ describe('DraftGrid modal', () => {
     });
 });
 
-describe('DraftGrid zoom control', () => {
-    it('starts in overview, where cells carry no visible player text', () => {
+describe('DraftGrid zoom stops are gone', () => {
+    it('offers no density control at all', () => {
         renderGrid();
 
-        expect(screen.getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-pressed', 'true');
-        expect(screen.getByRole('button', { name: 'Readable' })).toHaveAttribute('aria-pressed', 'false');
-    });
-
-    it('switches to readable mode on click', async () => {
-        const user = userEvent.setup();
-        renderGrid();
-
-        await setZoom(user, 'Readable');
-
-        expect(screen.getByRole('button', { name: 'Readable' })).toHaveAttribute('aria-pressed', 'true');
-        expect(screen.getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Readable' })).toBeNull();
+        expect(screen.queryByRole('group', { name: 'Zoom level' })).toBeNull();
     });
 });

@@ -102,6 +102,29 @@
     /* The empty lineup slot's fill - a hint of a row, not a dashed box. */
     --raw-empty: rgba(154, 171, 189, 0.04);
 
+    /*
+     * The draft grid's cell. It is the one surface in the app that is neither
+     * ground nor one of the two elevated planes: a cell has to read as its own
+     * block on the ground plane without a lattice of table rules to define it,
+     * which is what the barely-there lift and the hairline below do together.
+     * `grid-line` is a shade under `line` on purpose - a full-strength
+     * hairline on 108 cells at once reads as the spreadsheet the design is
+     * explicitly not.
+     */
+    --raw-grid-cell: rgba(255, 255, 255, 0.022);
+    --raw-grid-line: #1a222c;
+
+    /* The violet edge on your own grid column - stronger than `mine-row`'s
+     * fill, weaker than `mine` itself, so a whole column of it marks
+     * ownership without shouting over the position dots inside it. */
+    --raw-mine-edge: rgba(139, 124, 247, 0.28);
+
+    /* A step brighter than `ink-muted` and a step under `ink`, for the grid
+     * cell's player name: 13px at 600 on a barely-lifted cell needs more than
+     * muted, but a whole board at full `ink` flattens the violet column that
+     * marks your own picks. */
+    --raw-ink-soft: #dfe6ee;
+
     /* The drawer's full-screen scrim. Named "heavy" because it is darker than
      * any surface tint above - it has to read as a modal backdrop rather than
      * a tint on the page behind it. */
@@ -164,6 +187,10 @@
     --color-pos-none-tint: var(--raw-pos-none-tint);
 
     --color-empty: var(--raw-empty);
+    --color-grid-cell: var(--raw-grid-cell);
+    --color-grid-line: var(--raw-grid-line);
+    --color-mine-edge: var(--raw-mine-edge);
+    --color-ink-soft: var(--raw-ink-soft);
     --color-scrim-heavy: var(--raw-scrim-heavy);
     --color-scrim: var(--raw-scrim);
 
@@ -220,15 +247,15 @@
          */
         --tab-bar-h: 60px;
         --top-bar-h: 56px;
+        /*
+         * The collapsed best-available handle. It is pinned above the tab bar
+         * rather than sitting wherever the section's content happens to end -
+         * on a short board it was floating in the middle of the screen - so
+         * anything scrolling behind it needs to know how much room to leave.
+         */
+        --handle-h: 58px;
     }
 
-    /*
-     * DraftGrid's two zoom stops. Cell size is runtime state (a click on the
-     * zoom control), not something a fixed set of utility classes can express -
-     * so it lives here as plain custom properties switched by the `data-zoom`
-     * attribute DraftGrid sets on its table root, and the component consumes
-     * them through arbitrary-value utilities (`w-[var(--cell-w)]` etc).
-     */
     /*
      * The chip rows scroll horizontally when they overflow, but the scrollbar
      * itself is chrome the design does not have - and on a 14px-tall strip of
@@ -240,15 +267,5 @@
 
     .no-scrollbar::-webkit-scrollbar {
         display: none;
-    }
-
-    .draft-grid[data-zoom='overview'] {
-        --cell-w: 23px;
-        --cell-h: 23px;
-    }
-
-    .draft-grid[data-zoom='readable'] {
-        --cell-w: 75px;
-        --cell-h: 38px;
     }
 }
