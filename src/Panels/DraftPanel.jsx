@@ -4,6 +4,7 @@ import PickFeed from './PickFeed';
 import DraftGrid from './DraftGrid';
 import Sheet from '../Components/Sheet';
 import BestAvailable, { countAvailable } from '../Components/BestAvailable';
+import { DEFAULT_OWNERSHIP } from '../Components/OwnershipFilters';
 import BestAvailableHandle from '../Components/BestAvailableHandle';
 import ClockCard from '../Components/ClockCard';
 import DraftSourceSheet, { readLastMock, writeLastMock } from './DraftSourceSheet';
@@ -60,6 +61,12 @@ const DraftPanel = ({
     // this panel on purpose - the draft sheet can be reading a different list
     // than the Ranks section is editing, same as the Lineup sheet's.
     const [rankListId, setRankListId] = useState(null);
+    // Held here rather than inside BestAvailable for the same reason
+    // LineupPanel holds its own: the sheet is mounted only while open, so a
+    // scope kept down there would reset every time it was reopened - and
+    // switching "Other rosters" on to check who has somebody would never
+    // survive closing the sheet.
+    const [ownership, setOwnership] = useState(DEFAULT_OWNERSHIP);
     const bestAvailableHandleRef = useRef(null);
     const sourceButtonRef = useRef(null);
 
@@ -329,7 +336,7 @@ const DraftPanel = ({
                 onClick={() => setIsBestAvailableOpen((open) => !open)}
                 subtitle={
                     entries.length > 0
-                        ? `${countAvailable({ entries, playerInfo, rosterInfo, eligibleSlots: null })} left`
+                        ? `${countAvailable({ entries, playerInfo, rosterInfo, eligibleSlots: null, ownership, myDisplayName })} left`
                         : 'Paste a rank list'
                 }
             />
@@ -359,6 +366,8 @@ const DraftPanel = ({
                         rosterInfo={rosterInfo}
                         myDisplayName={myDisplayName}
                         eligibleSlots={null}
+                        ownership={ownership}
+                        onOwnershipChange={setOwnership}
                         onSelect={null}
                     />
                 </Sheet>

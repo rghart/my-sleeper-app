@@ -529,15 +529,23 @@ describe('DraftPanel best-available sheet', () => {
         expect(screen.getByRole('button', { name: /Best available/ })).toHaveTextContent('1 left');
     });
 
-    it('shows a taken player marked Taken rather than excluding it, and offers no action at all', async () => {
+    // The sheet answers the same question the lineup's does - who can I still
+    // have? - so it carries the same scope, defaulted the same way: yours plus
+    // unowned. During a draft, players on other rosters are most of a rank
+    // list, and scrolling past them was the point of the complaint.
+    it('hides players on other rosters by default, and brings them back marked when asked', async () => {
         const user = userEvent.setup();
         renderPanel({ rankingPlayersIdsList: [rankEntry(FREE_AGENT.id), rankEntry(TAKEN.id)] });
 
         await user.click(screen.getByRole('button', { name: /Best available/ }));
         const dialog = screen.getByRole('dialog', { name: 'Best available' });
 
-        // Both rows render - taken is marked, not hidden.
         expect(within(dialog).getByText(FREE_AGENT.name)).toBeInTheDocument();
+        expect(within(dialog).queryByText(TAKEN.name)).toBeNull();
+
+        await user.click(within(dialog).getByRole('button', { name: /^FILTERS/ }));
+        await user.click(screen.getByRole('checkbox', { name: /Other rosters/ }));
+
         expect(within(dialog).getByText(TAKEN.name)).toBeInTheDocument();
         expect(within(dialog).getByText('Taken')).toBeInTheDocument();
 
@@ -546,6 +554,26 @@ describe('DraftPanel best-available sheet', () => {
         // either - see DraftPanel's own comment on this near its BestAvailable
         // usage.
         expect(within(dialog).queryByRole('button', { name: 'Add' })).toBeNull();
+    });
+
+    // The scope is DraftPanel's state, not the sheet's: the sheet is mounted
+    // only while open, so a scope held inside it would forget every widening
+    // the moment the sheet was closed.
+    it('remembers a widened scope across a close and reopen', async () => {
+        const user = userEvent.setup();
+        renderPanel({ rankingPlayersIdsList: [rankEntry(FREE_AGENT.id), rankEntry(TAKEN.id)] });
+
+        const handle = () => screen.getByRole('button', { name: /Best available/ });
+        await user.click(handle());
+        await user.click(screen.getByRole('button', { name: /^FILTERS/ }));
+        await user.click(screen.getByRole('checkbox', { name: /Other rosters/ }));
+        await user.keyboard('{Escape}');
+        await user.click(handle());
+        await user.click(handle());
+
+        expect(
+            within(screen.getByRole('dialog', { name: 'Best available' })).getByText(TAKEN.name),
+        ).toBeInTheDocument();
     });
 
     // The handle used to be swapped out for a flat message strip when there

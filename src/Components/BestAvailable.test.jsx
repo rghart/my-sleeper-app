@@ -44,6 +44,12 @@ const entries = [
     rankEntry(OTHER_FREE_AGENT.id, 4),
 ];
 
+// The rows every scope has always shown, plus other managers' - the default
+// scope hides those (see OwnershipFilters.DEFAULT_OWNERSHIP), so the cases
+// below that are about rendering a row rather than about the scope itself ask
+// for all three buckets explicitly.
+const SHOW_EVERYONE = { mine: true, available: true, others: true, rookiesOnly: false };
+
 const renderBestAvailable = (overrides = {}) =>
     render(
         <BestAvailable
@@ -59,7 +65,7 @@ const renderBestAvailable = (overrides = {}) =>
 
 describe('BestAvailable', () => {
     it('lists players in ranking order', () => {
-        renderBestAvailable();
+        renderBestAvailable({ ownership: SHOW_EVERYONE });
 
         const names = screen.getAllByRole('listitem').map((item) => item.textContent);
         expect(names[0]).toContain(TAKEN_BY_ME.name);
@@ -68,14 +74,22 @@ describe('BestAvailable', () => {
         expect(names[3]).toContain(OTHER_FREE_AGENT.name);
     });
 
-    it('shows a taken player marked Taken instead of excluding it', () => {
-        renderBestAvailable();
+    // Two behaviours in one case, because they are two halves of the same
+    // rule: the default scope is yours-plus-unowned, and a player on somebody
+    // else's roster is not hidden as a mistake - ask for them and they come
+    // back, marked. "Taken" means taken *from you*, so your own never carry it.
+    it("hides other managers' players by default and marks them Taken once asked for", () => {
+        const { unmount } = renderBestAvailable();
 
         expect(screen.getByText(FREE_AGENT.name)).toBeInTheDocument();
-        expect(screen.getByText(TAKEN_BY_OTHERS.name)).toBeInTheDocument();
         expect(screen.getByText(TAKEN_BY_ME.name)).toBeInTheDocument();
-        // Only the one on somebody else's roster. "Taken" means taken *from
-        // you* - see the next test.
+        expect(screen.queryByText(TAKEN_BY_OTHERS.name)).toBeNull();
+        expect(screen.queryAllByText('Taken')).toHaveLength(0);
+
+        unmount();
+        renderBestAvailable({ ownership: SHOW_EVERYONE });
+
+        expect(screen.getByText(TAKEN_BY_OTHERS.name)).toBeInTheDocument();
         expect(screen.getAllByText('Taken')).toHaveLength(1);
     });
 
@@ -84,7 +98,7 @@ describe('BestAvailable', () => {
     // out alongside every other manager's would make the sheet useless for its
     // main job. Same rule PlayerInfoItem has always used.
     it("keeps the action on your own rostered player and withholds it from someone else's", () => {
-        renderBestAvailable({ onSelect: vi.fn() });
+        renderBestAvailable({ onSelect: vi.fn(), ownership: SHOW_EVERYONE });
 
         const mine = screen.getByText(TAKEN_BY_ME.name).closest('li');
         const theirs = screen.getByText(TAKEN_BY_OTHERS.name).closest('li');
@@ -107,7 +121,7 @@ describe('BestAvailable', () => {
     });
 
     it('skips an entry whose id is absent from playerInfo rather than rendering a hole', () => {
-        renderBestAvailable({ entries: [...entries, rankEntry('999999', 5)] });
+        renderBestAvailable({ entries: [...entries, rankEntry('999999', 5)], ownership: SHOW_EVERYONE });
 
         expect(screen.getAllByRole('listitem')).toHaveLength(entries.length);
     });
@@ -133,10 +147,13 @@ describe('BestAvailable', () => {
             expect(screen.getByRole('button', { name: 'FLX' })).toBeInTheDocument();
         });
 
-        it('omits the chip row entirely when eligibleSlots is null', () => {
+        it('omits the slot chips when eligibleSlots is null, but keeps FILTERS', () => {
             renderBestAvailable({ eligibleSlots: null });
 
             expect(screen.queryByRole('button', { name: 'ALL' })).toBeNull();
+            // The draft list has no slot to be eligible for, but the same
+            // question - who can I still have? - and so the same chip.
+            expect(screen.getByRole('button', { name: /^FILTERS/ })).toBeInTheDocument();
         });
 
         it('narrows to a single slot on chip click, and ALL clears the narrowing', async () => {
@@ -176,7 +193,7 @@ describe('BestAvailable', () => {
         });
 
         it('never offers Add for a taken player, regardless of onSelect', () => {
-            renderBestAvailable({ onSelect: () => {} });
+            renderBestAvailable({ onSelect: () => {}, ownership: SHOW_EVERYONE });
 
             const row = screen.getByText(TAKEN_BY_OTHERS.name).closest('[role="group"]');
             expect(within(row).queryByRole('button', { name: 'Add' })).toBeNull();

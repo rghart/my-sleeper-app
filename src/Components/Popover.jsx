@@ -40,6 +40,18 @@ const Popover = ({ triggerRef, onClose, label, width = 252, children }) => {
         if (!trigger) {
             return;
         }
+        // A portal is not a DOM descendant of its trigger, so a trigger hidden
+        // by a media query takes its own subtree off the screen and leaves
+        // this floating over the page on its own. That is exactly what the
+        // draft/lineup sheets do at `md` and up (they are `md:hidden`, not
+        // unmounted), so crossing that width with a popover open stranded it
+        // in the top-left corner. `checkVisibility` is feature-detected rather
+        // than assumed: jsdom does not implement it, and every test would
+        // otherwise see every popover as hidden.
+        if (trigger.checkVisibility && !trigger.checkVisibility()) {
+            setPosition(null);
+            return;
+        }
         const rect = trigger.getBoundingClientRect();
         const clampedWidth = Math.min(width, window.innerWidth - EDGE_PX * 2);
         // Right-aligned to the trigger, then pulled back inside the viewport -
