@@ -85,10 +85,44 @@ describe('DraftGrid cell coverage', () => {
     it('names every manager column, and the round rail in full rather than as R1', () => {
         renderGrid();
 
-        expect(screen.getByText('HEFFinAround305')).toBeVisible();
+        // A manager's name can now appear inside a cell too - that is how a
+        // traded pick names its new owner - so the column header is the one
+        // occurrence outside a cell button.
+        const headers = screen.getAllByText('HEFFinAround305').filter((element) => !element.closest('button'));
+        expect(headers).toHaveLength(1);
+        expect(headers[0]).toBeVisible();
         // Visibly "R1" - the rail is 30px wide - but named "Round 1", so a
         // screen reader reaching it says something useful.
         expect(screen.getByLabelText('Round 1')).toHaveTextContent('R1');
+    });
+});
+
+// A column is its *original* owner - the board keys columns off board_spot,
+// which a trade never moves - so a traded pick sitting in someone else's
+// column belonged to nobody visible until this. The feed spells out "ryangh
+// via crbiehl"; a 108px cell says only the half its column cannot.
+describe('DraftGrid traded picks', () => {
+    const tradedPick = round.picks.find((pick) => pick.is_traded && pick.roster_id !== pick.owner_id);
+    const newOwner = rosterData.find((roster) => roster.roster_id === tradedPick.owner_id).manager_display_name;
+    const originalOwner = rosterData.find((roster) => roster.roster_id === tradedPick.roster_id).manager_display_name;
+
+    it('names the pick’s new owner inside the cell', () => {
+        renderGrid();
+
+        const cell = screen.getByRole('button', { name: expectedNameFor(tradedPick) });
+        expect(within(cell).getByText(newOwner)).toBeVisible();
+        // The long form stays in the accessible name, which is the same string
+        // the feed's row carries for this pick.
+        expect(cell).toHaveAccessibleName(new RegExp(`${newOwner} via ${originalOwner}`));
+    });
+
+    it('leaves a pick still held by its original owner unmarked', () => {
+        renderGrid();
+
+        const untraded = round.picks.find((pick) => !pick.is_traded);
+        const cell = screen.getByRole('button', { name: expectedNameFor(untraded) });
+        const owner = rosterData.find((roster) => roster.roster_id === untraded.owner_id).manager_display_name;
+        expect(within(cell).queryByText(owner)).toBeNull();
     });
 });
 

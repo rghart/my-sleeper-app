@@ -232,3 +232,65 @@ describe('ClockCard at rest', () => {
         expect(screen.queryByText(/YOU IN/)).toBeNull();
     });
 });
+
+// An untimed draft (`pick_timer: 0` - Sleeper's shape for a slow dynasty
+// rookie draft with no per-pick limit) is underway like any other: somebody is
+// up, and who that is is the most useful line on the screen. The card used to
+// key both halves off the countdown, so it read `Untimed draft` and never
+// named them.
+describe('ClockCard on an untimed draft that has started', () => {
+    const untimedDraft = {
+        status: 'drafting',
+        season: '2026',
+        player_pool: 'Rookie',
+        start_time: NOW - 86400000,
+        last_picked: NOW - 3600000,
+        settings: { pick_timer: 0 },
+    };
+
+    const renderUntimed = (overrides = {}) =>
+        render(
+            <ClockCard
+                draft={untimedDraft}
+                onTheClockName="crbiehl"
+                pickLabel="Pick 2.05 · Round 2"
+                picksUntilMine={2}
+                picksMade={16}
+                syncedLabel="synced 2m ago"
+                sourceLabel="…3201"
+                onOpenSource={vi.fn()}
+                onToggleSync={vi.fn()}
+                {...overrides}
+            />,
+        );
+
+    it('names who is on the clock, and says so in the eyebrow', () => {
+        renderUntimed();
+
+        expect(screen.getByText('On the clock')).toBeVisible();
+        expect(screen.getByText('crbiehl')).toBeVisible();
+        expect(screen.getByText('Pick 2.05 · Round 2')).toBeVisible();
+        expect(screen.queryByText('Untimed draft')).toBeNull();
+    });
+
+    it('still counts your own turn down in picks, which is the only unit it has', () => {
+        renderUntimed();
+
+        expect(screen.getByText('YOU IN 2')).toBeVisible();
+    });
+
+    it('borrows the resting card’s chrome, since there is nothing to count', () => {
+        const { container } = renderUntimed();
+
+        expect(container.querySelector('[class*="bg-line-mid"]')).toBeNull();
+        expect(screen.getByRole('button', { name: 'Sync draft' }).textContent).toBe('Sync');
+    });
+
+    it('falls back to the state when the board has nobody left on it', () => {
+        renderUntimed({ onTheClockName: null, pickLabel: null });
+
+        expect(screen.getByText('Untimed draft')).toBeVisible();
+        expect(screen.queryByText('On the clock')).toBeNull();
+        expect(screen.getByText('16 picks · synced 2m ago')).toBeVisible();
+    });
+});

@@ -55,6 +55,14 @@ const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect
     const manager = managerLabel({ pick, rosterData, myDisplayName });
     const accessibleName = pickAccessibleName({ round, pick, player, manager });
     const isMade = Boolean(pick.player_id);
+    // Who owns this pick now, shown only when that is not the column it sits
+    // in. The board's columns are the *original* owners (they key off
+    // `board_spot`/`roster_id`, which a trade never moves), so the feed's full
+    // "ryangh via crbiehl" would spend a 108px cell repeating the column
+    // header to say one new name. The column supplies the "via"; the cell
+    // supplies the name it cannot know, under an arrow that says a trade
+    // happened. The button's accessible name keeps the long form.
+    const tradedTo = pick.is_traded && pick.roster_id !== pick.owner_id ? owner?.manager_display_name : null;
 
     return (
         <button
@@ -83,6 +91,16 @@ const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect
             <span className="text-ink-dim pl-[11px] font-mono text-[10px] tabular-nums">
                 {isMade ? `${player?.team ?? '—'} · ${pickNumberLabel(round, pick)}` : pickNumberLabel(round, pick)}
             </span>
+            {tradedTo && (
+                <span
+                    className={`flex min-w-0 items-center gap-1 pl-[11px] font-mono text-[10px] ${
+                        isMine ? 'text-mine' : 'text-ink-dim'
+                    }`}
+                >
+                    <span aria-hidden="true">⇄</span>
+                    <span className="min-w-0 truncate">{tradedTo}</span>
+                </span>
+            )}
         </button>
     );
 };
@@ -145,6 +163,12 @@ const DraftGrid = ({
                         </span>
                     </span>
                 ))}
+                {/* The arrow needs decoding for the same reason the dots do -
+                    it is the grid's whole vocabulary for a traded pick. */}
+                <span className="text-ink-dim flex items-center gap-1 font-mono text-[10px] font-semibold tracking-[.1em]">
+                    <span aria-hidden="true">⇄</span>
+                    TRADED
+                </span>
                 <span className="text-mine ml-auto font-mono text-[10px] font-semibold tracking-[.1em]">YOU</span>
             </div>
 
