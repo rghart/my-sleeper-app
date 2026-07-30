@@ -52,11 +52,15 @@ export function filterBestAvailable({ entries, playerInfo, eligibleSlots, owners
 
 /**
  * How many eligible entries are still unrostered - the number a collapsed
- * handle shows as "{n} left". Distinct from the sheet's own row count once
- * it's open, which also lists taken players (marked "Taken", not hidden).
+ * handle shows as "{n} left".
+ *
+ * `ownership` is optional and only narrows further: an unrostered player is
+ * `available`, which every scope that has ever shipped has on, so passing the
+ * draft handle's scope changes this count only when a filter the user actually
+ * touched (rookies only) says it should.
  */
-export function countAvailable({ entries, playerInfo, rosterInfo, eligibleSlots }) {
-    return filterBestAvailable({ entries, playerInfo, eligibleSlots }).filter(
+export function countAvailable({ entries, playerInfo, rosterInfo, eligibleSlots, ownership, myDisplayName }) {
+    return filterBestAvailable({ entries, playerInfo, eligibleSlots, ownership, rosterInfo, myDisplayName }).filter(
         ({ entry }) => !isTaken(rosterInfo, playerId(entry)),
     ).length;
 }
@@ -68,10 +72,10 @@ const chipClasses = (active) =>
 
 // The rank-list content shared by the phone sheet and the desktop rail - the
 // two render identical rows, only the chrome around them differs (Sheet vs
-// AppShell's aside). `eligibleSlots` of null means the Draft use, which shows
-// the whole rank list unfiltered and carries no chip row at all; an array
-// (Lineup's open slot labels) filters to players eligible for at least one of
-// them and adds the chip row to narrow further to a single slot.
+// AppShell's aside). `eligibleSlots` of null means the Draft use, which ranks
+// the whole list and carries no slot chips; an array (Lineup's open slot
+// labels) filters to players eligible for at least one of them and adds the
+// chip row to narrow further to a single slot. Both carry the FILTERS chip.
 // `initialActiveChip` seeds which chip starts pressed - null (ALL) for the
 // bottom handle's "every open slot" entry point, a specific label for a
 // slot-tap entry that opens already scoped to the tapped slot. It only ever
@@ -121,67 +125,75 @@ const BestAvailable = ({
 
     const chipLabels = eligibleSlots ? [...new Set(eligibleSlots)] : [];
     const narrowedSlots = eligibleSlots && activeChip ? [activeChip] : eligibleSlots;
-    // The ownership scope only applies where the chip that controls it is
-    // rendered - the lineup's slot-scoped list. The draft's read-only sheet
-    // passes `eligibleSlots: null` and shows the whole ranked board, taken
-    // players included and marked, which is what it is for.
+    // The ownership scope applies to both uses. It used to be lineup-only -
+    // the draft sheet showed the whole ranked board with drafted players left
+    // in and marked `Taken` - but during a draft that is most of the list, and
+    // the question the sheet answers there is the same one it answers on the
+    // lineup: who can I still have? Yours plus unowned by default, everyone
+    // else's a checkbox away.
     const rows = filterBestAvailable({
         entries,
         playerInfo,
         eligibleSlots: narrowedSlots,
-        ownership: eligibleSlots ? ownership : undefined,
+        ownership,
         rosterInfo,
         myDisplayName,
     });
 
     return (
         <div className="flex flex-col gap-3">
-            {eligibleSlots && (
-                // Only the slot chips scroll. FILTERS is pinned to the end
-                // because it is how you get rows back when the list looks
-                // empty - it must not be the thing that has scrolled out of
-                // sight when that happens. A lineup with six distinct slot
-                // labels overflows any phone width, so wrapping the whole row
-                // instead just left the divider stranded mid-air.
-                <div className="flex items-stretch gap-2 px-2 pt-2">
-                    <div className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto">
-                        <button
-                            type="button"
-                            className={`shrink-0 ${chipClasses(activeChip === null)}`}
-                            onClick={() => setActiveChip(null)}
-                        >
-                            ALL
-                        </button>
-                        {chipLabels.map((label) => (
+            {/* Only the slot chips scroll, and only the lineup has any: the
+                draft list has no slot to be eligible for, so there this is the
+                FILTERS chip alone. FILTERS is pinned to the end because it is
+                how you get rows back when the list looks empty - it must not
+                be the thing that has scrolled out of sight when that happens.
+                A lineup with six distinct slot labels overflows any phone
+                width, so wrapping the whole row instead just left the divider
+                stranded mid-air. */}
+            <div className="flex items-stretch gap-2 px-2 pt-2">
+                {eligibleSlots && (
+                    <>
+                        <div className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto">
                             <button
-                                key={label}
                                 type="button"
-                                className={`shrink-0 ${chipClasses(activeChip === label)}`}
-                                onClick={() => setActiveChip(label)}
+                                className={`shrink-0 ${chipClasses(activeChip === null)}`}
+                                onClick={() => setActiveChip(null)}
                             >
-                                {label}
+                                ALL
                             </button>
-                        ))}
-                    </div>
-                    {/* Divided off from the slot chips because it filters a
-                        different axis: those narrow *where* a player could go,
-                        this narrows *whether you can have them*. */}
-                    <span className="bg-line my-0.5 w-px shrink-0" />
-                    <OwnershipFilters
-                        ownership={ownership}
-                        onChange={setOwnership}
-                        isOpen={filtersOpen}
-                        onToggle={() => setFiltersOpen((open) => !open)}
-                    />
-                </div>
-            )}
+                            {chipLabels.map((label) => (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    className={`shrink-0 ${chipClasses(activeChip === label)}`}
+                                    onClick={() => setActiveChip(label)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        {/* Divided off from the slot chips because it filters a
+                            different axis: those narrow *where* a player could
+                            go, this narrows *whether you can have them*. */}
+                        <span className="bg-line my-0.5 w-px shrink-0" />
+                    </>
+                )}
+                <OwnershipFilters
+                    ownership={ownership}
+                    onChange={setOwnership}
+                    isOpen={filtersOpen}
+                    onToggle={() => setFiltersOpen((open) => !open)}
+                />
+            </div>
             {/* Distinct from the "no rank list yet" message above: there is a
                 list, it just has nothing left in it once the chips and the
                 ownership scope are applied. Saying so beats an empty box under
                 a row of controls the user just touched. */}
             {rows.length === 0 && (
                 <p className="text-ink-muted m-0 flex min-h-11 items-center px-4 text-sm">
-                    Nothing in this list fits - try another slot chip, or widen FILTERS.
+                    {eligibleSlots
+                        ? 'Nothing in this list fits - try another slot chip, or widen FILTERS.'
+                        : 'Nothing in this list is left - widen FILTERS to see rostered players.'}
                 </p>
             )}
             <ul className="flex flex-col gap-0.5 px-2 py-2.5">
