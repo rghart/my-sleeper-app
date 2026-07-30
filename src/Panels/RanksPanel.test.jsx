@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RanksPanel from './RanksPanel';
 import { buildRosterInfo, decorateRosters } from '../lib/rosterInfo.js';
@@ -324,5 +324,127 @@ describe('RanksPanel FILTERS popover stays open while it is used', () => {
         await user.click(chip());
         await user.click(screen.getByRole('heading', { name: 'Ranks' }));
         expect(isOpen()).toBe(false);
+    });
+});
+
+// Naming and saving a pasted list is the pre-redesign feature the rebuilt
+// panel lost. The name field survived, but only inside the paste sheet - and
+// startSearch closes that sheet the moment a list lands in it, so the only way
+// back to the field was to reopen the button that had just dismissed itself.
+// It has its own sheet now, behind a Save pill that appears as soon as there
+// is a list to save.
+describe('RanksPanel saving a pasted list', () => {
+    const SAVED = {
+        pretty_name: 'My Rankings',
+        route_name: 'my_rankings',
+        rank_list: [rankEntry(FREE_AGENT.id, 1)],
+    };
+
+    const savedRankLists = {
+        default: { pretty_name: '-- Select saved ranks list', route_name: 'default' },
+        my_rankings: SAVED,
+    };
+
+    const openSaveSheet = async (user) => {
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        return screen.getByRole('dialog', { name: 'Save list' });
+    };
+
+    // The PUT/DELETE go through fetchRequest, which resolves to undefined on
+    // any failure - so `ok: false` here is the whole of the failure path.
+    const writes = (ok = true) => {
+        const calls = [];
+        global.fetch = vi.fn((url, init) => {
+            // The ADP request goes through fetchRequest too, so a write is a
+            // method other than GET rather than any method at all.
+            if (init?.method && init.method !== 'GET') {
+                calls.push({ url, ...init });
+                return Promise.resolve({ ok, status: ok ? 200 : 500, statusText: ok ? 'OK' : 'Server Error' });
+            }
+            return Promise.resolve({ ok: true, statusText: 'OK', json: () => Promise.resolve({}) });
+        });
+        return calls;
+    };
+
+    it('offers no Save pill until there is something to save, or to anyone signed out', () => {
+        renderPanel({ signedIn: true, rankingPlayersIdsList: [] });
+        expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+
+        renderPanel({ signedIn: false });
+        expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    });
+
+    it('names a freshly pasted list and PUTs it under a slug of that name', async () => {
+        const user = userEvent.setup();
+        const { updateSavedRankLists } = renderPanel({ signedIn: true });
+        // renderPanel installs its own global.fetch for the ADP request, so
+        // the write mock has to replace it rather than precede it.
+        const calls = writes();
+
+        const sheet = await openSaveSheet(user);
+        const save = () => screen.getByRole('button', { name: 'Save list' });
+
+        // Too short a name makes a bad key, so the button says so by staying
+        // disabled rather than the save failing into a console.log.
+        await user.type(screen.getByLabelText('LIST NAME'), 'abc');
+        expect(save()).toBeDisabled();
+
+        await user.type(screen.getByLabelText('LIST NAME'), ' Rookie Ranks');
+        expect(save()).toBeEnabled();
+        await user.click(save());
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0].method).toBe('PUT');
+        expect(calls[0].url).toContain('test-uid/abc_rookie_ranks');
+        expect(JSON.parse(calls[0].body)).toMatchObject({
+            pretty_name: 'abc Rookie Ranks',
+            route_name: 'abc_rookie_ranks',
+        });
+        expect(updateSavedRankLists).toHaveBeenCalledTimes(1);
+        // The sheet is done once the list has a name.
+        expect(sheet).not.toBeInTheDocument();
+    });
+
+    it('says so and stays open when the save does not land', async () => {
+        const user = userEvent.setup();
+        renderPanel({ signedIn: true });
+        writes(false);
+
+        await openSaveSheet(user);
+        await user.type(screen.getByLabelText('LIST NAME'), 'Rookie Ranks');
+        await user.click(screen.getByRole('button', { name: 'Save list' }));
+
+        expect(screen.getByRole('alert')).toHaveTextContent(/try again/i);
+        expect(screen.getByRole('dialog', { name: 'Save list' })).toBeInTheDocument();
+    });
+
+    // The "a saved list is selected" branch of the sheet (Update / Save as
+    // new / Delete) is SaveListSheet's own, and is covered in
+    // SaveListSheet.test.jsx: currentListVal only ever changes through the
+    // selector this panel publishes to the top bar, which needs the provider
+    // and is App's wiring rather than the panel's.
+    it('asks only for a name while the session list is unsaved', async () => {
+        const user = userEvent.setup();
+        renderPanel({ signedIn: true, savedRankLists });
+        const calls = writes();
+
+        const sheet = await openSaveSheet(user);
+        expect(within(sheet).getByLabelText('LIST NAME')).toBeInTheDocument();
+        expect(within(sheet).queryByRole('button', { name: 'Update' })).toBeNull();
+        expect(within(sheet).queryByRole('button', { name: 'Delete list' })).toBeNull();
+        expect(calls).toHaveLength(0);
+    });
+
+    it('leaves the paste sheet to pasting alone', async () => {
+        const user = userEvent.setup();
+        renderPanel({ signedIn: true });
+        writes();
+
+        await openPasteSheet(user);
+        const sheet = screen.getByRole('dialog', { name: 'Paste list' });
+
+        expect(within(sheet).getByPlaceholderText('Copy + Paste rankings here...')).toBeInTheDocument();
+        expect(within(sheet).queryByLabelText('LIST NAME')).toBeNull();
+        expect(within(sheet).queryByRole('button', { name: /Delete/ })).toBeNull();
     });
 });

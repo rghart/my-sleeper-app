@@ -97,12 +97,15 @@ const DraftPanel = ({
         : null;
 
     const onTheClock = nextUnpickedPick(currentDraft.built_draft);
+    // null, not a "nobody is up" sentence: ClockCard reads this as the signal
+    // to fall back to its resting shape, which says what the draft's state is
+    // instead. It used to be handed that sentence and print it as a headline.
     const onTheClockName = onTheClock
         ? managerLabel({ pick: onTheClock.pick, rosterData, myDisplayName, markYours: false })
-        : 'No pick on the clock';
+        : null;
     const pickLabel = onTheClock
         ? `Pick ${pickNumberLabel(onTheClock.round, onTheClock.pick)} · Round ${onTheClock.round.round}`
-        : `${currentDraft.season ?? ''} ${currentDraft.player_pool ?? ''}`.trim();
+        : null;
 
     // `changedKey` is only ever passed when the round object came from a
     // manual pick (see PickFeed.selectPlayer) - the live sync path below
@@ -119,6 +122,15 @@ const DraftPanel = ({
     };
 
     const getLiveDraft = async () => {
+        // Nothing to apply picks to. `built_draft` is null whenever the draft
+        // response was missing `settings` or `slot_to_roster_id` (see App's
+        // loadDraft), and syncLiveDraft maps over the board unguarded - so
+        // this used to be a crash waiting for someone to press Sync on a
+        // board that had already failed to build, and became one that fired
+        // on its own once the panel started syncing at mount.
+        if (!currentDraft.built_draft) {
+            return;
+        }
         const livePicks = await fetch(DRAFT_PATH + PICKS)
             .then((response) => response.json())
             .then((data) => data)
@@ -176,6 +188,32 @@ const DraftPanel = ({
     useEffect(() => {
         currentDraftRef.current = currentDraft;
     });
+
+    // One sync as soon as there is a draft to read, and again whenever the
+    // draft being read changes - a league switch (which remounts this panel,
+    // since LeaguePanel swaps in its loader while the new league loads) or a
+    // mock picked from the source sheet.
+    //
+    // The board arrives empty: buildDraftRounds only lays out the pick order
+    // from the draft's slots, and player ids come from the picks endpoint that
+    // getLiveDraft calls. So without this, opening a league showed an
+    // empty board until the user pressed Sync, and the sheet's "best
+    // available" counted players who were long gone.
+    //
+    // Deliberately not the poll. `isSyncing` stays false, so this brings the
+    // board up to date exactly once and then leaves it alone until the user
+    // starts syncing themselves. It runs whether or not they do, which is also
+    // what lets useSeenPicks flag what arrived since the last visit without
+    // anyone pressing anything.
+    useEffect(() => {
+        getLiveDraftRef.current();
+        // getLiveDraft is read through the ref that the effect above keeps
+        // current, so the draft id is the only real dependency here. The
+        // board's presence is the second one because getLiveDraft returns
+        // early without it - without this the panel would skip its one sync
+        // for good if the board arrived a render later.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentDraftId, Boolean(currentDraft.built_draft)]);
 
     useEffect(() => {
         if (!isSyncing) {

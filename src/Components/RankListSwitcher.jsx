@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import Popover from './Popover';
 
 const DEFAULT_ROUTE_NAME = 'default';
 
@@ -21,36 +22,6 @@ const RankListSwitcher = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const buttonRef = useRef(null);
-    const popoverRef = useRef(null);
-
-    useEffect(() => {
-        if (!isOpen) {
-            return undefined;
-        }
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                // Escape closes the popover, not the sheet underneath it -
-                // stopPropagation keeps the sheet's own Escape handler (which
-                // would otherwise also see this same keydown) from closing
-                // the whole sheet in the same keystroke.
-                event.stopPropagation();
-                setIsOpen(false);
-            }
-        };
-        const onPointerDown = (event) => {
-            const popover = popoverRef.current;
-            const button = buttonRef.current;
-            if (popover && !popover.contains(event.target) && button && !button.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('keydown', onKeyDown, true);
-        document.addEventListener('mousedown', onPointerDown);
-        return () => {
-            document.removeEventListener('keydown', onKeyDown, true);
-            document.removeEventListener('mousedown', onPointerDown);
-        };
-    }, [isOpen]);
 
     // The placeholder-only entry (route_name 'default') is RanksPanel's
     // "nothing selected yet" state, not a real saved list - it never belongs
@@ -94,14 +65,19 @@ const RankListSwitcher = ({
                     {isOpen ? '▴' : '▾'}
                 </span>
             </button>
+            {/* The shared Popover, not an `absolute top-full` panel of its own.
+                This pill sits in a Sheet header, and a sheet with little in it
+                (a slot with no candidates, "best available" before any list is
+                chosen) is short - so its header sits near the bottom of the
+                screen and a panel anchored below the trigger ran off the
+                viewport with most of the lists unreachable. Popover measures
+                the space, flips above the trigger when there is more of it
+                there, and clamps to a scrollable max-height either way. It
+                also portals to `body`, which the sheet's own
+                `overflow-y-auto` body requires - and it is the third and last
+                copy of the outside-click/Escape dance to fold into it. */}
             {isOpen && (
-                <div
-                    ref={popoverRef}
-                    role="dialog"
-                    aria-label="Choose rank list"
-                    tabIndex={-1}
-                    className="border-line bg-raised-2 shadow-float absolute top-full right-0 z-50 mt-1.5 box-border w-[236px] rounded-xl border p-1.5"
-                >
+                <Popover triggerRef={buttonRef} onClose={() => setIsOpen(false)} label="Choose rank list" width={236}>
                     <button
                         type="button"
                         onClick={() => select(null)}
@@ -147,7 +123,7 @@ const RankListSwitcher = ({
                     >
                         Paste a new list
                     </button>
-                </div>
+                </Popover>
             )}
         </div>
     );

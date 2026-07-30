@@ -15,6 +15,14 @@ import { pickClockMode, pickProgress, pickDeadline, URGENT_MS } from '../lib/dra
 // a secondary outlined pill.
 const isCountingDown = (mode) => mode === 'live' || mode === 'slow';
 
+// Whether anybody is on the clock at all - which is a different question from
+// whether a timer is counting them down. An untimed draft (`pick_timer: 0`,
+// how Sleeper describes a slow dynasty rookie draft with no per-pick limit) is
+// as underway as a live one: somebody is up, and that is the single most
+// useful line on the screen. It used to read `Untimed draft` and never name
+// them, because the card keyed both halves off the countdown.
+const isUnderway = (mode) => mode !== 'not-started' && mode !== 'complete';
+
 const STATE_HEADLINE = {
     complete: 'Draft complete',
     untimed: 'Untimed draft',
@@ -37,6 +45,10 @@ const ClockCard = ({
 }) => {
     const mode = pickClockMode(draft);
     const counting = isCountingDown(mode);
+    // `onTheClockName` is null when no pick is left unmade, so a board that is
+    // full while Sleeper still calls the draft `drafting` falls back to the
+    // resting shape rather than announcing that nobody is up.
+    const underway = isUnderway(mode) && Boolean(onTheClockName);
     const progress = counting ? pickProgress(draft) : null;
     const deadline = pickDeadline(draft);
     const urgent = counting && deadline !== null && deadline - Date.now() <= URGENT_MS;
@@ -46,10 +58,10 @@ const ClockCard = ({
     // name yet) shows nothing at all rather than a guess. A draft that is not
     // counting down has nobody on the clock, so it never applies.
     const yourTurnLabel =
-        !counting || picksUntilMine === null ? null : picksUntilMine === 0 ? 'YOUR PICK' : `YOU IN ${picksUntilMine}`;
+        !underway || picksUntilMine === null ? null : picksUntilMine === 0 ? 'YOUR PICK' : `YOU IN ${picksUntilMine}`;
 
     const seasonLabel = [draft.season, draft.player_pool].filter(Boolean).join(' ');
-    const eyebrow = counting ? 'On the clock' : seasonLabel || 'Draft';
+    const eyebrow = underway ? 'On the clock' : seasonLabel || 'Draft';
 
     // `48 picks · synced 2m ago` - the two things still worth knowing once
     // there is no clock. The sync half is omitted until a sync has actually
@@ -95,9 +107,9 @@ const ClockCard = ({
             <div className="flex items-end justify-between gap-3">
                 <span className="flex min-w-0 flex-col">
                     <span className="text-ink truncate text-[19px] font-semibold tracking-[-0.02em]">
-                        {counting ? onTheClockName : STATE_HEADLINE[mode]}
+                        {underway ? onTheClockName : (STATE_HEADLINE[mode] ?? 'No pick on the clock')}
                     </span>
-                    {counting
+                    {underway
                         ? pickLabel && <span className="text-ink-quiet font-mono text-[12px]">{pickLabel}</span>
                         : restingSubtitle && (
                               <span className="text-ink-quiet font-mono text-[12px]">{restingSubtitle}</span>

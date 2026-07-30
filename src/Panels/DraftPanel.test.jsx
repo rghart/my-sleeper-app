@@ -90,6 +90,19 @@ function renderPanel(overrides = {}) {
     return { updateDraftBoard, ...result };
 }
 
+// Renders, lets the panel's own opening sync land, and zeroes the counters.
+// The panel syncs once as soon as it has a draft to read - the board arrives
+// with no picks in it, so a league you have just opened would otherwise show
+// an empty board until you pressed Sync. Every assertion in this file about
+// how many requests a *poll* makes counts from after that one.
+async function renderSettled(overrides = {}) {
+    const result = renderPanel(overrides);
+    await act(async () => {});
+    global.fetch.mockClear();
+    result.updateDraftBoard.mockClear();
+    return result;
+}
+
 const click = async (element) => {
     await act(async () => {
         fireEvent.click(element);
@@ -125,8 +138,44 @@ describe('DraftPanel', () => {
         vi.useRealTimers();
     });
 
-    it('polls repeatedly while syncing and stops when sync is switched off', async () => {
+    // The board is laid out empty (buildDraftRounds only produces the pick
+    // order), so before this the picks already made were invisible until
+    // someone pressed Sync. What has to hold is both halves: the panel reads
+    // the draft once by itself, and it does *not* start polling off the back
+    // of it - that is still the user's switch to throw.
+    it('syncs once when it mounts, without starting the poll', async () => {
         renderPanel();
+        await act(async () => {});
+
+        expect(urlsFetched()).toEqual([
+            expect.stringContaining(`${DRAFT_ID}/picks/`),
+            expect.stringContaining(`${DRAFT_ID}/traded_picks`),
+        ]);
+        expect(button('Sync draft')).toBeInTheDocument();
+
+        await settle(30000);
+        expect(global.fetch.mock.calls.length).toBe(2);
+    });
+
+    it('syncs again when the draft being read changes, but still does not poll', async () => {
+        await renderSettled();
+
+        await click(button(`Draft source: …${DRAFT_ID.slice(-4)}`));
+        await act(async () => {
+            fireEvent.change(screen.getByLabelText('Mock draft ID'), { target: { value: '123456' } });
+        });
+        await click(button('Use'));
+        await act(async () => {});
+
+        expect(urlsFetched().length).toBe(2);
+        expect(urlsFetched().every((url) => url.includes('123456'))).toBe(true);
+
+        await settle(30000);
+        expect(urlsFetched().length).toBe(2);
+    });
+
+    it('polls repeatedly while syncing and stops when sync is switched off', async () => {
+        await renderSettled();
 
         await click(button('Sync draft'));
         await settle(7000);
@@ -145,10 +194,11 @@ describe('DraftPanel', () => {
         // The exact shape of the bug the `cancelled` re-check guards: cleanup
         // runs while the awaits are still pending, so clearTimeout has nothing
         // to clear and the loop reschedules itself forever after.
+        // Installed after the opening sync has landed, so the gate holds the
+        // first request of the *poll* rather than that one.
+        await renderSettled();
         const { fetchMock, release } = gatedFetch();
         global.fetch = fetchMock;
-
-        renderPanel();
 
         await click(button('Sync draft'));
         expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -166,10 +216,9 @@ describe('DraftPanel', () => {
     });
 
     it('stops polling when the panel unmounts mid-request', async () => {
+        const { unmount } = await renderSettled();
         const { fetchMock, release } = gatedFetch();
         global.fetch = fetchMock;
-
-        const { unmount } = renderPanel();
 
         await click(button('Sync draft'));
         unmount();
@@ -181,7 +230,7 @@ describe('DraftPanel', () => {
     });
 
     it('hands updateDraftBoard a reducer rather than a finished board when syncing', async () => {
-        const { updateDraftBoard } = renderPanel();
+        const { updateDraftBoard } = await renderSettled();
 
         await syncOnce();
 
@@ -211,7 +260,7 @@ describe('DraftPanel', () => {
     });
 
     it('hands updateDraftBoard a reducer that swaps in only the changed round on a manual pick', async () => {
-        const { updateDraftBoard } = renderPanel();
+        const { updateDraftBoard } = await renderSettled();
 
         await click(screen.getByText('1.01').closest('button'));
         const modal = screen.getByRole('dialog', { name: /^Manually select pick/ });
@@ -253,7 +302,7 @@ describe('DraftPanel', () => {
 
     it('still applies traded picks when the live-picks request fails', async () => {
         global.fetch = failing(livePicksFail);
-        const { updateDraftBoard } = renderPanel();
+        const { updateDraftBoard } = await renderSettled();
 
         await syncOnce();
 
@@ -272,7 +321,7 @@ describe('DraftPanel', () => {
 
     it('still applies live picks when the traded-picks request fails', async () => {
         global.fetch = failing((url) => url.includes('traded_picks'));
-        const { updateDraftBoard } = renderPanel();
+        const { updateDraftBoard } = await renderSettled();
 
         await syncOnce();
 
@@ -293,13 +342,15 @@ describe('DraftPanel', () => {
         global.fetch = vi.fn((url) => {
             if (livePicksFail(url)) {
                 calls += 1;
-                if (calls === 1) {
+                // Call 1 is the panel's own opening sync, which renderSettled
+                // below waits out; the first *poll* tick is call 2.
+                if (calls === 2) {
                     return Promise.reject(new Error('network blip'));
                 }
             }
             return instantFetch(url);
         });
-        const { updateDraftBoard } = renderPanel();
+        const { updateDraftBoard } = await renderSettled();
 
         await click(button('Sync draft'));
         await settle(0);
@@ -322,7 +373,7 @@ describe('DraftPanel', () => {
     });
 
     it('syncs against the draft id pasted into the source sheet rather than the original one', async () => {
-        renderPanel();
+        await renderSettled();
 
         await click(button(`Draft source: …${DRAFT_ID.slice(-4)}`));
         await act(async () => {
@@ -344,7 +395,7 @@ describe('DraftPanel', () => {
     // after advancing time - not on the timer id - is what actually shows
     // the cadence, since a wrong interval still schedules *a* timer.
     it('polls a live-paced draft every 3s', async () => {
-        renderPanel({
+        await renderSettled({
             leagueData: {
                 currentDraft: {
                     draft_id: DRAFT_ID,
@@ -371,7 +422,7 @@ describe('DraftPanel', () => {
     });
 
     it('polls a slow (24h dynasty) draft every 30s, not every 3s', async () => {
-        renderPanel({
+        await renderSettled({
             leagueData: {
                 currentDraft: {
                     draft_id: DRAFT_ID,
@@ -547,6 +598,15 @@ describe('DraftPanel best-available sheet', () => {
 // exercised, so they run against real timers and userEvent rather than the
 // fake-timer harness above, which nothing here needs.
 describe('DraftPanel new-pick markers', () => {
+    // The panel syncs itself once on mount, and these boards are hand-built to
+    // put an exact set of picks on screen - a sync that answered with the
+    // fixture's live picks would fill in more of them and the markers below
+    // would be counting something else. An empty answer leaves each board
+    // exactly as written.
+    beforeEach(() => {
+        global.fetch = vi.fn(() => jsonResponse([]));
+    });
+
     const ROUND_NUMBER = builtDraft[0].round;
     const STORAGE_KEY = `sleeper-app:seen-picks:${DRAFT_ID}`;
 

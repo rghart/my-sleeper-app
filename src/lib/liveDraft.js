@@ -2,6 +2,13 @@
  * Applies live pick data onto a draft board. For each entry in `livePicks`,
  * finds the matching pick by round/board_spot and fills in its `player_id`
  * and `picked` flag. Never mutates any of its inputs.
+ *
+ * A pick the board has no slot for is skipped with a `console.warn` rather
+ * than thrown on, which is what `applyTradedPicks` below has always done. The
+ * two cases are real: the draft-source sheet points sync at any draft id, so a
+ * six-round mock can be read onto a four-round league board, and a board that
+ * failed to build past a certain round is exactly the state where this must
+ * not take the panel down with it.
  */
 export function applyLivePicks({ builtDraft, livePicks }) {
     const newBuiltDraft = builtDraft.map((round) => ({ ...round, picks: [...round.picks] }));
@@ -9,7 +16,15 @@ export function applyLivePicks({ builtDraft, livePicks }) {
     livePicks.forEach((livePick) => {
         const { draft_slot: draftSlot, round: pickRound, player_id: playerId } = livePick;
         const roundEntry = newBuiltDraft[pickRound - 1];
+        if (!roundEntry) {
+            console.warn(`Ignoring live pick in round ${pickRound}: draft has no such round`);
+            return;
+        }
         const pickIndex = roundEntry.picks.findIndex((pick) => pick.board_spot === draftSlot);
+        if (pickIndex === -1) {
+            console.warn(`Ignoring live pick in round ${pickRound}: board has no slot ${draftSlot}`);
+            return;
+        }
         const pick = roundEntry.picks[pickIndex];
         roundEntry.picks[pickIndex] = { ...pick, player_id: playerId, picked: true };
     });

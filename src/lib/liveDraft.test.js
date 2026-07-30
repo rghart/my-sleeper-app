@@ -104,6 +104,28 @@ describe('applyLivePicks', () => {
         expect(pick.picked).toBe(true);
     });
 
+    // Same treatment applyTradedPicks has always given an unplaceable record.
+    // The draft-source sheet points sync at any draft id, so a six-round mock
+    // read onto a four-round league board is a thing a user can do in two taps
+    // - and the panel syncs once by itself now, so it would happen without one.
+    it('skips (with a warning) a live pick whose round does not exist', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const badLivePicks = [...livePicks, { round: 999, draft_slot: 1, player_id: '1' }];
+        const builtDraft = applyLivePicks({ builtDraft: liveDraft.built_draft, livePicks: badLivePicks });
+        expect(builtDraft).toEqual(applyLivePicks({ builtDraft: liveDraft.built_draft, livePicks }));
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('draft has no such round'));
+        warnSpy.mockRestore();
+    });
+
+    it('skips (with a warning) a live pick whose slot is not on the board', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const badLivePicks = [...livePicks, { round: 1, draft_slot: 999, player_id: '1' }];
+        const builtDraft = applyLivePicks({ builtDraft: liveDraft.built_draft, livePicks: badLivePicks });
+        expect(builtDraft).toEqual(applyLivePicks({ builtDraft: liveDraft.built_draft, livePicks }));
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('has no slot 999'));
+        warnSpy.mockRestore();
+    });
+
     it('does not mutate its inputs', () => {
         const clonedBuiltDraft = structuredClone(liveDraft.built_draft);
         const clonedLivePicks = structuredClone(livePicks);

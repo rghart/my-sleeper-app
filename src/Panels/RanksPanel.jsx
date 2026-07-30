@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Popover from '../Components/Popover';
 import SearchFilterButton from '../Components/SearchFilterButton';
-import OnFocusButton from '../Components/OnFocusButton';
 import PlayerInfoItem from '../Components/PlayerInfoItem';
+import SaveListSheet from './SaveListSheet';
 import SegmentedControl from '../Components/SegmentedControl';
 import Sheet from '../Components/Sheet';
 import { auth } from '../firebase.js';
@@ -95,7 +95,6 @@ const RanksPanel = ({
     const defaultSelector = 'default';
     const [isNewRankList, setIsNewRankList] = useState(false);
     const [searchText, setSearchText] = useState('');
-    const [newRankListName, setNewRankListName] = useState('');
     const [currentListVal, setCurrentListVal] = useState(defaultSelector);
     const [adp, setADP] = useState({});
     const [adpType, setADPType] = useState();
@@ -112,8 +111,10 @@ const RanksPanel = ({
         DEF: false,
     });
     const [showPasteSheet, setShowPasteSheet] = useState(false);
+    const [showSaveSheet, setShowSaveSheet] = useState(false);
     const [filtersOpen, setFiltersOpen] = useState(false);
     const pasteButtonRef = useRef(null);
+    const saveButtonRef = useRef(null);
     const filtersChipRef = useRef(null);
 
     const startSearch = () => {
@@ -137,41 +138,44 @@ const RanksPanel = ({
     // downstream (the switcher, this panel's own selector) ever saw the
     // update: React bails out of a setState whose value is `===` the
     // previous one. Both branches below build a brand new object instead.
-    const saveRankList = async () => {
-        let newRankList;
-        let rankListData;
-        if (isNewRankList && newRankListName.length > 3) {
-            newRankList = newRankListName.replace(/([^A-Za-z0-9])/g, '_').toLowerCase();
-            rankListData = {
-                pretty_name: newRankListName,
-                route_name: newRankList,
-                rank_list: rankingPlayersIdsList,
-            };
-        } else if (!isNewRankList) {
-            newRankList = currentListVal;
-            rankListData = { ...savedRankLists[newRankList], rank_list: rankingPlayersIdsList };
-        } else {
-            console.log('List not saved: name for a new rank list should be longer than 3 characters');
-            return;
-        }
-        const USER_PATH = `${auth.currentUser.uid}/${newRankList}`;
+    // The one write both save paths go through. Returns whether it landed
+    // rather than logging the failure and returning nothing: SaveListSheet
+    // keeps itself open and says so when this is false, which is what makes a
+    // failed save visible at all.
+    const putRankList = async (routeName, rankListData) => {
+        const USER_PATH = `${auth.currentUser.uid}/${routeName}`;
         const updateResponse = await fetchRequest(
             APP_USERS + USER_PATH + TYPE_PARAMS + (await auth.currentUser.getIdToken(true)),
             'PUT',
             rankListData,
         );
-        if (updateResponse && updateResponse.ok) {
-            if (isNewRankList) {
-                setIsNewRankList(false);
-                setCurrentListVal(newRankList);
-            }
-            updateSavedRankLists((prevSavedRankLists) => ({ ...prevSavedRankLists, [newRankList]: rankListData }));
-            setNewRankListName('');
-            console.log(updateResponse.status);
-        } else {
-            console.log(updateResponse);
+        if (!updateResponse || !updateResponse.ok) {
+            console.error('Error: could not save rank list', updateResponse);
+            return false;
         }
+        updateSavedRankLists((prevSavedRankLists) => ({ ...prevSavedRankLists, [routeName]: rankListData }));
+        return true;
     };
+
+    const saveNewRankList = async (prettyName) => {
+        const routeName = prettyName.replace(/([^A-Za-z0-9])/g, '_').toLowerCase();
+        const saved = await putRankList(routeName, {
+            pretty_name: prettyName,
+            route_name: routeName,
+            rank_list: rankingPlayersIdsList,
+        });
+        if (saved) {
+            // The pasted list stops being an unsaved one the moment it has a
+            // name, and the panel (plus the top bar's pill) is scoped to it
+            // from here on - same as picking it from the selector would.
+            setIsNewRankList(false);
+            setCurrentListVal(routeName);
+        }
+        return saved;
+    };
+
+    const updateCurrentRankList = () =>
+        putRankList(currentListVal, { ...savedRankLists[currentListVal], rank_list: rankingPlayersIdsList });
 
     const deleteRankList = async () => {
         // Neee to escape backslashes
@@ -180,19 +184,19 @@ const RanksPanel = ({
             APP_USERS + USER_PATH + TYPE_PARAMS + (await auth.currentUser.getIdToken(true)),
             'DELETE',
         );
-        if (updateResponse && updateResponse.ok) {
-            setIsNewRankList(false);
-            const deletedListVal = currentListVal;
-            updateSavedRankLists((prevSavedRankLists) => {
-                const nextSavedRankLists = { ...prevSavedRankLists };
-                delete nextSavedRankLists[deletedListVal];
-                return nextSavedRankLists;
-            });
-            updateRankList(defaultSelector);
-            console.log(updateResponse.status);
-        } else {
-            console.log(updateResponse);
+        if (!updateResponse || !updateResponse.ok) {
+            console.error('Error: could not delete rank list', updateResponse);
+            return false;
         }
+        setIsNewRankList(false);
+        const deletedListVal = currentListVal;
+        updateSavedRankLists((prevSavedRankLists) => {
+            const nextSavedRankLists = { ...prevSavedRankLists };
+            delete nextSavedRankLists[deletedListVal];
+            return nextSavedRankLists;
+        });
+        updateRankList(defaultSelector);
+        return true;
     };
 
     // useCallback here is ordinary hygiene, not a correctness requirement:
@@ -331,20 +335,41 @@ const RanksPanel = ({
                                 {adpTypeLabel ? ` · ${adpTypeLabel} ADP` : ''}
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            ref={pasteButtonRef}
-                            onClick={() => {
-                                // Only one overlay at a time - opening this
-                                // over the filters sheet stacks two scrims and
-                                // two grab handles on top of each other.
-                                setFiltersOpen(false);
-                                setShowPasteSheet(true);
-                            }}
-                            className="bg-mine text-ground shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold"
-                        >
-                            Paste list
-                        </button>
+                        <div className="flex shrink-0 items-center gap-2">
+                            {/* Only offered to a signed-in user with something
+                                to save: saved lists are per-account, so for
+                                anyone else this pill would open a sheet whose
+                                every action fails. */}
+                            {signedIn && rankingPlayersIdsList.length > 0 && (
+                                <button
+                                    type="button"
+                                    ref={saveButtonRef}
+                                    onClick={() => {
+                                        setFiltersOpen(false);
+                                        setShowPasteSheet(false);
+                                        setShowSaveSheet(true);
+                                    }}
+                                    className="border-line text-ink-muted rounded-full border px-3.5 py-2 text-[13px] font-semibold"
+                                >
+                                    Save
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                ref={pasteButtonRef}
+                                onClick={() => {
+                                    // Only one overlay at a time - opening this
+                                    // over the filters sheet stacks two scrims and
+                                    // two grab handles on top of each other.
+                                    setFiltersOpen(false);
+                                    setShowSaveSheet(false);
+                                    setShowPasteSheet(true);
+                                }}
+                                className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold"
+                            >
+                                Paste list
+                            </button>
+                        </div>
                     </div>
 
                     <div className="no-scrollbar flex flex-row gap-2 overflow-x-auto">
@@ -406,54 +431,46 @@ const RanksPanel = ({
                             triggerRef={pasteButtonRef}
                             centerOnDesktop
                         >
+                            {/* Paste and nothing else now. Naming, updating and
+                                deleting moved to SaveListSheet - they used to
+                                be conditional halves of this one body, and the
+                                naming half was unreachable in practice because
+                                startSearch closes this sheet the moment a list
+                                lands in it. The textarea is no longer hidden
+                                once a list exists either: replacing the list
+                                you are looking at is the normal second use of
+                                this sheet. */}
                             <div className="flex flex-col gap-3 p-4">
-                                {showExistingListControls && (
-                                    <div className="border-line rounded-row flex items-center justify-between gap-2 border p-3">
-                                        <p className="text-ink m-0 truncate text-[14px] font-semibold">
-                                            {savedRankLists[currentListVal]?.pretty_name}
-                                        </p>
-                                        <OnFocusButton event={deleteRankList} saveRankList={saveRankList} />
-                                    </div>
-                                )}
-                                {!isNewRankList && (
-                                    <>
-                                        <textarea
-                                            className="border-line bg-raised-2 text-ink caret-ink-muted rounded-row w-full border p-3"
-                                            placeholder="Copy + Paste rankings here..."
-                                            value={searchText}
-                                            onChange={(e) => setSearchText(e.target.value)}
-                                        />
-                                        <button
-                                            type="button"
-                                            disabled={searchText.length < 6}
-                                            onClick={startSearch}
-                                            className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
-                                        >
-                                            Submit
-                                        </button>
-                                    </>
-                                )}
-                                {signedIn && isNewRankList && (
-                                    <div className="flex flex-col gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Enter new list name..."
-                                            className="border-line bg-raised-2 text-ink caret-ink-muted rounded-row border p-3"
-                                            value={newRankListName}
-                                            onChange={(e) => setNewRankListName(e.target.value)}
-                                        />
-                                        <button
-                                            type="button"
-                                            disabled={newRankListName.length < 3}
-                                            onClick={saveRankList}
-                                            className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
-                                        >
-                                            Save
-                                        </button>
-                                    </div>
-                                )}
+                                <textarea
+                                    className="border-line bg-raised-2 text-ink caret-ink-muted rounded-row w-full border p-3"
+                                    placeholder="Copy + Paste rankings here..."
+                                    value={searchText}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    disabled={searchText.length < 6}
+                                    onClick={startSearch}
+                                    className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
+                                >
+                                    Submit
+                                </button>
                             </div>
                         </Sheet>
+                    )}
+
+                    {showSaveSheet && (
+                        <SaveListSheet
+                            savedListName={
+                                showExistingListControls ? savedRankLists[currentListVal]?.pretty_name : null
+                            }
+                            playerCount={rankingPlayersIdsList.length}
+                            onSaveNew={saveNewRankList}
+                            onUpdate={updateCurrentRankList}
+                            onDelete={deleteRankList}
+                            onClose={() => setShowSaveSheet(false)}
+                            triggerRef={saveButtonRef}
+                        />
                     )}
 
                     <div className="flex flex-col gap-0.5 px-2">

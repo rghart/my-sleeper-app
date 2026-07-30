@@ -28,7 +28,7 @@ const BASE = 'min-w-max rounded-full px-3.5 py-2 text-[13px] font-semibold trans
 // comfortably past AA, same reasoning the old QB fill used.
 //
 // `active` is the outlined/"engaged" shape (border-line, text-ink-muted,
-// transparent) - used standalone (OnFocusButton's Save) and stacked onto
+// transparent) - stacked onto
 // `primary-large` for the live-sync toggle's "on" state, where the filled
 // primary button ("Sync draft") becomes outlined ("Stop sync") once syncing
 // starts. Its three overrides carry `!`: Tailwind orders utilities by group
