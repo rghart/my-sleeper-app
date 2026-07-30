@@ -4,7 +4,7 @@ import PositionTag from './PositionTag';
 import OwnershipFilters, { DEFAULT_OWNERSHIP, matchesOwnership } from './OwnershipFilters';
 import { playerAccessibleName } from './playerInfoLabels.js';
 import { eligiblePositionsForSlot } from '../lib/roster.js';
-import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
+import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
 const playerId = (entry) => entry.match_results[0][0];
 
@@ -87,6 +87,7 @@ const BestAvailable = ({
     initialActiveChip = null,
     ownership: controlledOwnership,
     onOwnershipChange,
+    lineupSet,
     onSelect,
 }) => {
     const [activeChip, setActiveChip] = useState(initialActiveChip);
@@ -104,10 +105,16 @@ const BestAvailable = ({
     // who hasn't pasted anything yet), not an edge case of an otherwise-full
     // list - so it gets its own plain message rather than an empty list under
     // a chip row that filters nothing.
+    //
+    // It no longer tells the reader to go somewhere else, because it no longer
+    // has to: the sheet's own header carries the rank-list switcher, so
+    // choosing a saved list or starting a new one both happen from here. The
+    // old copy ("paste one in the Ranks section") was written when this sheet
+    // could not be opened at all without a list already loaded.
     if (entries.length === 0) {
         return (
             <p className="text-ink-muted m-0 flex min-h-11 items-center px-4 text-sm">
-                No rank list yet - paste one in the Ranks section to see who is still left.
+                No rank list selected - pick one from the switcher above, or paste a new one.
             </p>
         );
     }
@@ -191,7 +198,15 @@ const BestAvailable = ({
                     // (`!taken || isMine`). On the draft sheet this changes
                     // nothing, because that sheet passes no onSelect at all.
                     const unavailable = taken && !isMine;
-                    const accessibleName = playerAccessibleName({ player, taken, rosteredByName, isMine });
+                    // Already filling one of your slots. Adding them again
+                    // would silently move them out of the slot they are in -
+                    // the fill path writes the id into the tapped slot without
+                    // checking the rest of the lineup - so the row says so and
+                    // offers nothing to tap. `lineupSet` is optional: the
+                    // draft's read-only sheet has no lineup to compare against
+                    // and passes none.
+                    const started = Boolean(lineupSet) && isInLineup(lineupSet, id);
+                    const accessibleName = playerAccessibleName({ player, taken, rosteredByName, isMine, started });
 
                     return (
                         <li key={id}>
@@ -222,10 +237,11 @@ const BestAvailable = ({
                                             onSelect && (
                                                 <button
                                                     type="button"
+                                                    disabled={started}
                                                     onClick={() => onSelect(player)}
-                                                    className="bg-mine-chip text-mine shrink-0 rounded-full px-[11px] py-1.5 font-mono text-[11px] font-semibold"
+                                                    className="bg-mine-chip text-mine shrink-0 rounded-full px-[11px] py-1.5 font-mono text-[11px] font-semibold disabled:opacity-50"
                                                 >
-                                                    Add
+                                                    {started ? 'Started' : 'Add'}
                                                 </button>
                                             )
                                         )}

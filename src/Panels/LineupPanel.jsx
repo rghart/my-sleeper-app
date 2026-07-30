@@ -21,6 +21,7 @@ const LineupPanel = ({
     savedRankLists,
     savedRankListsLoading,
     signedIn,
+    lineupSet,
 }) => {
     const emptyCount = rosterSlots.filter((slot) => !slot.playerId).length;
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -130,7 +131,9 @@ const LineupPanel = ({
                     </span>
                 )}
             </h4>
-            <ul className="flex flex-col gap-0.5 px-2 py-1">
+            {/* Leaves the pinned handle's height clear at the end of the list,
+                or its last slot row sits underneath it. */}
+            <ul className="flex flex-col gap-0.5 px-2 py-1 pb-[var(--handle-h)] md:pb-1">
                 {rosterSlots.map((slot, i) => (
                     <SlotRow
                         key={`${slot.label}-${i}`}
@@ -142,29 +145,24 @@ const LineupPanel = ({
                 ))}
             </ul>
             {/* Phone only - the aside covers `md` and up with the desktop
-                rail instead (see AppShell / App's renderAside). This strip is
-                the bottom-handle entry point specifically; every slot row
-                above opens the same sheet directly regardless of whether
-                there is a rank list to show in it (BestAvailable's own empty
-                state covers that), so this block is not the only way in. */}
-            {openSlotLabels.length > 0 &&
-                (rankingPlayersIdsList.length > 0 ? (
-                    <BestAvailableHandle
-                        buttonRef={bestAvailableHandleRef}
-                        isExpanded={isSheetOpen && !scope}
-                        onClick={openFromHandle}
-                        subtitle={`fills ${openSlotLabels.join(', ')}`}
-                    />
-                ) : (
-                    <div className="border-line bg-raised border-t md:hidden">
-                        <BestAvailable
-                            entries={[]}
-                            playerInfo={playerInfo}
-                            rosterInfo={rosterInfo}
-                            eligibleSlots={openSlotLabels}
-                        />
-                    </div>
-                ))}
+                rail instead (see AppShell / App's renderAside). This handle is
+                the bottom entry point specifically; every slot row above opens
+                the same sheet directly.
+
+                It opens whether or not a list is loaded. The either/or it
+                replaced showed a flat "paste one in the Ranks section" strip
+                instead of the handle, so a signed-in user with saved lists had
+                no way to reach them from this screen - and the switcher that
+                is the way to reach them lives inside the sheet the handle
+                opens. */}
+            {openSlotLabels.length > 0 && (
+                <BestAvailableHandle
+                    buttonRef={bestAvailableHandleRef}
+                    isExpanded={isSheetOpen && !scope}
+                    onClick={openFromHandle}
+                    subtitle={entries.length > 0 ? `fills ${openSlotLabels.join(', ')}` : 'Paste a rank list'}
+                />
+            )}
             {isSheetOpen && (
                 <Sheet
                     title={title}
@@ -220,6 +218,7 @@ const LineupPanel = ({
                         initialActiveChip={scope ? scope.label : null}
                         ownership={ownership}
                         onOwnershipChange={setOwnership}
+                        lineupSet={lineupSet}
                         onSelect={handleSelect}
                     />
                 </Sheet>

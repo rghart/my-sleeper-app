@@ -94,11 +94,16 @@ describe('BestAvailable', () => {
         expect(within(theirs).getByText('Taken')).toBeInTheDocument();
     });
 
-    it('renders an empty state when there is no rank list at all', () => {
+    // The copy points at the sheet's own switcher, not at another section: the
+    // handle opens this sheet with no list loaded now, and choosing or starting
+    // a list both happen from its header. Telling the reader to go to Ranks was
+    // written when this state was unreachable.
+    it('renders an empty state that points at the switcher above it', () => {
         renderBestAvailable({ entries: [] });
 
-        expect(screen.getByText(/No rank list yet/)).toBeInTheDocument();
-        expect(screen.getByText(/Ranks section/)).toBeInTheDocument();
+        expect(screen.getByText(/No rank list selected/)).toBeInTheDocument();
+        expect(screen.getByText(/switcher above/)).toBeInTheDocument();
+        expect(screen.queryByText(/Ranks section/)).toBeNull();
     });
 
     it('skips an entry whose id is absent from playerInfo rather than rendering a hole', () => {

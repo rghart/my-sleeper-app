@@ -426,13 +426,14 @@ describe('DraftPanel board view toggle', () => {
 
         expect(screen.queryByRole('list', { name: 'Round 1' })).toBeNull();
         expect(button('Grid')).toHaveAttribute('aria-pressed', 'true');
-        // The grid's own zoom control is now on screen alongside the toggle.
-        expect(button('Overview')).toBeInTheDocument();
+        // The grid has one density and no sub-toggle, so what proves it is on
+        // screen is the position key it carries instead.
+        expect(screen.getByText('YOU')).toBeVisible();
 
         await click(button('Feed'));
 
         expect(screen.getByRole('list', { name: 'Round 1' })).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull();
+        expect(screen.queryByText('YOU')).toBeNull();
     });
 });
 
@@ -496,11 +497,45 @@ describe('DraftPanel best-available sheet', () => {
         expect(within(dialog).queryByRole('button', { name: 'Add' })).toBeNull();
     });
 
-    it('shows the plain empty-list message, not a handle, when there is no rank list yet', () => {
+    // The handle used to be swapped out for a flat message strip when there
+    // was no list, which left a signed-in user with saved lists no way to
+    // reach one from this screen - the switcher that reaches them is inside
+    // the sheet the handle opens.
+    it('still opens, with a rank-list switcher inside, when no list is selected yet', async () => {
+        const user = userEvent.setup();
         renderPanel({ rankingPlayersIdsList: [] });
 
-        expect(screen.queryByRole('button', { name: /Best available/ })).toBeNull();
-        expect(screen.getByText(/No rank list yet/)).toBeInTheDocument();
+        const handle = screen.getByRole('button', { name: /Best available/ });
+        expect(handle).toHaveTextContent('Paste a rank list');
+
+        await user.click(handle);
+        const dialog = screen.getByRole('dialog', { name: 'Best available' });
+
+        expect(within(dialog).getByRole('button', { name: /^Rank list/ })).toBeInTheDocument();
+        expect(within(dialog).getByText(/No rank list selected/)).toBeInTheDocument();
+    });
+
+    it('reads a saved list picked from the switcher rather than the empty session list', async () => {
+        const user = userEvent.setup();
+        renderPanel({
+            rankingPlayersIdsList: [],
+            signedIn: true,
+            savedRankLists: {
+                default: { pretty_name: '-- Select saved ranks list', route_name: 'default' },
+                my_ranks: {
+                    pretty_name: 'My Rankings',
+                    route_name: 'my_ranks',
+                    rank_list: [rankEntry(FREE_AGENT.id)],
+                },
+            },
+        });
+
+        await user.click(screen.getByRole('button', { name: /Best available/ }));
+        await user.click(screen.getByRole('button', { name: /^Rank list/ }));
+        await user.click(screen.getByRole('button', { name: /^My Rankings/ }));
+
+        const dialog = screen.getByRole('dialog', { name: 'Best available' });
+        expect(within(dialog).getByText(FREE_AGENT.name)).toBeInTheDocument();
     });
 });
 

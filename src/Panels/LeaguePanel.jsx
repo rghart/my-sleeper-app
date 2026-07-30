@@ -17,6 +17,7 @@ const LeaguePanel = ({
     savedRankLists,
     savedRankListsLoading,
     signedIn,
+    lineupSet,
     view,
 }) => {
     return (
@@ -43,6 +44,7 @@ const LeaguePanel = ({
                             savedRankLists={savedRankLists}
                             savedRankListsLoading={savedRankListsLoading}
                             signedIn={signedIn}
+                            lineupSet={lineupSet}
                         />
                     )}
                     {view === 'draft' && (
@@ -53,6 +55,9 @@ const LeaguePanel = ({
                             rankingPlayersIdsList={rankingPlayersIdsList}
                             myDisplayName={myDisplayName}
                             updateDraftBoard={updateDraftBoard}
+                            savedRankLists={savedRankLists}
+                            savedRankListsLoading={savedRankListsLoading}
+                            signedIn={signedIn}
                         />
                     )}
                 </>

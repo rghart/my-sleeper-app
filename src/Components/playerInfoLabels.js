@@ -17,7 +17,19 @@ export const playerAvailabilityText = ({ taken, rosteredByName }) => (taken ? ro
 // convention pickLabels.js uses for your own picks. Replacing the name with a
 // bare "you" would have dropped the identity that the league-switch
 // attribution test in App.test.jsx exists to prove.
-export const playerAccessibleName = ({ player, taken, rosteredByName, isMine = false, lowConfidenceMatch = false }) => {
+// `started` marks a player who already fills one of your lineup slots. It is
+// encoded visibly as a disabled pill reading "Started", which is exactly the
+// kind of state a disabled control announces inconsistently, so it goes in the
+// name too. Appended last, after the optional low-confidence part, so every
+// existing name is unchanged when it is absent.
+export const playerAccessibleName = ({
+    player,
+    taken,
+    rosteredByName,
+    isMine = false,
+    lowConfidenceMatch = false,
+    started = false,
+}) => {
     let availability = 'free agent';
     if (taken) {
         availability = isMine ? `taken by ${rosteredByName} · you` : `taken by ${rosteredByName}`;
@@ -25,6 +37,9 @@ export const playerAccessibleName = ({ player, taken, rosteredByName, isMine = f
     const nameParts = [player.full_name, player.position, availability];
     if (lowConfidenceMatch) {
         nameParts.push('low confidence match');
+    }
+    if (started) {
+        nameParts.push('already started');
     }
     return nameParts.join(', ');
 };

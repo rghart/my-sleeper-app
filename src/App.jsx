@@ -446,6 +446,7 @@ class App extends React.Component {
                     rosterInfo={rosterInfoValue}
                     myDisplayName={myDisplayName}
                     eligibleSlots={eligibleSlots}
+                    lineupSet={activeId === 'lineup' ? buildLineupSet(rosterSlots) : undefined}
                     onSelect={activeId === 'lineup' ? this.addToRoster : null}
                 />
             </div>
@@ -568,6 +569,7 @@ class App extends React.Component {
                                                 savedRankLists={savedRankLists}
                                                 savedRankListsLoading={savedRankListsLoading}
                                                 signedIn={signedIn}
+                                                lineupSet={lineupSet}
                                             />
                                         );
                                     }}

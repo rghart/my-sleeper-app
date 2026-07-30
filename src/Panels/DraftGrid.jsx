@@ -1,17 +1,24 @@
-import { useState, useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import ManualPickModal from './ManualPickModal';
-import SegmentedControl from '../Components/SegmentedControl';
 import { applyManualPick } from '../lib/liveDraft.js';
 import { managerLabel, pickAccessibleName, pickNumberLabel, positionFillClass } from './pickLabels.js';
 
-const ZOOM_OPTIONS = [
-    { value: 'overview', label: 'Overview' },
-    { value: 'readable', label: 'Readable' },
-];
+// The four positions the key row explains. K and DEF carry no hue anywhere in
+// the system, so they get the neutral dot positionFillClass falls back to and
+// no key entry - there is nothing to decode.
+const KEY_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+
+const COLUMN_W = 108;
+// 30px of rail plus the board's own 14px left inset. The inset lives inside
+// the rail rather than as padding on the board, because the rail is pinned to
+// the scroll container's left edge: with the padding on the board, the rail
+// jumped 14px leftwards the moment the board was scrolled sideways - sticky
+// pins to the scrollport, which knows nothing about an inner element's padding.
+const RAIL_W = 44;
 
 // First-initial + surname, e.g. "Jordan Love" -> "J.Love". A multi-word
 // surname (a suffix, "St. Brown") keeps everything after the first token as
-// one piece - this only has to fit a 75px cell, not read as a full name.
+// one piece - this only has to fit a 108px cell, not read as a full name.
 const shortPlayerName = (fullName) => {
     const [first, ...rest] = fullName.trim().split(' ');
     return rest.length === 0 ? first : `${first[0]}.${rest.join(' ')}`;
@@ -29,9 +36,19 @@ const buildTeamColumns = (builtDraft) =>
 
 const findPick = (round, boardSpot) => round.picks.find((pick) => pick.board_spot === boardSpot);
 
+const PositionDot = ({ position }) => (
+    <span aria-hidden="true" className={`h-[5px] w-[5px] shrink-0 rounded-full ${positionFillClass(position)}`} />
+);
+
 // One cell of the board: a button carrying the same accessible name PickRow
 // builds for the feed, so the same pick reads identically in either view.
-const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, zoom, onSelect }) => {
+//
+// Definition comes from the cell's own fill and hairline, never from a lattice
+// of table rules - which is also why this is a grid of blocks rather than the
+// <table> it used to be. Each cell's accessible name already spells out round,
+// pick, manager and player, so nothing is lost by dropping the <th scope>
+// associations a table gave: the name never depended on them.
+const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, onSelect }) => {
     const player = pick.player_id ? playerInfo[pick.player_id] : null;
     const owner = pick.owner_id ? rosterData.find((roster) => roster.roster_id === pick.owner_id) : null;
     const isMine = Boolean(owner?.manager_display_name) && owner.manager_display_name === myDisplayName;
@@ -39,63 +56,47 @@ const GridCell = ({ round, pick, playerInfo, rosterData, myDisplayName, zoom, on
     const accessibleName = pickAccessibleName({ round, pick, player, manager });
     const isMade = Boolean(pick.player_id);
 
-    // A made pick fills with the position colour. Near-black text (`text-ground`)
-    // reads on all four skill-position fills - measured 5.55:1 (QB), 7.92:1
-    // (RB), 6.07:1 (WR), 6.93:1 (TE) against the design's raw hex values, all
-    // clearing AA and all but QB/WR clearing AAA. K/DEF (and any pick missing
-    // a position) fall back to `positionFillClass`'s neutral `bg-line`, which
-    // `text-ground` measured at only 1.36:1 on - so that one case takes
-    // `text-ink` instead, measured at 12.6:1.
-    //
-    // An unmade cell used to be a dashed, unfilled box; that reads as an
-    // "empty slot" everywhere else in the app via a quiet tint instead
-    // (`--raw-empty`, literally "a hint of a row, not a dashed box" in
-    // theme.css), so this cell uses the same token rather than its own
-    // one-off dashed treatment. Either way it stays visibly distinct from a
-    // made cell's saturated fill, even at a glance in overview mode.
-    const hasHueFill = ['QB', 'RB', 'WR', 'TE'].includes(player?.position);
-    const stateClasses = isMade
-        ? `${hasHueFill ? 'text-ground' : 'text-ink'} ${positionFillClass(player?.position)}`
-        : 'bg-empty border border-line-quiet text-ink-muted';
-
-    // Violet marks "yours" as an outline, not a fill, so the position colour
-    // underneath a made pick still shows through. `!` because outline and
-    // border/background utilities can otherwise be reordered by Tailwind's
-    // group-based stylesheet output rather than by where they read here.
-    const mineClasses = isMine ? 'outline! outline-2! outline-mine! outline-offset-[-2px]!' : '';
-
     return (
-        <td className="p-0">
-            <button
-                type="button"
-                aria-label={accessibleName}
-                onClick={onSelect}
-                className={`flex h-[var(--cell-h)] w-[var(--cell-w)] flex-col items-center justify-center overflow-hidden p-0.5 text-[10px] leading-tight ${stateClasses} ${mineClasses}`}
-            >
-                {/* Overview is position colour only, no text at all - that is
-                    the whole point of the zoom level, so nothing renders here
-                    when zoom !== 'readable'. */}
-                {zoom === 'readable' && (
-                    <>
-                        <span className="w-full truncate text-center font-semibold">
-                            {isMade ? (player ? shortPlayerName(player.full_name) : `#${pick.player_id}`) : ''}
-                        </span>
-                        <span className="w-full truncate text-center text-[9px] opacity-80">
-                            {isMade
-                                ? `${player?.team ?? '—'} · ${pickNumberLabel(round, pick)}`
-                                : pickNumberLabel(round, pick)}
-                        </span>
-                    </>
-                )}
-            </button>
-        </td>
+        <button
+            type="button"
+            aria-label={accessibleName}
+            onClick={onSelect}
+            style={{ width: `${COLUMN_W}px` }}
+            className={`rounded-row flex flex-col gap-[3px] border px-[9px] py-2 text-left ${
+                isMine ? 'bg-mine-row border-mine-edge' : 'bg-grid-cell border-grid-line'
+            }`}
+        >
+            <span className="flex min-w-0 items-center gap-1.5">
+                {isMade && <PositionDot position={player?.position} />}
+                <span
+                    className={`min-w-0 truncate text-[13px] font-semibold tracking-[-0.01em] ${
+                        isMine ? 'text-ink' : 'text-ink-soft'
+                    }`}
+                >
+                    {isMade ? (player ? shortPlayerName(player.full_name) : `#${pick.player_id}`) : ''}
+                </span>
+            </span>
+            {/* Indented to sit under the name rather than under the dot -
+                11px is the dot plus its gap. An unmade cell has no dot, so
+                its pick number carries the same indent for the column to
+                stay straight down the board. */}
+            <span className="text-ink-dim pl-[11px] font-mono text-[10px] tabular-nums">
+                {isMade ? `${player?.team ?? '—'} · ${pickNumberLabel(round, pick)}` : pickNumberLabel(round, pick)}
+            </span>
+        </button>
     );
 };
 
-// The grid view of the draft board: teams across the top, rounds down the
-// side, both frozen so a cell scrolled into the middle of the board is still
-// identifiable. See the PR description for why this layout (not the
-// transposed one) and why two zoom stops (not four).
+// The grid view of the draft board: managers across the top, rounds down the
+// side, both pinned so a cell scrolled into the middle of the board is still
+// identifiable.
+//
+// One density. The old overview zoom stop - 23px colour blocks with no text -
+// is deleted rather than restyled: it answered nothing the feed didn't answer
+// better, and it was the only place a position hue appeared as a solid fill
+// wide enough to compete with the violet that means "yours". The dot is the
+// grid's tag form now, and the key row above the board is what makes it
+// legible.
 const DraftGrid = ({
     builtDraft,
     playerInfo,
@@ -105,7 +106,6 @@ const DraftGrid = ({
     myDisplayName,
     onPickChange,
 }) => {
-    const [zoom, setZoom] = useState('overview');
     const [activePick, setActivePick] = useState(null);
     // See PickFeed's identical comment - Sheet returns focus to whichever
     // cell button was open when it closes.
@@ -129,97 +129,65 @@ const DraftGrid = ({
         closeModal();
     };
 
-    const teamLabel = (rosterId) => {
-        const roster = rosterData.find((r) => r.roster_id === rosterId);
-        return roster?.manager_display_name ?? `Unassigned ${rosterId}`;
-    };
-
-    const headerCellClasses =
-        'border-line-quiet bg-ground text-ink-muted sticky top-0 z-10 border p-1 font-mono text-[11px] font-semibold tracking-[.08em] uppercase truncate';
-    const gutterCellClasses =
-        'border-line-quiet bg-ground text-ink-muted sticky left-0 z-10 w-10 border p-1 font-mono text-[11px] font-semibold tracking-[.08em] uppercase';
+    const managerFor = (rosterId) => rosterData.find((roster) => roster.roster_id === rosterId);
 
     return (
         <div>
-            <SegmentedControl label="Zoom level" options={ZOOM_OPTIONS} value={zoom} onChange={setZoom} />
-            {/* This scroll container is the containing block every sticky cell
-                below travels within. The table must NOT be told to fill it
-                (no w-full, no flex-1) - it needs its own natural, wider-than-
-                the-container width for the sticky round gutter and team
-                header to have anywhere to travel to as the container scrolls. */}
+            {/* The only place a position hue appears outside a tag or a filter
+                chip. In the grid the dot *is* the tag, so the board needs one
+                row that says which hue is which. */}
+            <div className="flex items-center gap-3.5 px-3.5 pb-3">
+                {KEY_POSITIONS.map((position) => (
+                    <span key={position} className="flex items-center gap-1.5">
+                        <PositionDot position={position} />
+                        <span className="text-ink-dim font-mono text-[10px] font-semibold tracking-[.1em]">
+                            {position}
+                        </span>
+                    </span>
+                ))}
+                <span className="text-mine ml-auto font-mono text-[10px] font-semibold tracking-[.1em]">YOU</span>
+            </div>
+
+            {/* This scroll container is the containing block every pinned cell
+                below travels within, so the board must keep its own natural
+                width (`w-max`) rather than being told to fill it - otherwise
+                the round rail and manager header have nowhere to travel to. */}
             <div className="max-h-[70vh] overflow-auto">
-                {/* table-layout: fixed only truly ignores cell content - a long
-                    manager name, in particular - when the table ALSO has an
-                    explicit width rather than 'auto'. Verified directly: with
-                    `width: auto`, Chrome still expands columns to fit content
-                    even though computed tableLayout reads 'fixed' and a
-                    <colgroup> sets 23px columns; only pinning the table's own
-                    width (here, gutter + one `--cell-w` per team, via calc())
-                    made columns actually hold their specified width. That is
-                    also what keeps overview's "never scrolls horizontally"
-                    guarantee true regardless of how long a manager's display
-                    name is. calc() re-reads `--cell-w` live, so the table
-                    width updates by itself on a zoom switch. */}
-                <table
-                    data-zoom={zoom}
-                    className="draft-grid table-fixed border-collapse"
-                    style={{ width: `calc(2.5rem + ${teamColumns.length} * var(--cell-w))` }}
+                <div
+                    className="grid w-max gap-1 pr-3.5 pb-2"
+                    style={{ gridTemplateColumns: `${RAIL_W}px repeat(${teamColumns.length}, ${COLUMN_W}px)` }}
                 >
-                    <colgroup>
-                        <col className="w-10" />
-                        {teamColumns.map((team) => (
-                            <col key={team.boardSpot} className="w-[var(--cell-w)]" />
-                        ))}
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th scope="col" className={`${gutterCellClasses} left-0 z-20`}>
-                                Rd
-                            </th>
-                            {teamColumns.map((team) => (
-                                <th key={team.boardSpot} scope="col" className={headerCellClasses}>
-                                    {teamLabel(team.rosterId)}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {builtDraft.map((round) => (
-                            <tr key={round.round}>
-                                {/* Visibly just the number - the column is 40px
-                                    wide - but named in full, so a screen reader
-                                    announcing the row says "Round 2" rather than
-                                    "2". */}
-                                <th scope="row" aria-label={`Round ${round.round}`} className={gutterCellClasses}>
-                                    {round.round}
-                                </th>
-                                {teamColumns.map((team) => {
-                                    const pick = findPick(round, team.boardSpot);
-                                    if (!pick) {
-                                        return (
-                                            <td
-                                                key={team.boardSpot}
-                                                className="border-line-quiet h-[var(--cell-h)] w-[var(--cell-w)] border"
-                                            />
-                                        );
-                                    }
-                                    return (
-                                        <GridCell
-                                            key={team.boardSpot}
-                                            round={round}
-                                            pick={pick}
-                                            playerInfo={playerInfo}
-                                            rosterData={rosterData}
-                                            myDisplayName={myDisplayName}
-                                            zoom={zoom}
-                                            onSelect={() => openPick(round, pick)}
-                                        />
-                                    );
-                                })}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                    {/* The corner has to out-stack both pinned strips, since it
+                        is the one cell that is in both of them. */}
+                    <span className="bg-ground sticky top-0 left-0 z-30" />
+                    {teamColumns.map((team) => {
+                        const manager = managerFor(team.rosterId);
+                        const isMine =
+                            Boolean(manager?.manager_display_name) && manager.manager_display_name === myDisplayName;
+                        return (
+                            <span
+                                key={team.boardSpot}
+                                className={`bg-ground sticky top-0 z-20 truncate px-2.5 pb-1.5 font-mono text-[10px] tracking-[.1em] uppercase ${
+                                    isMine ? 'text-mine font-semibold' : 'text-ink-dim font-medium'
+                                }`}
+                            >
+                                {manager?.manager_display_name ?? `Unassigned ${team.rosterId}`}
+                            </span>
+                        );
+                    })}
+
+                    {builtDraft.map((round) => (
+                        <Round
+                            key={round.round}
+                            round={round}
+                            teamColumns={teamColumns}
+                            playerInfo={playerInfo}
+                            rosterData={rosterData}
+                            myDisplayName={myDisplayName}
+                            onOpenPick={openPick}
+                        />
+                    ))}
+                </div>
             </div>
             {activePick && (
                 <ManualPickModal
@@ -236,5 +204,38 @@ const DraftGrid = ({
         </div>
     );
 };
+
+// A fragment rather than a row element: the cells are direct children of the
+// CSS grid above, so wrapping each round in a box of its own would break the
+// column alignment the whole board depends on.
+const Round = ({ round, teamColumns, playerInfo, rosterData, myDisplayName, onOpenPick }) => (
+    <>
+        {/* Visibly just `R2` - the rail is 30px wide - but named in full, so a
+            screen reader reaching it says "Round 2" rather than "R2". */}
+        <span
+            aria-label={`Round ${round.round}`}
+            className="bg-ground text-ink-dim sticky left-0 z-10 flex items-center pl-3.5 font-mono text-[10px] font-semibold tracking-[.06em]"
+        >
+            R{round.round}
+        </span>
+        {teamColumns.map((team) => {
+            const pick = findPick(round, team.boardSpot);
+            if (!pick) {
+                return <span key={team.boardSpot} />;
+            }
+            return (
+                <GridCell
+                    key={team.boardSpot}
+                    round={round}
+                    pick={pick}
+                    playerInfo={playerInfo}
+                    rosterData={rosterData}
+                    myDisplayName={myDisplayName}
+                    onSelect={() => onOpenPick(round, pick)}
+                />
+            );
+        })}
+    </>
+);
 
 export default DraftGrid;
