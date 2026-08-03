@@ -25,6 +25,7 @@ import { checkErrors } from './lib/http.js';
 import { auth } from './firebase.js';
 import APP_DB_URLS, { SLEEPER_USER_ID } from './urls.js';
 import BestAvailable, { countAvailable } from './Components/BestAvailable';
+import { draftDefaultOwnership } from './Components/OwnershipFilters';
 
 const { APP_USERS, TYPE_PARAMS } = APP_DB_URLS;
 
@@ -415,6 +416,10 @@ class App extends React.Component {
             activeId === 'lineup'
                 ? [...new Set(rosterSlots.filter((slot) => !slot.playerId).map((slot) => slot.label))]
                 : null;
+        // Only the draft rail's resting scope cares which pool the board is
+        // drawn from - the lineup rail is never scoped to a specific draft.
+        const defaultOwnership =
+            activeId === 'lineup' ? undefined : draftDefaultOwnership(leagueData.currentDraft?.player_pool);
         const left = countAvailable({
             entries: rankingPlayersIdsList,
             playerInfo,
@@ -446,6 +451,7 @@ class App extends React.Component {
                     rosterInfo={rosterInfoValue}
                     myDisplayName={myDisplayName}
                     eligibleSlots={eligibleSlots}
+                    defaultOwnership={defaultOwnership}
                     lineupSet={activeId === 'lineup' ? buildLineupSet(rosterSlots) : undefined}
                     onSelect={activeId === 'lineup' ? this.addToRoster : null}
                 />

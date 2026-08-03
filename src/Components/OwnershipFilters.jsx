@@ -19,6 +19,19 @@ export const DEFAULT_OWNERSHIP = {
     rookiesOnly: false,
 };
 
+/**
+ * The draft screen's resting scope: same as DEFAULT_OWNERSHIP, except a draft
+ * Sleeper has flagged Rookie-only (`currentDraft.player_pool`, from the
+ * draft's own `settings.player_type` - see lib/draft.js) starts with "Rookies
+ * only" already on, since every pick in it will be one anyway. The toggle
+ * stays touchable - this only moves where it rests, not whether it can be
+ * turned back off.
+ */
+export const draftDefaultOwnership = (playerPool) => ({
+    ...DEFAULT_OWNERSHIP,
+    rookiesOnly: playerPool === 'Rookie',
+});
+
 const OWNERSHIP_OPTIONS = [
     { name: 'mine', label: 'My players', explainer: 'on your roster' },
     { name: 'available', label: 'Free agents & waivers', explainer: 'available to add' },
@@ -33,9 +46,14 @@ const OWNERSHIP_OPTIONS = [
  */
 export const ownershipCount = (ownership) => OWNERSHIP_OPTIONS.filter((option) => ownership[option.name]).length;
 
-/** True when the scope is untouched - what makes the chip read as "at rest". */
-export const isDefaultOwnership = (ownership) =>
-    Object.keys(DEFAULT_OWNERSHIP).every((key) => ownership[key] === DEFAULT_OWNERSHIP[key]);
+/**
+ * True when the scope matches `defaultOwnership` - what makes the chip read
+ * as "at rest". `defaultOwnership` defaults to the module constant so every
+ * caller that doesn't have a context-specific resting scope (the lineup, and
+ * any test that calls this directly) keeps comparing against it unchanged.
+ */
+export const isDefaultOwnership = (ownership, defaultOwnership = DEFAULT_OWNERSHIP) =>
+    Object.keys(DEFAULT_OWNERSHIP).every((key) => ownership[key] === defaultOwnership[key]);
 
 /**
  * Whether one player survives the ownership scope. Split three ways by who
@@ -70,7 +88,7 @@ const Checkbox = ({ checked }) => (
  * and a reset. Exported separately from the chip so the same body can sit in
  * whatever container a caller has (the anchored popover below, or a panel).
  */
-export const OwnershipFiltersBody = ({ ownership, onChange }) => {
+export const OwnershipFiltersBody = ({ ownership, onChange, defaultOwnership = DEFAULT_OWNERSHIP }) => {
     const toggle = (name) => onChange({ ...ownership, [name]: !ownership[name] });
 
     return (
@@ -124,7 +142,7 @@ export const OwnershipFiltersBody = ({ ownership, onChange }) => {
             </button>
             <button
                 type="button"
-                onClick={() => onChange(DEFAULT_OWNERSHIP)}
+                onClick={() => onChange(defaultOwnership)}
                 className="text-mine w-full rounded-lg px-2.5 py-[9px] text-left text-[13px] font-semibold"
             >
                 Reset to default
@@ -138,9 +156,9 @@ export const OwnershipFiltersBody = ({ ownership, onChange }) => {
  * the scope is non-default, outlined at rest - the chip has to say that
  * something is being hidden without the popover being open to explain it.
  */
-const OwnershipFilters = ({ ownership, onChange, isOpen, onToggle }) => {
+const OwnershipFilters = ({ ownership, onChange, isOpen, onToggle, defaultOwnership = DEFAULT_OWNERSHIP }) => {
     const chipRef = useRef(null);
-    const active = isOpen || !isDefaultOwnership(ownership);
+    const active = isOpen || !isDefaultOwnership(ownership, defaultOwnership);
 
     return (
         <div className="relative inline-block shrink-0">
@@ -157,7 +175,11 @@ const OwnershipFilters = ({ ownership, onChange, isOpen, onToggle }) => {
             </button>
             {isOpen && (
                 <Popover triggerRef={chipRef} onClose={onToggle} label="Filters">
-                    <OwnershipFiltersBody ownership={ownership} onChange={onChange} />
+                    <OwnershipFiltersBody
+                        ownership={ownership}
+                        onChange={onChange}
+                        defaultOwnership={defaultOwnership}
+                    />
                 </Popover>
             )}
         </div>
