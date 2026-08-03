@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BestAvailable from './BestAvailable';
+import { draftDefaultOwnership } from './OwnershipFilters';
 import { buildRosterInfo, decorateRosters } from '../lib/rosterInfo.js';
 import rosterFlagsFixture from '../lib/__fixtures__/roster-flags-2026.json';
 
@@ -170,6 +171,44 @@ describe('BestAvailable', () => {
 
             await user.click(screen.getByRole('button', { name: 'ALL' }));
             expect(screen.getByText(TAKEN_BY_ME.name)).toBeInTheDocument();
+        });
+    });
+
+    describe('with defaultOwnership', () => {
+        // In the fixture, FREE_AGENT/TAKEN_BY_OTHERS/TAKEN_BY_ME (13307,
+        // 13294, 13274) are all years_exp 0 - rookies. OTHER_FREE_AGENT (289,
+        // Drew Brees) is years_exp 20 - the lone veteran. Uncontrolled here
+        // (no `ownership` override) so the component's own seeding from
+        // `defaultOwnership` is what's under test, same as an unopened draft
+        // sheet or the desktop rail.
+        it('starts scoped to rookies when seeded from a Rookie draft, hiding the one veteran', () => {
+            renderBestAvailable({ defaultOwnership: draftDefaultOwnership('Rookie') });
+
+            expect(screen.getByText(FREE_AGENT.name)).toBeInTheDocument();
+            expect(screen.getByText(TAKEN_BY_ME.name)).toBeInTheDocument();
+            expect(screen.queryByText(TAKEN_BY_OTHERS.name)).toBeNull();
+            expect(screen.queryByText(OTHER_FREE_AGENT.name)).toBeNull();
+        });
+
+        // The point of seeding rather than hard-filtering: the starting
+        // position is a default, not a floor, so it has to give back.
+        it('still lets Rookies only be switched back off from that starting point', async () => {
+            const user = userEvent.setup();
+            renderBestAvailable({ defaultOwnership: draftDefaultOwnership('Rookie') });
+
+            expect(screen.queryByText(OTHER_FREE_AGENT.name)).toBeNull();
+
+            await user.click(screen.getByRole('button', { name: /^FILTERS/ }));
+            await user.click(screen.getByRole('switch', { name: 'Rookies only' }));
+
+            expect(screen.getByText(OTHER_FREE_AGENT.name)).toBeInTheDocument();
+        });
+
+        it('leaves rookiesOnly off for a Veteran draft or when omitted, same as the ordinary default', () => {
+            renderBestAvailable({ defaultOwnership: draftDefaultOwnership('Veteran') });
+
+            expect(screen.getByText(OTHER_FREE_AGENT.name)).toBeInTheDocument();
+            expect(screen.getByText(FREE_AGENT.name)).toBeInTheDocument();
         });
     });
 

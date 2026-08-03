@@ -88,6 +88,7 @@ const BestAvailable = ({
     rosterInfo,
     myDisplayName,
     eligibleSlots,
+    defaultOwnership = DEFAULT_OWNERSHIP,
     initialActiveChip = null,
     ownership: controlledOwnership,
     onOwnershipChange,
@@ -100,8 +101,10 @@ const BestAvailable = ({
     // working untouched; LineupPanel controls it instead, because its sheet is
     // mounted only while open and a scope held down here would reset every
     // time the sheet was reopened - which is precisely what "Reset to default"
-    // exists to do deliberately.
-    const [localOwnership, setLocalOwnership] = useState(DEFAULT_OWNERSHIP);
+    // exists to do deliberately. Seeded from `defaultOwnership` rather than the
+    // bare constant so an uncontrolled caller on a Rookie-flagged draft still
+    // starts scoped to rookies, same as DraftPanel's own controlled state does.
+    const [localOwnership, setLocalOwnership] = useState(defaultOwnership);
     const ownership = controlledOwnership ?? localOwnership;
     const setOwnership = onOwnershipChange ?? setLocalOwnership;
 
@@ -183,6 +186,7 @@ const BestAvailable = ({
                     onChange={setOwnership}
                     isOpen={filtersOpen}
                     onToggle={() => setFiltersOpen((open) => !open)}
+                    defaultOwnership={defaultOwnership}
                 />
             </div>
             {/* Distinct from the "no rank list yet" message above: there is a

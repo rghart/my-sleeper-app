@@ -4,7 +4,7 @@ import PickFeed from './PickFeed';
 import DraftGrid from './DraftGrid';
 import Sheet from '../Components/Sheet';
 import BestAvailable, { countAvailable } from '../Components/BestAvailable';
-import { DEFAULT_OWNERSHIP } from '../Components/OwnershipFilters';
+import { draftDefaultOwnership } from '../Components/OwnershipFilters';
 import BestAvailableHandle from '../Components/BestAvailableHandle';
 import ClockCard from '../Components/ClockCard';
 import DraftSourceSheet, { readLastMock, writeLastMock } from './DraftSourceSheet';
@@ -65,8 +65,12 @@ const DraftPanel = ({
     // LineupPanel holds its own: the sheet is mounted only while open, so a
     // scope kept down there would reset every time it was reopened - and
     // switching "Other rosters" on to check who has somebody would never
-    // survive closing the sheet.
-    const [ownership, setOwnership] = useState(DEFAULT_OWNERSHIP);
+    // survive closing the sheet. `currentDraft.player_pool` is fixed for the
+    // life of this panel (it comes from the league's own draft, not from
+    // `currentDraftId`/mock switching - see the sync effects below), so
+    // computing it once here rather than through a ref is safe.
+    const ownershipDefault = draftDefaultOwnership(currentDraft.player_pool);
+    const [ownership, setOwnership] = useState(ownershipDefault);
     const bestAvailableHandleRef = useRef(null);
     const sourceButtonRef = useRef(null);
 
@@ -336,7 +340,14 @@ const DraftPanel = ({
                 onClick={() => setIsBestAvailableOpen((open) => !open)}
                 subtitle={
                     entries.length > 0
-                        ? `${countAvailable({ entries, playerInfo, rosterInfo, eligibleSlots: null, ownership, myDisplayName })} left`
+                        ? `${countAvailable({
+                              entries,
+                              playerInfo,
+                              rosterInfo,
+                              eligibleSlots: null,
+                              ownership,
+                              myDisplayName,
+                          })} left`
                         : 'Paste a rank list'
                 }
             />
@@ -366,6 +377,7 @@ const DraftPanel = ({
                         rosterInfo={rosterInfo}
                         myDisplayName={myDisplayName}
                         eligibleSlots={null}
+                        defaultOwnership={ownershipDefault}
                         ownership={ownership}
                         onOwnershipChange={setOwnership}
                         onSelect={null}
