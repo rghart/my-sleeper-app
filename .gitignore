@@ -31,3 +31,10 @@ node_modules
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+
+# Design handoff bundle - kept locally for reference, not source controlled
+/design
+
+# Leaguemate intel design docs - kept locally alongside /design, not source controlled
+/docs/leaguemate-intel.md
+/docs/leaguemate-intel-estimator.md

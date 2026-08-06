@@ -1,16 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import SegmentedControl from '../Components/SegmentedControl';
 import PickFeed from './PickFeed';
 import DraftGrid from './DraftGrid';
 import Sheet from '../Components/Sheet';
-import BestAvailable, { countAvailable } from '../Components/BestAvailable';
+import BestAvailable, { countAvailable, filterBestAvailable, playerId } from '../Components/BestAvailable';
 import { draftDefaultOwnership } from '../Components/OwnershipFilters';
 import BestAvailableHandle from '../Components/BestAvailableHandle';
 import ClockCard from '../Components/ClockCard';
 import DraftSourceSheet, { readLastMock, writeLastMock } from './DraftSourceSheet';
 import RankListSwitcher from '../Components/RankListSwitcher';
 import { managerLabel, pickNumberLabel } from './pickLabels.js';
-import { SLEEPER_API_URLS } from '../urls';
+import { SLEEPER_API_URLS, SLEEPER_USER_ID } from '../urls';
+import { fetchAvailability } from '../lib/sleeperApi.js';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
 import { nextUnpickedPick, picksUntilMine } from '../lib/onTheClock.js';
@@ -18,6 +19,11 @@ import { agoLabel } from '../lib/relativeTime.js';
 import { useSeenPicks } from '../useSeenPicks.js';
 import { usePublishSyncStatus } from '../SyncStatus.jsx';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
+
+// How many rank-list players the sheet asks for intel on. See the comment on
+// `intelPlayerIds` below: the response is quadratic in picks remaining and
+// uncompressed, so this is a payload bound, not a product limit.
+const INTEL_PLAYER_LIMIT = 30;
 
 const VIEW_OPTIONS = [
     { value: 'feed', label: 'Feed' },
@@ -49,6 +55,7 @@ const DraftPanel = ({
     const [boardView, setBoardView] = useState('feed');
     const [isBestAvailableOpen, setIsBestAvailableOpen] = useState(false);
     const [isSourceOpen, setIsSourceOpen] = useState(false);
+    const [availability, setAvailability] = useState(undefined);
     // Read once at mount rather than on every render: this is a per-league
     // memory of the last mock, and only this component writes it.
     const [lastMockId, setLastMockId] = useState(() => readLastMock(currentDraft.draft_id));
@@ -106,6 +113,62 @@ const DraftPanel = ({
               0,
           )
         : null;
+
+    // Leaguemate intel for the rank-list sheet (docs/leaguemate-intel.md §6
+    // step 3). Held here rather than inside BestAvailable for the same reason
+    // `ownership` is: that component is mounted only while the sheet is open,
+    // and it is also the Lineup sheet's list, which has no draft to ask about.
+    //
+    // The ids are capped because the response is quadratic in picks remaining
+    // - `byPick[n].threats` lists every pick before n, so one target costs
+    // ~85KB at pick 1 and ~9KB at pick 35, and the API does not compress.
+    // Asking about a whole 200-player rank list at the start of a draft would
+    // be tens of megabytes on a phone. The cap is applied to the *available*
+    // rows in rank order, so it covers the top of the board, which is the only
+    // part of the list where "will he last?" is a live question.
+    const intelPlayerIds = useMemo(
+        () =>
+            filterBestAvailable({
+                entries,
+                playerInfo,
+                eligibleSlots: null,
+                ownership,
+                rosterInfo,
+                myDisplayName,
+            })
+                .slice(0, INTEL_PLAYER_LIMIT)
+                .map(({ entry }) => playerId(entry)),
+        [entries, playerInfo, ownership, rosterInfo, myDisplayName],
+    );
+
+    // Refetched when the board moves, not when a pick chip is tapped: the
+    // response carries the whole byPick matrix, so re-answering the list
+    // against another pick already on the board is client-side and instant.
+    // What does go stale is the board itself - who is still to pick, and who
+    // is already gone - and that is what `picksMade` changing means.
+    useEffect(() => {
+        if (!isBestAvailableOpen || intelPlayerIds.length === 0) {
+            return;
+        }
+        let cancelled = false;
+
+        fetchAvailability({
+            draftId: currentDraftId,
+            userId: SLEEPER_USER_ID,
+            playerIds: intelPlayerIds,
+        }).then((response) => {
+            // Resolves to undefined on any failure, and intel is additive, so
+            // a failed fetch leaves the sheet rendering the plain rank list
+            // rather than showing an error over a list that is still correct.
+            if (!cancelled && response) {
+                setAvailability(response);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isBestAvailableOpen, currentDraftId, picksMade, intelPlayerIds]);
 
     const onTheClock = nextUnpickedPick(currentDraft.built_draft);
     // null, not a "nobody is up" sentence: ClockCard reads this as the signal
@@ -381,6 +444,7 @@ const DraftPanel = ({
                         ownership={ownership}
                         onOwnershipChange={setOwnership}
                         onSelect={null}
+                        availability={availability}
                     />
                 </Sheet>
             )}

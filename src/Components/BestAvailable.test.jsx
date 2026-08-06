@@ -239,4 +239,187 @@ describe('BestAvailable', () => {
             expect(within(row).getByText('Taken')).toBeInTheDocument();
         });
     });
+
+    // Leaguemate intel (docs/leaguemate-intel.md §3 Frontend, §3g).
+    describe('with availability intel', () => {
+        // Deliberately a *subset* of the rank list: FREE_AGENT has reads and
+        // OTHER_FREE_AGENT does not, which is the normal case rather than an
+        // edge one - the corpus only knows players your leaguemates have
+        // actually drafted.
+        const target = {
+            id: FREE_AGENT.id,
+            name: FREE_AGENT.name,
+            position: 'TE',
+            leagueAdp: 33.9,
+            sd: 6.7,
+            n: 60,
+            marketPick: 34,
+            adpGap: -0.1,
+            perManager: [{ manager: 'baconstains', times: 5, of: 30, adp: 30.6, picks: ['3.1@25'] }],
+            notable: null,
+            byPick: {
+                35: { adjSurvival: 1, baseSurvival: 1, threats: [] },
+                37: {
+                    adjSurvival: 0.77,
+                    baseSurvival: 0.75,
+                    threats: [{ manager: 'atekipp', pick: 35, prob: 0.18, drafts: 3, tookCount: 0 }],
+                },
+                39: {
+                    adjSurvival: 0.59,
+                    baseSurvival: 0.56,
+                    threats: [
+                        { manager: 'atekipp', pick: 35, prob: 0.18, drafts: 3, tookCount: 0 },
+                        { manager: 'cja9689', pick: 36, prob: 0.22, drafts: 1, tookCount: 0 },
+                        { manager: 'baconstains', pick: 37, prob: 0.15, drafts: 30, tookCount: 5 },
+                    ],
+                },
+                40: { adjSurvival: 0.5, baseSurvival: 0.48, threats: [] },
+            },
+        };
+
+        const availability = (overrides = {}) => ({
+            currentPick: 35,
+            lastPick: 48,
+            myPicks: [39],
+            corpusDrafts: 70,
+            signalThreshold: { minDrafts: 8, minTimes: 3 },
+            board: [
+                { pick: 35, manager: 'atekipp', mine: false, drafts: 3 },
+                { pick: 36, manager: 'cja9689', mine: false, drafts: 1 },
+                { pick: 37, manager: 'baconstains', mine: false, drafts: 30 },
+                { pick: 39, manager: MY_DISPLAY_NAME, mine: true, drafts: 4 },
+            ],
+            targets: [target],
+            ...overrides,
+        });
+
+        const renderWithIntel = (overrides = {}) =>
+            renderBestAvailable({ ownership: SHOW_EVERYONE, availability: availability(), ...overrides });
+
+        it('keeps the rank list order rather than re-sorting by survival', () => {
+            // The ordering is the user's own judgment and the reason they
+            // pasted a list; the percent chip carries the comparison instead.
+            renderWithIntel();
+
+            const names = screen.getAllByRole('listitem').map((item) => item.textContent);
+            expect(names[0]).toContain(TAKEN_BY_ME.name);
+            expect(names[1]).toContain(FREE_AGENT.name);
+            expect(names[3]).toContain(OTHER_FREE_AGENT.name);
+        });
+
+        it('shows the survival chip against my next pick, and nothing for a player with no reads', () => {
+            renderWithIntel();
+
+            expect(screen.getByText('59%')).toBeInTheDocument();
+
+            const noReads = screen.getByText(OTHER_FREE_AGENT.name).closest('li');
+            expect(within(noReads).queryByText(/%$/)).toBeNull();
+        });
+
+        it('renders exactly as before when no availability is passed at all', () => {
+            // Intel is additive: a failed fetch or the Lineup sheet must get
+            // the list this component rendered before the feature existed.
+            renderBestAvailable({ ownership: SHOW_EVERYONE });
+
+            expect(screen.queryByText('59%')).toBeNull();
+            expect(screen.queryByText('Still there at…')).toBeNull();
+        });
+
+        describe('the pick selector (§3g gap 1)', () => {
+            it('defaults to my next pick and re-answers the list client-side when another is chosen', async () => {
+                const user = userEvent.setup();
+                renderWithIntel();
+
+                expect(screen.getByText('59%')).toBeInTheDocument();
+
+                await user.click(screen.getByRole('button', { name: 'Analyze pick 37, baconstains' }));
+
+                // No refetch: the response carries the whole byPick matrix.
+                expect(screen.getByText('77%')).toBeInTheDocument();
+                expect(screen.queryByText('59%')).toBeNull();
+            });
+
+            it('marks my own pick as mine, using the trade-resolved owner', () => {
+                renderWithIntel();
+
+                const myChip = screen.getByRole('button', { name: 'Analyze pick 39, yours' });
+                // Scoped to the chip: "YOU" is also the row flag on a player
+                // I already roster, so an unscoped query matches both.
+                expect(within(myChip).getByText('YOU')).toBeInTheDocument();
+                expect(within(myChip).getByText('39')).toBeInTheDocument();
+            });
+        });
+
+        // §3g gap 1b - a correctness bug, not an enhancement. "My next pick"
+        // used to resolve to the pick being made right now, so `between` was
+        // empty and every player read 100%: the feature went blank at exactly
+        // the moment it was most wanted.
+        describe('when I am on the clock (§3g gap 1b)', () => {
+            it('analyzes my FOLLOWING pick, not the one I am making', () => {
+                renderWithIntel({
+                    availability: availability({ currentPick: 39, myPicks: [39, 51] }),
+                });
+
+                // 51 has no byPick entry in this fixture, so the honest answer
+                // is a dash - emphatically not 100%.
+                expect(screen.queryByText('100%')).toBeNull();
+            });
+
+            it('says there are no picks left rather than rendering a number, when nothing follows', () => {
+                renderWithIntel({
+                    availability: availability({ currentPick: 48, myPicks: [48], board: [] }),
+                });
+
+                expect(screen.getByText('No picks left in this draft.')).toBeInTheDocument();
+                expect(screen.queryByText('100%')).toBeNull();
+            });
+        });
+
+        describe('the drill-down', () => {
+            it('pushes the detail in place and comes back, rather than opening a second sheet', async () => {
+                const user = userEvent.setup();
+                renderWithIntel();
+
+                await user.click(screen.getByRole('button', { name: new RegExp(FREE_AGENT.name) }));
+
+                expect(screen.getByText('probably there')).toBeInTheDocument();
+                expect(screen.getByText(/Who picks before 39/)).toBeInTheDocument();
+                // The list is gone, not layered under a second sheet.
+                expect(screen.queryByText(OTHER_FREE_AGENT.name)).toBeNull();
+
+                await user.click(screen.getByRole('button', { name: /Ranks/ }));
+                expect(screen.getByText(OTHER_FREE_AGENT.name)).toBeInTheDocument();
+            });
+
+            it('carries the sample size on every manager claim (§3 copy rules)', async () => {
+                const user = userEvent.setup();
+                renderWithIntel();
+
+                await user.click(screen.getByRole('button', { name: new RegExp(FREE_AGENT.name) }));
+
+                // 3 drafts seen, never taken him - a rate would overclaim.
+                expect(screen.getByText('never taken him · 3 drafts seen')).toBeInTheDocument();
+                // 1 draft seen, never taken him - same shape, smaller sample.
+                expect(screen.getByText('never taken him · 1 draft seen')).toBeInTheDocument();
+                // 30 drafts and 5 takes clears the threshold, so the ADP shows.
+                expect(screen.getByText('took him 5× of 30 drafts · their ADP 30.6')).toBeInTheDocument();
+            });
+
+            it('does not make a row tappable when there is nothing behind the tap', () => {
+                renderWithIntel();
+
+                const noReads = screen.getByText(OTHER_FREE_AGENT.name).closest('li');
+                expect(within(noReads).queryByRole('button')).toBeNull();
+            });
+        });
+
+        it('says so plainly when the corpus has no reads at all (§3e)', () => {
+            // A 200 with a resolved board and targets: [] is the deliberate
+            // "no reads yet" state, not a failure to render as one.
+            renderWithIntel({ availability: availability({ targets: [], corpusDrafts: 0 }) });
+
+            expect(screen.getByText(/No reads yet/)).toBeInTheDocument();
+            expect(screen.getByText(FREE_AGENT.name)).toBeInTheDocument();
+        });
+    });
 });

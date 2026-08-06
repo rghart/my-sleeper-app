@@ -23,6 +23,13 @@ export default defineConfig({
                 target: 'https://fantasyteamassistant.com',
                 changeOrigin: true,
             },
+            // Leaguemate intel. Same reason as /api/legacy above: the API
+            // only sends CORS headers for the deployed origin, so a direct
+            // request from localhost is blocked by the browser.
+            '/api/v1': {
+                target: 'https://fantasyteamassistant.com',
+                changeOrigin: true,
+            },
         },
     },
     test: {

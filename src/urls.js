@@ -4,6 +4,7 @@ const appDB = 'https://sleeper-player-db-default-rtdb.firebaseio.com/';
 // so a direct cross-origin request from localhost is blocked by the browser.
 const fta = import.meta.env.DEV ? '/' : 'https://fantasyteamassistant.com/';
 const ftaLegacy = 'api/legacy/players';
+const ftaAvailability = (draftId) => `api/v1/drafts/${draftId}/availability`;
 const latestUpdateAttempt = 'latest_update_attempt/';
 const dlfADP = 'dlf_adp/';
 const users = 'users/';
@@ -27,6 +28,10 @@ const APP_DB_URLS = {
     APP_DB: appDB,
     LATEST_UPDATE_ATTEMPT: appDB + latestUpdateAttempt + typeParams,
     ACTIVE_PLAYERS: fta + ftaLegacy,
+    // Leaguemate intel (docs/leaguemate-intel.md §3e). Same origin and the
+    // same dev-relative treatment as ACTIVE_PLAYERS above - see the comment
+    // on `fta` about why localhost must go through the Vite proxy.
+    AVAILABILITY: (draftId) => fta + ftaAvailability(draftId),
     DLF_ADP: appDB + dlfADP + typeParams,
     APP_USERS: appDB + users,
     TYPE_PARAMS: typeParams,

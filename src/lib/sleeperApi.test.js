@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
+    fetchAvailability,
     fetchDraft,
     fetchLeagueBundle,
     fetchLeagueSeason,
@@ -120,5 +121,67 @@ describe('sleeperApi', () => {
     it('fetchTradedDraftPicks returns the picks on success', async () => {
         global.fetch = vi.fn(() => jsonResponse([{ round: 1, roster_id: 2, owner_id: 3 }]));
         expect(await fetchTradedDraftPicks('draft123')).toHaveLength(1);
+    });
+
+    describe('fetchAvailability', () => {
+        const requestedUrl = () => new URL(global.fetch.mock.calls[0][0], 'http://localhost');
+
+        it('asks about the caller-supplied player ids, so the answer matches the rows on screen', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ targets: [] }));
+
+            await fetchAvailability({ draftId: 'draft123', userId: '99', playerIds: ['1', '2', '3'] });
+
+            const url = requestedUrl();
+            expect(url.pathname).toBe('/api/v1/drafts/draft123/availability');
+            expect(url.searchParams.get('user_id')).toBe('99');
+            expect(url.searchParams.get('player_ids')).toBe('1,2,3');
+        });
+
+        it('omits player_ids entirely when the list is empty rather than sending it blank', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ targets: [] }));
+
+            await fetchAvailability({ draftId: 'draft123', userId: '99', playerIds: [] });
+
+            expect(requestedUrl().searchParams.has('player_ids')).toBe(false);
+        });
+
+        it('sends at_pick only for hypotheticals, since the response already covers every pick on the board', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ targets: [] }));
+
+            await fetchAvailability({ draftId: 'draft123', userId: '99' });
+            expect(requestedUrl().searchParams.has('at_pick')).toBe(false);
+
+            global.fetch = vi.fn(() => jsonResponse({ targets: [] }));
+            await fetchAvailability({ draftId: 'draft123', userId: '99', atPick: 30 });
+            expect(requestedUrl().searchParams.get('at_pick')).toBe('30');
+        });
+
+        it('resolves to undefined on a network failure', async () => {
+            global.fetch = vi.fn(() => Promise.reject(new Error('offline')));
+            await expect(fetchAvailability({ draftId: 'draft123', userId: '99' })).resolves.toBeUndefined();
+        });
+
+        it('resolves to undefined on a non-ok response rather than returning an error body', async () => {
+            // The API answers a missing user_id with a 422 whose body is JSON.
+            // Without checkErrors that body would flow on as if it were an
+            // availability response and be read for `.targets`.
+            global.fetch = vi.fn(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 422,
+                    statusText: 'Unprocessable Entity',
+                    json: () => Promise.resolve({ errors: { detail: 'missing required param: user_id' } }),
+                }),
+            );
+
+            await expect(fetchAvailability({ draftId: 'draft123', userId: '99' })).resolves.toBeUndefined();
+        });
+
+        it('returns the parsed body on success', async () => {
+            const body = { currentPick: 35, myPicks: [39], board: [], targets: [{ id: '1' }] };
+            global.fetch = vi.fn(() => jsonResponse(body));
+
+            expect(await fetchAvailability({ draftId: 'draft123', userId: '99' })).toEqual(body);
+        });
     });
 });

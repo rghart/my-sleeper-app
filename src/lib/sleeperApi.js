@@ -2,7 +2,7 @@ import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { ACTIVE_PLAYERS } = APP_DB_URLS;
+const { ACTIVE_PLAYERS, AVAILABILITY } = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
 
 // Every function here returns its data instead of writing it to state. That is
@@ -100,5 +100,41 @@ export async function fetchDraft(draftId) {
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error:', error);
+        });
+}
+
+/**
+ * Leaguemate intel for a draft: who owns every remaining pick, and for each
+ * player asked about, the odds they last to each of those picks
+ * (docs/leaguemate-intel.md §3e).
+ *
+ * `playerIds` is the caller's own rank list. Sending it is what makes the
+ * answer line up with the rows already on screen - without it the API picks
+ * its own 20 targets by league ADP, which need not overlap the list at all.
+ * A player the corpus has never seen is simply absent from `targets`; that is
+ * the honest "no read", not an error, and the caller renders it as one.
+ *
+ * `atPick` is only for hypotheticals ("if I trade up to 30"). The response
+ * carries the whole `byPick` matrix for every remaining pick, so moving the
+ * pick selector between picks that are already on the board needs no refetch.
+ *
+ * Resolves to `undefined` on failure, per this module's contract. Intel is
+ * additive - a rank list with no intel is exactly the list this app rendered
+ * before the feature existed, so callers drop the extra column rather than
+ * failing the whole sheet.
+ */
+export async function fetchAvailability({ draftId, userId, playerIds, atPick }) {
+    const params = new URLSearchParams({ user_id: userId });
+    // Left off entirely when empty rather than sent blank: an empty rank list
+    // and "no opinion about which players" are different questions, and only
+    // the second one wants the API to choose targets for itself.
+    if (playerIds?.length) params.set('player_ids', playerIds.join(','));
+    if (atPick != null) params.set('at_pick', String(atPick));
+
+    return await fetch(`${AVAILABILITY(draftId)}?${params}`)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching leaguemate intel:', error);
         });
 }
