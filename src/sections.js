@@ -9,6 +9,13 @@ export const SECTIONS = [
     { id: 'draft', label: 'Draft', scope: 'league' },
     { id: 'lineup', label: 'Lineup', scope: 'league' },
     { id: 'ranks', label: 'Ranks', scope: 'league' },
+    // Leaguemate intel is 'league' scope despite being the "cross-league"
+    // view the docstring above imagines: /intel is keyed by league, so it
+    // answers "the managers in *this* league", and the cross-league part is
+    // what those managers do elsewhere. Hiding the league switcher for it
+    // would leave per-league content depending on a league you can neither
+    // see nor change. 'global' is still unused.
+    { id: 'leaguemates', label: 'Leaguemates', scope: 'league' },
 ];
 
 export const DEFAULT_SECTION_ID = 'draft';

@@ -2,7 +2,7 @@ import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { ACTIVE_PLAYERS, AVAILABILITY } = APP_DB_URLS;
+const { ACTIVE_PLAYERS, AVAILABILITY, LEAGUE_INTEL } = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
 
 // Every function here returns its data instead of writing it to state. That is
@@ -123,6 +123,29 @@ export async function fetchDraft(draftId) {
  * before the feature existed, so callers drop the extra column rather than
  * failing the whole sheet.
  */
+/**
+ * Who your leaguemates are and what they do in their other leagues
+ * (docs/leaguemate-intel.md §3e) - how many leagues and drafts each is in,
+ * their repeated targets, positional lean and reach-vs-ADP, plus a `corpus`
+ * block saying how much was actually observed and when it was last crawled.
+ *
+ * `corpus` is not decoration: every tendency here is measured over a sample
+ * that varies from 1 draft to 30, and a figure without its sample size is the
+ * failure this feature keeps re-learning.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchLeagueIntel({ leagueId, season }) {
+    const params = new URLSearchParams(season ? { season } : {});
+
+    return await fetch(`${LEAGUE_INTEL(leagueId)}?${params}`)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching league intel:', error);
+        });
+}
+
 export async function fetchAvailability({ draftId, userId, playerIds, atPick }) {
     const params = new URLSearchParams({ user_id: userId });
     // Left off entirely when empty rather than sent blank: an empty rank list

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
     fetchAvailability,
+    fetchLeagueIntel,
     fetchDraft,
     fetchLeagueBundle,
     fetchLeagueSeason,
@@ -121,6 +122,47 @@ describe('sleeperApi', () => {
     it('fetchTradedDraftPicks returns the picks on success', async () => {
         global.fetch = vi.fn(() => jsonResponse([{ round: 1, roster_id: 2, owner_id: 3 }]));
         expect(await fetchTradedDraftPicks('draft123')).toHaveLength(1);
+    });
+
+    describe('fetchLeagueIntel', () => {
+        const requestedUrl = () => new URL(global.fetch.mock.calls[0][0], 'http://localhost');
+
+        it('asks for one league season and returns the parsed body', async () => {
+            const body = { corpus: { drafts: 72, picks: 3382 }, managers: [{ displayName: 'atekipp' }] };
+            global.fetch = vi.fn(() => jsonResponse(body));
+
+            expect(await fetchLeagueIntel({ leagueId: 'lg1', season: '2026' })).toEqual(body);
+
+            const url = requestedUrl();
+            expect(url.pathname).toBe('/api/v1/leagues/lg1/intel');
+            expect(url.searchParams.get('season')).toBe('2026');
+        });
+
+        it('omits season when there is none rather than sending an empty one', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ managers: [] }));
+
+            await fetchLeagueIntel({ leagueId: 'lg1' });
+
+            expect(requestedUrl().searchParams.has('season')).toBe(false);
+        });
+
+        it('resolves to undefined on failure rather than rejecting', async () => {
+            global.fetch = vi.fn(() => Promise.reject(new Error('offline')));
+            await expect(fetchLeagueIntel({ leagueId: 'lg1', season: '2026' })).resolves.toBeUndefined();
+        });
+
+        it('resolves to undefined on a non-ok response rather than returning an error body', async () => {
+            global.fetch = vi.fn(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 404,
+                    statusText: 'Not Found',
+                    json: () => Promise.resolve({ errors: { detail: 'not found' } }),
+                }),
+            );
+
+            await expect(fetchLeagueIntel({ leagueId: 'nope', season: '2026' })).resolves.toBeUndefined();
+        });
     });
 
     describe('fetchAvailability', () => {
