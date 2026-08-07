@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultAnalyzedPick, managerSample, pickOptions, survivalAt } from './availability.js';
+import { defaultAnalyzedPick, managerSample, pickOptions, stationsFor, survivalAt } from './availability.js';
 
 describe('defaultAnalyzedPick', () => {
     // docs/leaguemate-intel.md §3g gap 1b. "My next pick" was resolved as the
@@ -94,6 +94,73 @@ describe('pickOptions', () => {
     it('is empty for a finished draft rather than throwing', () => {
         expect(pickOptions([])).toEqual([]);
         expect(pickOptions(undefined)).toEqual([]);
+    });
+});
+
+describe('stationsFor', () => {
+    // The API sends one hazard per pick; the manager, their drafts-seen and
+    // the take count are recovered by joining `board` and `perManager`. These
+    // tests are the frontend half of that contract - the backend's golden
+    // test asserts the same reconstruction against the frozen fixture.
+    const board = [
+        { pick: 35, manager: 'atekipp', mine: false, drafts: 3 },
+        { pick: 36, manager: 'cja9689', mine: false, drafts: 1 },
+        { pick: 37, manager: 'baconstains', mine: false, drafts: 30 },
+        { pick: 39, manager: 'ryangh', mine: true, drafts: 4 },
+    ];
+
+    const target = {
+        hazards: [
+            { pick: 35, prob: 0.18 },
+            { pick: 36, prob: 0.22 },
+            { pick: 37, prob: 0.15 },
+        ],
+        perManager: [{ manager: 'baconstains', times: 5, of: 30, adp: 30.6, picks: ['3.1@25'] }],
+        byPick: {
+            36: { adjSurvival: 0.82 },
+            37: { adjSurvival: 0.64 },
+            38: { adjSurvival: 0.54 },
+        },
+    };
+
+    it('walks only the picks before the one being analyzed', () => {
+        expect(stationsFor(target, board, 39).map((s) => s.pick)).toEqual([35, 36, 37]);
+    });
+
+    it('takes the manager and their drafts-seen from the board entry', () => {
+        const [first] = stationsFor(target, board, 39);
+
+        expect(first.manager).toBe('atekipp');
+        expect(first.draftsSeen).toBe(3);
+    });
+
+    it('takes the take count from perManager, and treats absence as zero rather than unknown', () => {
+        const stations = stationsFor(target, board, 39);
+
+        // perManager lists only managers who have actually taken him.
+        expect(stations.find((s) => s.manager === 'baconstains').tookCount).toBe(5);
+        expect(stations.find((s) => s.manager === 'atekipp').tookCount).toBe(0);
+    });
+
+    it('reads survival AFTER each pick, which is the entry at pick + 1', () => {
+        expect(stationsFor(target, board, 39).map((s) => s.survivalAfter)).toEqual([0.82, 0.64, 0.54]);
+    });
+
+    it('contributes no probability for a pick with no hazard entry', () => {
+        // Its owner is not a tracked leaguemate: no itemized read. The pick
+        // still affected survival server-side; it just has no receipt.
+        const stations = stationsFor({ ...target, hazards: [{ pick: 35, prob: 0.18 }] }, board, 39);
+
+        expect(stations.map((s) => s.probability)).toEqual([0.18, 0, 0]);
+    });
+
+    it('marks my own pick as mine', () => {
+        expect(stationsFor(target, board, 48).find((s) => s.pick === 39).isMine).toBe(true);
+    });
+
+    it('is empty rather than throwing when there is nothing to walk', () => {
+        expect(stationsFor(target, board, 35)).toEqual([]);
+        expect(stationsFor({}, undefined, 39)).toEqual([]);
     });
 });
 

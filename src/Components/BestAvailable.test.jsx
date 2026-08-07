@@ -257,23 +257,18 @@ describe('BestAvailable', () => {
             adpGap: -0.1,
             perManager: [{ manager: 'baconstains', times: 5, of: 30, adp: 30.6, picks: ['3.1@25'] }],
             notable: null,
+            // One hazard per pick. The manager, their drafts-seen and the take
+            // count are joined from `board`/`perManager` - see stationsFor.
+            hazards: [
+                { pick: 35, prob: 0.18 },
+                { pick: 36, prob: 0.22 },
+                { pick: 37, prob: 0.15 },
+            ],
             byPick: {
-                35: { adjSurvival: 1, baseSurvival: 1, threats: [] },
-                37: {
-                    adjSurvival: 0.77,
-                    baseSurvival: 0.75,
-                    threats: [{ manager: 'atekipp', pick: 35, prob: 0.18, drafts: 3, tookCount: 0 }],
-                },
-                39: {
-                    adjSurvival: 0.59,
-                    baseSurvival: 0.56,
-                    threats: [
-                        { manager: 'atekipp', pick: 35, prob: 0.18, drafts: 3, tookCount: 0 },
-                        { manager: 'cja9689', pick: 36, prob: 0.22, drafts: 1, tookCount: 0 },
-                        { manager: 'baconstains', pick: 37, prob: 0.15, drafts: 30, tookCount: 5 },
-                    ],
-                },
-                40: { adjSurvival: 0.5, baseSurvival: 0.48, threats: [] },
+                35: { adjSurvival: 1, baseSurvival: 1 },
+                37: { adjSurvival: 0.77, baseSurvival: 0.75 },
+                39: { adjSurvival: 0.59, baseSurvival: 0.56 },
+                40: { adjSurvival: 0.5, baseSurvival: 0.48 },
             },
         };
 

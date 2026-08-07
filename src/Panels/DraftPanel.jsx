@@ -20,10 +20,12 @@ import { useSeenPicks } from '../useSeenPicks.js';
 import { usePublishSyncStatus } from '../SyncStatus.jsx';
 const { DRAFT, PICKS, TRADED_PICKS } = SLEEPER_API_URLS;
 
-// How many rank-list players the sheet asks for intel on. See the comment on
-// `intelPlayerIds` below: the response is quadratic in picks remaining and
-// uncompressed, so this is a payload bound, not a product limit.
-const INTEL_PLAYER_LIMIT = 30;
+// How many rank-list players the sheet asks for intel on. A safety bound on
+// an unbounded pasted list, not a product limit: at ~2KB per player at the
+// very start of a draft (and well under that once it is under way) this is
+// far more players than a rookie board ever has, so in practice it does not
+// bind. See the comment on `intelPlayerIds` below.
+const INTEL_PLAYER_LIMIT = 100;
 
 const VIEW_OPTIONS = [
     { value: 'feed', label: 'Feed' },
@@ -119,13 +121,13 @@ const DraftPanel = ({
     // `ownership` is: that component is mounted only while the sheet is open,
     // and it is also the Lineup sheet's list, which has no draft to ask about.
     //
-    // The ids are capped because the response is quadratic in picks remaining
-    // - `byPick[n].threats` lists every pick before n, so one target costs
-    // ~85KB at pick 1 and ~9KB at pick 35, and the API does not compress.
-    // Asking about a whole 200-player rank list at the start of a draft would
-    // be tens of megabytes on a phone. The cap is applied to the *available*
-    // rows in rank order, so it covers the top of the board, which is the only
-    // part of the list where "will he last?" is a live question.
+    // Capped only as a bound on a pasted list of unknown length. It used to
+    // be a much tighter payload limit: the response carried a full threat
+    // list under every pick, which made it quadratic in picks remaining and
+    // put a single target at ~85KB at the start of a draft. The API now sends
+    // one hazard per pick (~2KB), so the cap no longer trades coverage for
+    // bytes - which matters, because a capped-out row shows no chip and looks
+    // exactly like a player the corpus has genuinely never seen.
     const intelPlayerIds = useMemo(
         () =>
             filterBestAvailable({

@@ -55,6 +55,50 @@ export function pickOptions(board) {
 }
 
 /**
+ * The picks between now and `atPick`, each with the odds its owner takes
+ * this player and the survival left after them.
+ *
+ * This is a three-way join, and the shape of the response is why. The API
+ * used to send a full threat list under every pick in `byPick` - a prefix
+ * accumulation that re-sent the same entries once per remaining pick, and
+ * repeated two fields that never varied by pick. It now sends one
+ * `{pick, prob}` per pick, and the rest is recovered from data already on
+ * screen:
+ *
+ *   - the manager and their drafts-seen come from the `board` entry
+ *   - the take count comes from `perManager`, which lists only managers who
+ *     have actually taken him - so absent means zero
+ *
+ * A pick missing from `hazards` is one whose owner is not a tracked
+ * leaguemate. It still affects survival (through the multiplier the server
+ * applied) but carries no itemized read, which is why it contributes no
+ * probability here rather than an invented one.
+ */
+export function stationsFor(target, board, atPick) {
+    const byManager = new Map((target?.perManager || []).map((entry) => [entry.manager, entry]));
+    const hazardByPick = new Map((target?.hazards || []).map((hazard) => [hazard.pick, hazard.prob]));
+
+    return (board || [])
+        .filter((slot) => slot.pick < atPick)
+        .map((slot) => {
+            const mate = byManager.get(slot.manager);
+
+            return {
+                pick: slot.pick,
+                manager: slot.manager,
+                isMine: slot.mine,
+                probability: hazardByPick.get(slot.pick) ?? 0,
+                tookCount: mate?.times ?? 0,
+                draftsSeen: slot.drafts ?? 0,
+                mate,
+                // Survival *after* this pick is the value stored at the next
+                // one, which is why byPick runs one past lastPick.
+                survivalAfter: survivalAt(target, slot.pick + 1),
+            };
+        });
+}
+
+/**
  * How much can honestly be said about one manager's history with one player.
  *
  * This is the copy-rules table in §3 Frontend, and it exists because the

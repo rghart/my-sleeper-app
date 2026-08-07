@@ -1,7 +1,7 @@
 import PositionTag from './PositionTag';
 import { TermTip } from './IntelTermTip';
 import { gapPhrase, gapTone, survivalPhrase, survivalTone } from './intelGlossary.js';
-import { managerSample, survivalAt } from '../lib/availability.js';
+import { managerSample, stationsFor, survivalAt } from '../lib/availability.js';
 
 // The drill-down (docs/leaguemate-intel.md §3 Frontend).
 //
@@ -53,37 +53,6 @@ function evidenceFor(sample) {
         default:
             return `took him ${sample.times}× of ${sample.of} drafts · their ADP ${sample.adp}`;
     }
-}
-
-/**
- * The picks between now and `atPick`, with survival decaying across them.
- *
- * `byPick[atPick].threats` holds every pick *before* atPick - exactly the set
- * of stations being rendered - so the threat list is read once from the
- * target pick. Looking each one up under its own pick number silently found
- * nothing and rendered "no read" on every station while the survival figure
- * beside it visibly decayed.
- */
-export function stationsFor(target, board, atPick) {
-    const between = (board || []).filter((slot) => slot.pick < atPick);
-    const byManager = new Map((target.perManager || []).map((entry) => [entry.manager, entry]));
-    const threatByPick = new Map((target.byPick?.[String(atPick)]?.threats || []).map((t) => [t.pick, t]));
-
-    return between.map((slot) => {
-        const threat = threatByPick.get(slot.pick) || { prob: 0, tookCount: 0, drafts: slot.drafts };
-        return {
-            pick: slot.pick,
-            manager: slot.manager,
-            isMine: slot.mine,
-            probability: threat.prob ?? 0,
-            tookCount: threat.tookCount ?? 0,
-            draftsSeen: threat.drafts ?? 0,
-            mate: byManager.get(slot.manager),
-            // Survival *after* this pick is the value stored at the next one,
-            // which is why byPick runs one past lastPick.
-            survivalAfter: survivalAt(target, slot.pick + 1),
-        };
-    });
 }
 
 const Station = ({ station, threshold, isLast }) => {
