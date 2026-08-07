@@ -722,3 +722,149 @@ describe('DraftPanel new-pick markers', () => {
         expect(screen.queryByText(/\d+ new/)).toBeNull();
     });
 });
+
+// Leaguemate intel wiring (docs/leaguemate-intel.md §6 step 3). BestAvailable
+// owns the rendering and is tested directly; what lives *here* is the glue -
+// when the request fires, which ids it carries, and what happens when it
+// fails. None of that was covered when the feature shipped, which is the same
+// gap App.jsx had: the component tests all passed and nothing exercised the
+// wiring between them.
+//
+// Real timers and userEvent, like the sheet suite above - the intel fetch has
+// nothing to do with the sync poll.
+describe('DraftPanel leaguemate intel', () => {
+    const availabilityBody = (overrides = {}) => ({
+        currentPick: 35,
+        lastPick: 48,
+        myPicks: [39],
+        corpusDrafts: 70,
+        signalThreshold: { minDrafts: 8, minTimes: 3 },
+        board: [
+            { pick: 35, manager: 'atekipp', mine: false, drafts: 3 },
+            { pick: 39, manager: 'ryangh', mine: true, drafts: 4 },
+        ],
+        targets: [
+            {
+                id: FREE_AGENT.id,
+                name: FREE_AGENT.name,
+                position: 'TE',
+                leagueAdp: 33.9,
+                sd: 6.7,
+                n: 60,
+                marketPick: 34,
+                adpGap: -0.1,
+                perManager: [],
+                notable: null,
+                hazards: [{ pick: 35, prob: 0.18 }],
+                byPick: {
+                    35: { adjSurvival: 1, baseSurvival: 1 },
+                    39: { adjSurvival: 0.59, baseSurvival: 0.56 },
+                },
+            },
+        ],
+        ...overrides,
+    });
+
+    const intelFetch = (body = availabilityBody()) =>
+        vi.fn((url) => (url.includes('/availability') ? jsonResponse(body) : instantFetch(url)));
+
+    const availabilityCalls = () => global.fetch.mock.calls.map((c) => c[0]).filter((u) => u.includes('/availability'));
+
+    const openSheet = async (user) => user.click(screen.getByRole('button', { name: /Best available/ }));
+
+    // The panel syncs the board once at mount, and those two requests resolve
+    // asynchronously. Letting them land before touching anything keeps the
+    // intel assertions deterministic - a mount-sync promise resolving mid-test
+    // is a state update nothing is waiting on, which is exactly the kind of
+    // interleaving this file's `renderSettled` exists for.
+    const renderAndSettle = async (overrides) => {
+        const result = renderPanel(overrides);
+        await act(async () => {});
+        return result;
+    };
+
+    beforeEach(() => {
+        vi.useRealTimers();
+        global.fetch = intelFetch();
+    });
+
+    it('asks for nothing until the sheet is actually opened', async () => {
+        await renderAndSettle();
+        // The sheet is where intel is rendered; fetching for a collapsed
+        // handle would be a request per league switch that nobody reads.
+        expect(availabilityCalls()).toHaveLength(0);
+    });
+
+    it('asks about the rank list, and hands the answer to the sheet', async () => {
+        const user = userEvent.setup();
+        await renderAndSettle();
+
+        await openSheet(user);
+
+        const url = new URL(availabilityCalls()[0], 'http://localhost');
+        expect(url.pathname).toContain(`/drafts/${DRAFT_ID}/availability`);
+        expect(url.searchParams.get('player_ids')).toBe(FREE_AGENT.id);
+
+        // Proves the response actually reached BestAvailable rather than just
+        // being fetched and dropped.
+        expect(await screen.findByText('59%')).toBeInTheDocument();
+    });
+
+    it('caps how many ids it asks about, however long the pasted list is', async () => {
+        const user = userEvent.setup();
+        // The shared fixture only has 69 players, so the list is built by
+        // cloning one that already passes every filter this sheet applies -
+        // that way the cap is what is under test, not the fixture's size or
+        // the ownership scope.
+        const template = playerInfo[FREE_AGENT.id];
+        const manyIds = Array.from({ length: 150 }, (_, i) => `9${String(i).padStart(4, '0')}`);
+        const manyPlayers = Object.fromEntries(manyIds.map((id) => [id, { ...template, full_name: `Clone ${id}` }]));
+
+        await renderAndSettle({
+            playerInfo: { ...playerInfo, ...manyPlayers },
+            rankingPlayersIdsList: manyIds.map(rankEntry),
+        });
+        await openSheet(user);
+
+        const asked = new URL(availabilityCalls()[0], 'http://localhost').searchParams.get('player_ids').split(',');
+        expect(asked).toHaveLength(100);
+        // Capped from the top of the rank list, not an arbitrary slice.
+        expect(asked[0]).toBe(manyIds[0]);
+    });
+
+    it('leaves the rank list rendering when intel fails, rather than failing the sheet', async () => {
+        const user = userEvent.setup();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        global.fetch = vi.fn((url) =>
+            url.includes('/availability') ? Promise.reject(new Error('offline')) : instantFetch(url),
+        );
+
+        await renderAndSettle();
+        await openSheet(user);
+
+        // Intel is additive: no chips, no error, and the list this app showed
+        // before the feature existed.
+        expect(await screen.findByText(FREE_AGENT.name)).toBeInTheDocument();
+        expect(screen.queryByText('Still there at…')).toBeNull();
+    });
+
+    it('does not re-ask itself in a loop once the answer arrives', async () => {
+        const user = userEvent.setup();
+        await renderAndSettle();
+        await openSheet(user);
+
+        // The response landing calls setAvailability, which re-renders the
+        // panel. `intelPlayerIds` is a useMemo whose result the fetch effect
+        // depends on, so if it were computed inline - a fresh array every
+        // render - that re-render would re-run the effect, fetch again, and
+        // re-render again. Waiting for the chip guarantees the response has
+        // actually landed, so this is asserting after the re-render rather
+        // than racing it.
+        expect(await screen.findByText('59%')).toBeInTheDocument();
+        expect(availabilityCalls()).toHaveLength(1);
+
+        // And a re-render driven from inside the sheet changes nothing either.
+        await user.click(screen.getByRole('button', { name: /FILTERS/ }));
+        expect(availabilityCalls()).toHaveLength(1);
+    });
+});
