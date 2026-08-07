@@ -38,4 +38,8 @@ describe('other endpoints', () => {
         // to the Vite server itself and 404.
         expect(APP_DB_URLS.AVAILABILITY('123')).toBe('/api/v1/drafts/123/availability');
     });
+
+    it('builds the league-intel path under the same proxied prefix', () => {
+        expect(APP_DB_URLS.LEAGUE_INTEL('abc')).toBe('/api/v1/leagues/abc/intel');
+    });
 });

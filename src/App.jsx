@@ -4,6 +4,7 @@ import AppShell from './Components/AppShell';
 import ErrorBanner from './Components/ErrorBanner';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
+import LeaguemateIntelPanel from './Panels/LeaguemateIntelPanel';
 import Spinner from './Components/Spinner';
 import { SyncStatusProvider } from './SyncStatus.jsx';
 import { RankListProvider, useRankList } from './RankList.jsx';
@@ -475,6 +476,7 @@ class App extends React.Component {
             myDisplayName,
             savedRankLists,
             savedRankListsLoading,
+            season,
         } = this.state;
         if (loading === LOADING.INITIAL) {
             return <Spinner size="page" />;
@@ -557,6 +559,9 @@ class App extends React.Component {
                                     renderSection={(activeId) => {
                                         if (activeId === 'ranks') {
                                             return ranksPanel;
+                                        }
+                                        if (activeId === 'leaguemates') {
+                                            return <LeaguemateIntelPanel leagueID={leagueID} season={season} />;
                                         }
                                         return (
                                             <LeaguePanel

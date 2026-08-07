@@ -1,0 +1,113 @@
+// Reading the /intel response (docs/leaguemate-intel.md §3e).
+//
+// Pure, like `availability.js` next door, and for the same reason: every
+// figure here is an aggregate over a sample that ranges from 1 observed draft
+// to 30, and the recurring failure in this feature has never been the maths -
+// it is the sentence next to the number. What may be said about a manager is
+// decided here, where it can be tested, rather than inside a template.
+
+/**
+ * How many corpus picks a manager's tendencies actually rest on.
+ *
+ * `positionLean` is a breakdown of every pick of theirs the crawl has seen, so
+ * its total is the sample behind the shares. `draftsComplete` is the sample
+ * behind anything measured per draft - the two are not interchangeable, and
+ * conflating them is how "38% WR" off four picks gets presented as a lean.
+ */
+export function observedPicks(manager) {
+    return (manager?.tendencies?.positionLean || []).reduce((total, entry) => total + (entry.picks || 0), 0);
+}
+
+/**
+ * What may honestly be said about one manager, given how much of their
+ * drafting has been seen.
+ *
+ * Two independent gates, because the two figures rest on different samples:
+ * `reachVsAdp` is an average per draft and is gated on `draftsComplete`;
+ * the positional shares are proportions of picks and are gated on the pick
+ * count. A manager can clear one and not the other - 12 drafts with four
+ * picks in them is a real shape in this data, not a contrived one.
+ */
+export function managerSignal(manager, { minDrafts, minPicks }) {
+    const draftsComplete = manager?.draftsComplete || 0;
+    const picks = observedPicks(manager);
+    const reach = manager?.tendencies?.reachVsAdp;
+
+    const quotesReach = draftsComplete >= minDrafts && reach != null;
+    const quotesShares = picks >= minPicks;
+
+    // `none` is its own state rather than the bottom of a scale: with nothing
+    // observed there is no number to hedge, only an absence to state plainly.
+    const kind = draftsComplete === 0 ? 'none' : quotesReach && quotesShares ? 'measured' : 'thin';
+
+    return { kind, draftsComplete, picks, quotesReach, quotesShares };
+}
+
+// Below half a pick the sign is noise, so it gets a name of its own instead of
+// a direction the data does not support. Stated as fact, never as advice -
+// "reaches early" is neither good nor bad without knowing who you are asking
+// for, same rule the survival number follows in §3g.
+const CHALKY = 0.5;
+
+/**
+ * `reachVsAdp` in words. Negative means they take players before the league's
+ * own ADP; positive means they let them slide.
+ */
+export function reachPhrase(reach) {
+    if (reach == null) return null;
+    if (Math.abs(reach) < CHALKY) return 'drafts to ADP';
+
+    const picks = Math.abs(reach).toFixed(1);
+    return reach < 0 ? `reaches ${picks} picks early` : `waits ${picks} picks`;
+}
+
+/**
+ * Row-width version of `reachPhrase`. The long form truncates the meta line
+ * next to it at 375px - measured against the real league, where the widest
+ * ("reaches 0.9 picks early") pushed "31 drafts seen" to "31 drafts se…" on
+ * the very first row. Same lesson the prototype learned about the ADP gap:
+ * the one novel signal on the row is the thing that must always fit.
+ */
+export function reachPhraseShort(reach) {
+    if (reach == null) return null;
+    if (Math.abs(reach) < CHALKY) return 'on ADP';
+
+    const picks = Math.abs(reach).toFixed(1);
+    return reach < 0 ? `${picks} early` : `${picks} late`;
+}
+
+/**
+ * Whether a manager's "crushes" actually show repetition.
+ *
+ * The figures are self-carrying - "9 of 31" states its own denominator - but
+ * the heading over them is a claim in its own right, and "players they keep
+ * taking" is false over a list where every entry is "1 of 1". Caught against
+ * real data on a one-draft manager: the counts were honest and the sentence
+ * above them was not, which is this feature's oldest failure mode.
+ */
+export function crushesShowPattern(crushes) {
+    return (crushes || []).some((crush) => (crush.times || 0) >= 2);
+}
+
+/**
+ * `n thing` / `n things`, so a one-league manager does not read "1 leagues".
+ * Trivial, and it was wrong on four of thirteen rows against real data.
+ */
+export function countLabel(count, noun) {
+    return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * Managers most-observed first — the ones the corpus can actually say
+ * something about, rather than alphabetical order that buries them.
+ *
+ * Copies before sorting: the argument is the fetch response, and sorting it in
+ * place would reorder the caller's own state behind its back.
+ */
+export function sortManagers(managers) {
+    return [...(managers || [])].sort(
+        (a, b) =>
+            (b.draftsComplete || 0) - (a.draftsComplete || 0) ||
+            (a.displayName || '').localeCompare(b.displayName || ''),
+    );
+}

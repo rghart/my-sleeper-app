@@ -5,6 +5,7 @@ const appDB = 'https://sleeper-player-db-default-rtdb.firebaseio.com/';
 const fta = import.meta.env.DEV ? '/' : 'https://fantasyteamassistant.com/';
 const ftaLegacy = 'api/legacy/players';
 const ftaAvailability = (draftId) => `api/v1/drafts/${draftId}/availability`;
+const ftaLeagueIntel = (leagueId) => `api/v1/leagues/${leagueId}/intel`;
 const latestUpdateAttempt = 'latest_update_attempt/';
 const dlfADP = 'dlf_adp/';
 const users = 'users/';
@@ -32,6 +33,11 @@ const APP_DB_URLS = {
     // same dev-relative treatment as ACTIVE_PLAYERS above - see the comment
     // on `fta` about why localhost must go through the Vite proxy.
     AVAILABILITY: (draftId) => fta + ftaAvailability(draftId),
+    // The leaguemates of one league, and what they do in their other ones
+    // (docs/leaguemate-intel.md §3e). Keyed by league despite being the
+    // "cross-league" view - the cross-league part is what the managers do
+    // elsewhere, not what the request spans.
+    LEAGUE_INTEL: (leagueId) => fta + ftaLeagueIntel(leagueId),
     DLF_ADP: appDB + dlfADP + typeParams,
     APP_USERS: appDB + users,
     TYPE_PARAMS: typeParams,
