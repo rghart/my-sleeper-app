@@ -31,4 +31,11 @@ describe('other endpoints', () => {
         // import.meta.env.DEV is true under Vitest, matching the dev-server case.
         expect(APP_DB_URLS.ACTIVE_PLAYERS).toBe('/api/legacy/players');
     });
+
+    it('keeps the availability path relative in dev too, and under a proxied prefix', () => {
+        // Same CORS reasoning as ACTIVE_PLAYERS. The `/api/v1` prefix has to
+        // match a `server.proxy` key in vite.config.mjs or dev requests go
+        // to the Vite server itself and 404.
+        expect(APP_DB_URLS.AVAILABILITY('123')).toBe('/api/v1/drafts/123/availability');
+    });
 });

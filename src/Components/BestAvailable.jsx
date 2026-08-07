@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import ListRow from './ListRow';
 import PositionTag from './PositionTag';
 import OwnershipFilters, { DEFAULT_OWNERSHIP, matchesOwnership } from './OwnershipFilters';
+import IntelDetail from './IntelDetail';
+import IntelKey from './IntelTermTip';
+import IntelPickSelector from './IntelPickSelector';
+import { survivalBand, survivalTone } from './intelGlossary.js';
 import { playerAccessibleName } from './playerInfoLabels.js';
 import { eligiblePositionsForSlot } from '../lib/roster.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
+import { defaultAnalyzedPick, survivalAt } from '../lib/availability.js';
 
-const playerId = (entry) => entry.match_results[0][0];
+export const playerId = (entry) => entry.match_results[0][0];
 
 // Eligibility expressed from the slot's side, not the player's: for each slot
 // label in `slots`, ask which real positions it admits
@@ -94,9 +99,21 @@ const BestAvailable = ({
     onOwnershipChange,
     lineupSet,
     onSelect,
+    // The /availability response, or undefined. Optional on purpose: intel is
+    // additive, so a caller with none (the Lineup sheet, or a failed fetch)
+    // renders exactly the list this component rendered before the feature
+    // existed. Only the draft passes it.
+    availability,
 }) => {
     const [activeChip, setActiveChip] = useState(initialActiveChip);
     const [filtersOpen, setFiltersOpen] = useState(false);
+    const [selectedTargetId, setSelectedTargetId] = useState(null);
+    // null means "follow the default", so the analyzed pick keeps tracking my
+    // next pick as the draft syncs; a number means the user chose one and it
+    // stays chosen. Chip taps are client-side - the response carries the whole
+    // byPick matrix, so re-answering the list against another pick on the
+    // board needs no refetch.
+    const [chosenPick, setChosenPick] = useState(null);
     // Uncontrolled by default so the draft sheet and the desktop rail keep
     // working untouched; LineupPanel controls it instead, because its sheet is
     // mounted only while open and a scope held down here would reset every
@@ -107,6 +124,19 @@ const BestAvailable = ({
     const [localOwnership, setLocalOwnership] = useState(defaultOwnership);
     const ownership = controlledOwnership ?? localOwnership;
     const setOwnership = onOwnershipChange ?? setLocalOwnership;
+
+    // Intel is joined onto the rows by player id rather than driving them: the
+    // rank list is the user's own ordering and the reason they pasted a list,
+    // so it keeps its order and the percent chip carries the comparison across
+    // rows. A player the corpus has never seen simply has no chip.
+    const targetsById = useMemo(
+        () => new Map((availability?.targets || []).map((target) => [target.id, target])),
+        [availability],
+    );
+
+    // Above hooks-order concerns, this must sit before the early return below.
+    const atPick =
+        chosenPick ?? defaultAnalyzedPick({ myPicks: availability?.myPicks, currentPick: availability?.currentPick });
 
     // No rank list at all is the normal state for a signed-out user (or one
     // who hasn't pasted anything yet), not an edge case of an otherwise-full
@@ -143,8 +173,50 @@ const BestAvailable = ({
         myDisplayName,
     });
 
+    // Pushed in place rather than opened as a second Sheet - on a phone this
+    // list is already inside one, and a sheet on a sheet reads as a
+    // replacement with no way back.
+    const selectedTarget = selectedTargetId && targetsById.get(selectedTargetId);
+    if (selectedTarget) {
+        return (
+            <IntelDetail
+                target={selectedTarget}
+                board={availability.board}
+                atPick={atPick}
+                threshold={availability.signalThreshold}
+                onBack={() => setSelectedTargetId(null)}
+            />
+        );
+    }
+
+    const hasIntel = Boolean(availability);
+    const hasReads = hasIntel && targetsById.size > 0;
+
     return (
         <div className="flex flex-col gap-3">
+            {hasIntel && (
+                <div className="flex flex-col gap-1.5 px-2 pt-2">
+                    <div className="flex items-center justify-between px-0.5">
+                        <span className="text-ink text-[13px] font-semibold">Still there at…</span>
+                        <IntelKey />
+                    </div>
+                    {hasReads ? (
+                        <IntelPickSelector
+                            board={availability.board}
+                            selected={atPick}
+                            onSelect={setChosenPick}
+                            currentPick={availability.currentPick}
+                        />
+                    ) : (
+                        // The deliberate "no reads yet" state (§3e): a 200 with
+                        // a resolved board and no targets. Not a failure, and
+                        // not something to render as one.
+                        <p className="text-ink-muted m-0 text-[13px] leading-snug">
+                            No reads yet — none of your leaguemates’ drafts have been seen for these players.
+                        </p>
+                    )}
+                </div>
+            )}
             {/* Only the slot chips scroll, and only the lineup has any: the
                 draft list has no slot to be eligible for, so there this is the
                 FILTERS chip alone. FILTERS is pinned to the end because it is
@@ -224,11 +296,24 @@ const BestAvailable = ({
                     const started = Boolean(lineupSet) && isInLineup(lineupSet, id);
                     const accessibleName = playerAccessibleName({ player, taken, rosteredByName, isMine, started });
 
+                    const target = targetsById.get(id);
+                    const survival = survivalAt(target, atPick);
+                    // The row only becomes tappable when there is something
+                    // behind the tap. `onSelect` rules it out too: that caller
+                    // (the Lineup sheet) puts an Add button inside the row, and
+                    // a button inside a button is invalid.
+                    const opensDetail = Boolean(target) && !onSelect;
+
                     return (
                         <li key={id}>
                             <ListRow
-                                as="div"
-                                label={accessibleName}
+                                as={opensDetail ? 'button' : 'div'}
+                                onClick={opensDetail ? () => setSelectedTargetId(id) : undefined}
+                                label={
+                                    opensDetail && survival != null
+                                        ? `${accessibleName}, ${Math.round(survival * 100)}% to last to pick ${atPick}`
+                                        : accessibleName
+                                }
                                 ordinal={entry.ranking}
                                 ordinalWidth="20px"
                                 ordinalClassName="text-right text-[12px] text-ink-muted"
@@ -244,6 +329,23 @@ const BestAvailable = ({
                                 }
                                 trailing={
                                     <>
+                                        {/* The one number worth comparing across
+                                            rows, so it stays a number. Absent
+                                            rather than defaulted when there is no
+                                            read - a confident 100% the data does
+                                            not support is the §3g bug. */}
+                                        {target &&
+                                            (survival == null ? (
+                                                <span className="text-ink-dim w-[52px] shrink-0 text-center font-mono text-[11px]">
+                                                    —
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    className={`w-[52px] shrink-0 rounded-full py-1 text-center font-mono text-[12px] font-semibold tabular-nums ${survivalTone(survival)} ${survivalBand(survival)}`}
+                                                >
+                                                    {Math.round(survival * 100)}%
+                                                </span>
+                                            ))}
                                         <PositionTag position={player.position} />
                                         {unavailable ? (
                                             <span className="text-ink-quiet shrink-0 font-mono text-[11px] font-semibold">
