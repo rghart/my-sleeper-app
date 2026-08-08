@@ -2,7 +2,7 @@ import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { ACTIVE_PLAYERS, AVAILABILITY, LEAGUE_INTEL } = APP_DB_URLS;
+const { ACTIVE_PLAYERS, AVAILABILITY, LEAGUE_INTEL, MANAGER_ACTIVITY } = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
 
 // Every function here returns its data instead of writing it to state. That is
@@ -104,26 +104,6 @@ export async function fetchDraft(draftId) {
 }
 
 /**
- * Leaguemate intel for a draft: who owns every remaining pick, and for each
- * player asked about, the odds they last to each of those picks
- * (docs/leaguemate-intel.md §3e).
- *
- * `playerIds` is the caller's own rank list. Sending it is what makes the
- * answer line up with the rows already on screen - without it the API picks
- * its own 20 targets by league ADP, which need not overlap the list at all.
- * A player the corpus has never seen is simply absent from `targets`; that is
- * the honest "no read", not an error, and the caller renders it as one.
- *
- * `atPick` is only for hypotheticals ("if I trade up to 30"). The response
- * carries the whole `byPick` matrix for every remaining pick, so moving the
- * pick selector between picks that are already on the board needs no refetch.
- *
- * Resolves to `undefined` on failure, per this module's contract. Intel is
- * additive - a rank list with no intel is exactly the list this app rendered
- * before the feature existed, so callers drop the extra column rather than
- * failing the whole sheet.
- */
-/**
  * Who your leaguemates are and what they do in their other leagues
  * (docs/leaguemate-intel.md §3e) - how many leagues and drafts each is in,
  * their repeated targets, positional lean and reach-vs-ADP, plus a `corpus`
@@ -146,6 +126,50 @@ export async function fetchLeagueIntel({ leagueId, season }) {
         });
 }
 
+/**
+ * One leaguemate's recent activity - trades, waiver claims and free-agent
+ * adds across every league they are in, newest first.
+ *
+ * The response carries `coverage` alongside the transactions, and it is not
+ * optional decoration: "5 trades" across 42 leagues and across 4 are
+ * different claims. Render one only with the other to hand.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchManagerActivity({ userId, season, limit, types }) {
+    const params = new URLSearchParams();
+    if (season) params.set('season', season);
+    if (limit != null) params.set('limit', String(limit));
+    if (types?.length) params.set('types', types.join(','));
+
+    return await fetch(`${MANAGER_ACTIVITY(userId)}?${params}`)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching manager activity:', error);
+        });
+}
+
+/**
+ * Leaguemate intel for a draft: who owns every remaining pick, and for each
+ * player asked about, the odds they last to each of those picks
+ * (docs/leaguemate-intel.md §3e).
+ *
+ * `playerIds` is the caller's own rank list. Sending it is what makes the
+ * answer line up with the rows already on screen - without it the API picks
+ * its own 20 targets by league ADP, which need not overlap the list at all.
+ * A player the corpus has never seen is simply absent from `targets`; that is
+ * the honest "no read", not an error, and the caller renders it as one.
+ *
+ * `atPick` is only for hypotheticals ("if I trade up to 30"). The response
+ * carries the whole `byPick` matrix for every remaining pick, so moving the
+ * pick selector between picks that are already on the board needs no refetch.
+ *
+ * Resolves to `undefined` on failure, per this module's contract. Intel is
+ * additive - a rank list with no intel is exactly the list this app rendered
+ * before the feature existed, so callers drop the extra column rather than
+ * failing the whole sheet.
+ */
 export async function fetchAvailability({ draftId, userId, playerIds, atPick }) {
     const params = new URLSearchParams({ user_id: userId });
     // Left off entirely when empty rather than sent blank: an empty rank list

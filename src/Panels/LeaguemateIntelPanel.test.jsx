@@ -56,10 +56,20 @@ const intelBody = (overrides = {}) => ({
     ...overrides,
 });
 
-const renderPanel = (body = intelBody(), props = {}) => {
-    global.fetch = vi.fn(() => (body instanceof Promise ? body : jsonResponse(body)));
+// Routed by URL: opening a profile fires a second request to /activity, and
+// answering it with the intel body would be testing a shape the API never
+// sends.
+const renderPanel = (body = intelBody(), props = {}, activity = activityBody()) => {
+    global.fetch = vi.fn((url) => (String(url).includes('/activity') ? jsonResponse(activity) : jsonResponse(body)));
     return render(<LeaguemateIntelPanel leagueID="lg1" season="2026" {...props} />);
 };
+
+const activityBody = (overrides = {}) => ({
+    transactions: [],
+    players: {},
+    coverage: { leaguesSeen: 0, leaguesKnown: 0, lastCrawledAt: null },
+    ...overrides,
+});
 
 describe('LeaguemateIntelPanel', () => {
     beforeEach(() => {
@@ -184,6 +194,110 @@ describe('LeaguemateIntelPanel', () => {
 
         await user.click(screen.getByRole('button', { name: /pavelito0010/ }));
         expect(screen.getByText(/None of their drafts have been seen/)).toBeInTheDocument();
+    });
+
+    // The activity block (§6 step 6 phase 4). Two of these exist because a
+    // live crawl found what no fixture had: `commissioner` transactions, and
+    // that 11% of real transactions are `failed`.
+    describe('the activity block', () => {
+        const tx = (overrides = {}) => ({
+            id: 1,
+            type: 'trade',
+            status: 'complete',
+            created: '2026-08-05T12:00:00Z',
+            creator: 2,
+            participantIds: [2, 3],
+            adds: { 4001: 1 },
+            drops: {},
+            draftPicks: [],
+            waiverBid: null,
+            ...overrides,
+        });
+
+        const withActivity = (overrides) =>
+            renderPanel(
+                intelBody(),
+                {},
+                activityBody({ players: { 4001: { name: 'Some Player', position: 'WR' } }, ...overrides }),
+            );
+
+        const openProfile = async (user) => {
+            await screen.findByText('baconstains');
+            await user.click(screen.getByRole('button', { name: /baconstains/ }));
+        };
+
+        it('asks for that manager only, when the profile is opened', async () => {
+            const user = userEvent.setup();
+            withActivity({ transactions: [] });
+            await openProfile(user);
+
+            const call = global.fetch.mock.calls.map((c) => String(c[0])).find((u) => u.includes('/activity'));
+            const url = new URL(call, 'http://localhost');
+            expect(url.pathname).toBe('/api/v1/users/2/activity');
+            expect(url.searchParams.get('season')).toBe('2026');
+        });
+
+        it('renders a move with the players named', async () => {
+            const user = userEvent.setup();
+            withActivity({ transactions: [tx()], coverage: { leaguesSeen: 33, leaguesKnown: 42 } });
+            await openProfile(user);
+
+            expect(await screen.findByText('Trade')).toBeInTheDocument();
+            expect(screen.getByText(/Some Player/)).toBeInTheDocument();
+        });
+
+        it('always states coverage beside the count', async () => {
+            // "5 trades" across 42 leagues and across 4 are different claims,
+            // and a live run once reported a denominator describing nobody.
+            const user = userEvent.setup();
+            withActivity({ transactions: [tx()], coverage: { leaguesSeen: 33, leaguesKnown: 42 } });
+            await openProfile(user);
+
+            expect(await screen.findByText(/33 of 42 leagues/)).toBeInTheDocument();
+        });
+
+        it('labels a failed transaction rather than mixing it in', async () => {
+            // 11% of real transactions are failed. Unlabelled, the list claims
+            // things happened that did not.
+            const user = userEvent.setup();
+            withActivity({ transactions: [tx({ type: 'waiver', status: 'failed', waiverBid: 37 })] });
+            await openProfile(user);
+
+            expect(await screen.findByText('Failed')).toBeInTheDocument();
+            expect(screen.getByText('$37')).toBeInTheDocument();
+        });
+
+        it('names a commissioner move instead of showing the raw API string', async () => {
+            // 143 of 13,610 in the real corpus, and absent from the scope.
+            const user = userEvent.setup();
+            withActivity({ transactions: [tx({ type: 'commissioner' })] });
+            await openProfile(user);
+
+            expect(await screen.findByText('Commissioner')).toBeInTheDocument();
+            expect(screen.queryByText('commissioner')).toBeNull();
+        });
+
+        it('says nothing is seen yet rather than rendering an empty block', async () => {
+            const user = userEvent.setup();
+            withActivity({ transactions: [], coverage: { leaguesSeen: 0, leaguesKnown: 42 } });
+            await openProfile(user);
+
+            expect(await screen.findByText(/Nothing seen yet/)).toBeInTheDocument();
+        });
+
+        it('leaves the rest of the profile intact when activity fails', async () => {
+            // Additive, like the rank list's intel: a failed fetch must not
+            // take the profile down with it.
+            const user = userEvent.setup();
+            global.fetch = vi.fn((url) =>
+                String(url).includes('/activity') ? Promise.reject(new Error('offline')) : jsonResponse(intelBody()),
+            );
+            render(<LeaguemateIntelPanel leagueID="lg1" season="2026" />);
+            await openProfile(user);
+
+            expect(screen.getByText('Players they keep taking')).toBeInTheDocument();
+            expect(screen.queryByText('Recent moves')).toBeNull();
+        });
     });
 
     it('says so when the fetch fails, rather than rendering an empty screen', async () => {

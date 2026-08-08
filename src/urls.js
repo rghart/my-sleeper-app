@@ -6,6 +6,7 @@ const fta = import.meta.env.DEV ? '/' : 'https://fantasyteamassistant.com/';
 const ftaLegacy = 'api/legacy/players';
 const ftaAvailability = (draftId) => `api/v1/drafts/${draftId}/availability`;
 const ftaLeagueIntel = (leagueId) => `api/v1/leagues/${leagueId}/intel`;
+const ftaManagerActivity = (userId) => `api/v1/users/${userId}/activity`;
 const latestUpdateAttempt = 'latest_update_attempt/';
 const dlfADP = 'dlf_adp/';
 const users = 'users/';
@@ -38,6 +39,11 @@ const APP_DB_URLS = {
     // "cross-league" view - the cross-league part is what the managers do
     // elsewhere, not what the request spans.
     LEAGUE_INTEL: (leagueId) => fta + ftaLeagueIntel(leagueId),
+    // One leaguemate's recent trades, waivers and free-agent adds, across
+    // every league they are in. Not nested under a league on purpose - the
+    // data spans all of theirs, so a league in the path would imply a filter
+    // that does not happen.
+    MANAGER_ACTIVITY: (userId) => fta + ftaManagerActivity(userId),
     DLF_ADP: appDB + dlfADP + typeParams,
     APP_USERS: appDB + users,
     TYPE_PARAMS: typeParams,

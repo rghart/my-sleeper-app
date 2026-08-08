@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
     countLabel,
+    coverageLabel,
     crushesShowPattern,
+    didHappen,
     managerSignal,
+    movedPlayers,
+    transactionLabel,
     observedPicks,
     reachPhrase,
     reachPhraseShort,
@@ -209,5 +213,78 @@ describe('sortManagers', () => {
 
     it('is empty rather than throwing when there is no manager list', () => {
         expect(sortManagers(undefined)).toEqual([]);
+    });
+});
+
+describe('transactionLabel', () => {
+    it('names the types the plan anticipated', () => {
+        expect(transactionLabel('trade')).toBe('Trade');
+        expect(transactionLabel('waiver')).toBe('Waiver');
+        expect(transactionLabel('free_agent')).toBe('Free agent');
+    });
+
+    it('names commissioner moves, which the scope missed and a live crawl found', () => {
+        // 143 of 13,610 real transactions. Without this it renders as the raw
+        // API string.
+        expect(transactionLabel('commissioner')).toBe('Commissioner');
+    });
+
+    it('shows an unrecognised type rather than hiding it', () => {
+        // Somebody else's API, and its vocabulary can grow. A type nobody
+        // anticipated should look odd on screen, not vanish from a list that
+        // claims to be complete.
+        expect(transactionLabel('some_new_type')).toBe('some_new_type');
+        expect(transactionLabel(undefined)).toBe('Unknown');
+    });
+});
+
+describe('didHappen', () => {
+    it('separates completed from failed', () => {
+        // 11% of real transactions are failed, so this is not a rare edge.
+        expect(didHappen({ status: 'complete' })).toBe(true);
+        expect(didHappen({ status: 'failed' })).toBe(false);
+    });
+
+    it('treats an unknown status as having happened rather than hiding it', () => {
+        expect(didHappen({ status: 'pending' })).toBe(true);
+        expect(didHappen({})).toBe(true);
+    });
+});
+
+describe('movedPlayers', () => {
+    const players = { 4001: { name: 'Some Player', position: 'WR' } };
+
+    it('resolves ids to names through the map the endpoint sends', () => {
+        const moved = movedPlayers({ adds: { 4001: 1 }, drops: {} }, players);
+
+        expect(moved.adds).toEqual([{ id: '4001', name: 'Some Player', position: 'WR' }]);
+        expect(moved.drops).toEqual([]);
+    });
+
+    it('falls back to the id rather than dropping a player the lookup misses', () => {
+        // A transaction that silently lists two of its three players is worse
+        // than one showing an id.
+        const moved = movedPlayers({ adds: { 9999: 1 } }, players);
+
+        expect(moved.adds).toEqual([{ id: '9999', name: '9999', position: undefined }]);
+    });
+
+    it('is empty rather than throwing for a transaction with neither', () => {
+        expect(movedPlayers(undefined)).toEqual({ adds: [], drops: [] });
+    });
+});
+
+describe('coverageLabel', () => {
+    it('always states both numbers', () => {
+        expect(coverageLabel({ leaguesSeen: 33, leaguesKnown: 42 })).toBe('33 of 42 leagues');
+    });
+
+    it('does not say "1 leagues"', () => {
+        expect(coverageLabel({ leaguesSeen: 1, leaguesKnown: 1 })).toBe('1 of 1 league');
+    });
+
+    it('is null when there is nothing to qualify', () => {
+        expect(coverageLabel({ leaguesSeen: 0, leaguesKnown: 0 })).toBeNull();
+        expect(coverageLabel(undefined)).toBeNull();
     });
 });
