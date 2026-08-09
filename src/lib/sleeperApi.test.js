@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
     fetchAvailability,
     fetchLeagueIntel,
+    fetchManagerActivity,
     fetchDraft,
     fetchLeagueBundle,
     fetchLeagueSeason,
@@ -162,6 +163,36 @@ describe('sleeperApi', () => {
             );
 
             await expect(fetchLeagueIntel({ leagueId: 'nope', season: '2026' })).resolves.toBeUndefined();
+        });
+    });
+
+    describe('fetchManagerActivity', () => {
+        const requestedUrl = () => new URL(global.fetch.mock.calls[0][0], 'http://localhost');
+
+        it('asks for one user across every league, and returns the parsed body', async () => {
+            const body = { transactions: [{ id: 1 }], players: {}, coverage: { leaguesSeen: 33, leaguesKnown: 42 } };
+            global.fetch = vi.fn(() => jsonResponse(body));
+
+            expect(await fetchManagerActivity({ userId: '111', season: '2026' })).toEqual(body);
+            expect(requestedUrl().pathname).toBe('/api/v1/users/111/activity');
+            expect(requestedUrl().searchParams.get('season')).toBe('2026');
+        });
+
+        it('sends limit and types only when given', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ transactions: [] }));
+            await fetchManagerActivity({ userId: '111' });
+            expect(requestedUrl().searchParams.has('limit')).toBe(false);
+            expect(requestedUrl().searchParams.has('types')).toBe(false);
+
+            global.fetch = vi.fn(() => jsonResponse({ transactions: [] }));
+            await fetchManagerActivity({ userId: '111', limit: 20, types: ['trade', 'waiver'] });
+            expect(requestedUrl().searchParams.get('limit')).toBe('20');
+            expect(requestedUrl().searchParams.get('types')).toBe('trade,waiver');
+        });
+
+        it('resolves to undefined on failure', async () => {
+            global.fetch = vi.fn(() => Promise.reject(new Error('offline')));
+            await expect(fetchManagerActivity({ userId: '111' })).resolves.toBeUndefined();
         });
     });
 

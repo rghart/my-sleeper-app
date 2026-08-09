@@ -3,10 +3,14 @@ import ListRow from '../Components/ListRow';
 import PositionTag from '../Components/PositionTag';
 import Spinner from '../Components/Spinner';
 import { agoLabel } from '../lib/relativeTime.js';
-import { fetchLeagueIntel } from '../lib/sleeperApi.js';
+import { fetchLeagueIntel, fetchManagerActivity } from '../lib/sleeperApi.js';
 import {
     countLabel,
+    coverageLabel,
     crushesShowPattern,
+    didHappen,
+    movedPlayers,
+    transactionLabel,
     managerSignal,
     reachPhrase,
     reachPhraseShort,
@@ -62,9 +66,120 @@ const Crush = ({ crush }) => (
     </div>
 );
 
-const Profile = ({ manager, onBack }) => {
+const MOVE_LIMIT = 3;
+
+const Moved = ({ label, players }) =>
+    players.length > 0 && (
+        <span className="min-w-0 truncate">
+            <span className="text-ink-dim">{label} </span>
+            <span className="text-ink-quiet">
+                {players
+                    .slice(0, MOVE_LIMIT)
+                    .map((p) => p.name)
+                    .join(', ')}
+                {players.length > MOVE_LIMIT && ` +${players.length - MOVE_LIMIT}`}
+            </span>
+        </span>
+    );
+
+const Transaction = ({ transaction, players }) => {
+    const happened = didHappen(transaction);
+    const { adds, drops } = movedPlayers(transaction, players);
+
+    return (
+        <div className="flex flex-col gap-0.5 py-1.5">
+            <span className="flex items-center gap-2">
+                <span className="text-ink-quiet font-mono text-[10px] tracking-[.08em] uppercase">
+                    {transactionLabel(transaction.type)}
+                </span>
+                {/* 11% of real transactions failed. Mixing them in unlabelled
+                    would claim things happened that did not. */}
+                {!happened && (
+                    <span className="text-warn font-mono text-[9px] font-semibold tracking-[.08em] uppercase">
+                        Failed
+                    </span>
+                )}
+                {transaction.waiverBid != null && (
+                    <span className="text-ink-dim font-mono text-[10px] tabular-nums">${transaction.waiverBid}</span>
+                )}
+                {transaction.draftPicks?.length > 0 && (
+                    <span className="text-ink-dim font-mono text-[10px]">
+                        {countLabel(transaction.draftPicks.length, 'pick')}
+                    </span>
+                )}
+                <span className="text-ink-dim ml-auto shrink-0 font-mono text-[10px]">
+                    {agoLabel(Date.parse(transaction.created))}
+                </span>
+            </span>
+            <span className={`flex min-w-0 gap-2 text-[12px] ${happened ? '' : 'opacity-60'}`}>
+                <Moved label="+" players={adds} />
+                <Moved label="−" players={drops} />
+            </span>
+        </div>
+    );
+};
+
+const Activity = ({ activity, loading }) => {
+    if (loading) {
+        return (
+            <div className="border-line-mid mt-3 flex min-h-20 items-center justify-center border-t pt-2">
+                <Spinner />
+            </div>
+        );
+    }
+
+    // Additive, like the rank list's intel: a failed fetch leaves the profile
+    // rendering everything else rather than failing the screen. `transactions`
+    // is checked rather than assumed - this reads somebody else's response,
+    // and a body without it should render nothing, not throw and take the
+    // whole profile down.
+    if (!activity?.transactions) return null;
+
+    const coverage = coverageLabel(activity.coverage);
+
+    return (
+        <div className="border-line-mid mt-3 border-t pt-2">
+            <p className="text-ink-dim mb-1 font-mono text-[10px] tracking-[.08em] uppercase">
+                Recent moves
+                {/* Never the count alone: "5 trades" across 42 leagues and
+                    across 4 are different claims, and a live run once
+                    reported a denominator describing nobody. */}
+                {coverage && <span className="text-ink-quiet"> · {coverage}</span>}
+            </p>
+            {activity.transactions.length === 0 ? (
+                <p className="text-ink-muted m-0 text-[13px] leading-snug">Nothing seen yet in any of their leagues.</p>
+            ) : (
+                activity.transactions.map((transaction) => (
+                    <Transaction key={transaction.id} transaction={transaction} players={activity.players || {}} />
+                ))
+            )}
+        </div>
+    );
+};
+
+const Profile = ({ manager, onBack, season }) => {
     const signal = managerSignal(manager, THRESHOLDS);
     const { crushes = [], positionLean = [], reachVsAdp } = manager.tendencies || {};
+    const [activity, setActivity] = useState(undefined);
+    const [activityLoading, setActivityLoading] = useState(true);
+
+    // Fetched when the profile opens rather than with the list: thirteen
+    // managers render from one cheap /intel call, and activity is only wanted
+    // for the one actually looked at.
+    useEffect(() => {
+        let cancelled = false;
+        setActivityLoading(true);
+
+        fetchManagerActivity({ userId: manager.userId, season, limit: 10 }).then((response) => {
+            if (cancelled) return;
+            setActivity(response);
+            setActivityLoading(false);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [manager.userId, season]);
 
     return (
         <div className="px-2 py-2.5">
@@ -153,6 +268,8 @@ const Profile = ({ manager, onBack }) => {
                         )}
                     </>
                 )}
+
+                <Activity activity={activity} loading={activityLoading} />
             </div>
         </div>
     );
@@ -200,7 +317,7 @@ const LeaguemateIntelPanel = ({ leagueID, season }) => {
     const selected = managers.find((manager) => manager.userId === selectedUserId);
 
     if (selected) {
-        return <Profile manager={selected} onBack={() => setSelectedUserId(null)} />;
+        return <Profile manager={selected} season={season} onBack={() => setSelectedUserId(null)} />;
     }
 
     return (

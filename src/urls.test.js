@@ -42,4 +42,9 @@ describe('other endpoints', () => {
     it('builds the league-intel path under the same proxied prefix', () => {
         expect(APP_DB_URLS.LEAGUE_INTEL('abc')).toBe('/api/v1/leagues/abc/intel');
     });
+
+    it('builds the manager-activity path as a flat user route', () => {
+        // Not nested under a league: the data spans every league they are in.
+        expect(APP_DB_URLS.MANAGER_ACTIVITY('111')).toBe('/api/v1/users/111/activity');
+    });
 });

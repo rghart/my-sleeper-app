@@ -111,3 +111,85 @@ export function sortManagers(managers) {
             (a.displayName || '').localeCompare(b.displayName || ''),
     );
 }
+
+// ---------------------------------------------------------------------
+// Manager activity (docs/leaguemate-intel.md §6 step 6)
+// ---------------------------------------------------------------------
+
+// What each transaction type is called on screen. `commissioner` is here
+// because a live crawl found 143 of them in 13,610 - it is not in the plan's
+// scope and would otherwise have rendered as a raw API string.
+const TYPE_LABELS = {
+    trade: 'Trade',
+    waiver: 'Waiver',
+    free_agent: 'Free agent',
+    commissioner: 'Commissioner',
+};
+
+/**
+ * The human label for a transaction type, falling back to the raw value
+ * rather than hiding a type nobody anticipated. The API is somebody else's
+ * and its vocabulary can grow; an unknown type should look odd on screen,
+ * not vanish from a list that claims to be complete.
+ */
+export function transactionLabel(type) {
+    return TYPE_LABELS[type] || type || 'Unknown';
+}
+
+/**
+ * Whether a transaction actually happened.
+ *
+ * 11% of real transactions come back `failed` (1,497 of 13,610), so this is
+ * not a rare edge. They are kept deliberately - a failed waiver claim is a
+ * revealed preference nobody else in that league can see - but a list that
+ * mixes them in unlabelled is claiming things happened that did not.
+ */
+export function didHappen(transaction) {
+    return transaction?.status !== 'failed';
+}
+
+/**
+ * The players this manager added and dropped, resolved to names through the
+ * `players` map the endpoint sends alongside.
+ *
+ * **Filtered to their own roster.** `adds`/`drops` are league-wide: a trade
+ * adds a player to one roster and drops him from another, so rendering both
+ * sides showed the same player as added *and* dropped. Caught against live
+ * data, where a real trade read "+Marvin Harrison −Marvin Harrison".
+ * `rosterId` is which roster is theirs; when it is null (a league whose
+ * roster map could not be fetched) the move is shown unsided rather than
+ * hidden, because a partial answer beats a blank one.
+ *
+ * Falls back to the raw id rather than dropping a player the lookup misses -
+ * a transaction that silently lists two of its three players is worse than
+ * one showing an id.
+ */
+export function movedPlayers(transaction, players = {}) {
+    const rosterId = transaction?.rosterId;
+
+    const mine = (moves) =>
+        Object.entries(moves || {})
+            .filter(([, roster]) => rosterId == null || roster === rosterId)
+            .map(([id]) => id);
+
+    const named = (ids) => ids.map((id) => ({ id, name: players[id]?.name || id, position: players[id]?.position }));
+
+    return {
+        adds: named(mine(transaction?.adds)),
+        drops: named(mine(transaction?.drops)),
+    };
+}
+
+/**
+ * How much of a manager's activity is actually visible, as a sentence.
+ *
+ * `null` when there is nothing to qualify. Otherwise it always states both
+ * numbers: "5 trades" across 42 leagues and across 4 are different claims,
+ * and a live run once reported "33 of 175" for a manager who is in 42 -
+ * a denominator describing nobody.
+ */
+export function coverageLabel(coverage) {
+    if (!coverage || !coverage.leaguesKnown) return null;
+
+    return `${coverage.leaguesSeen} of ${countLabel(coverage.leaguesKnown, 'league')}`;
+}
