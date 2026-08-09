@@ -5,6 +5,8 @@ import PlayerInfoItem from '../Components/PlayerInfoItem';
 import SaveListSheet from './SaveListSheet';
 import SegmentedControl from '../Components/SegmentedControl';
 import Sheet from '../Components/Sheet';
+import ColumnMapper from '../Components/ColumnMapper';
+import { detectColumns, detectDelimiter, toRows } from '../lib/rankColumns.js';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Spinner from '../Components/Spinner';
@@ -113,16 +115,50 @@ const RanksPanel = ({
     const [showPasteSheet, setShowPasteSheet] = useState(false);
     const [showSaveSheet, setShowSaveSheet] = useState(false);
     const [filtersOpen, setFiltersOpen] = useState(false);
+    // The confirmed column map, or null for a plain one-per-line list. Held
+    // beside the text rather than derived from it on every render: the guess
+    // is a starting point the user edits, so re-deriving would undo their
+    // edits on the next keystroke.
+    const [columnMap, setColumnMap] = useState(null);
+    const [fileError, setFileError] = useState(null);
     const pasteButtonRef = useRef(null);
     const saveButtonRef = useRef(null);
     const filtersChipRef = useRef(null);
+    const fileInputRef = useRef(null);
+
+    // Text arriving from anywhere - typed, pasted, or read out of a file -
+    // goes through here, so a dropped CSV and a spreadsheet paste get the same
+    // treatment. A list that is not a table leaves columnMap null and falls
+    // through to the flat-line parser exactly as before.
+    const takeText = (text) => {
+        setSearchText(text);
+        setFileError(null);
+        const delimiter = detectDelimiter(text);
+        const rows = delimiter && toRows(text, delimiter);
+        // The delimiter rides along on the map because everything downstream -
+        // the preview here, and createRankings later - has to split the text
+        // the same way it was split when the columns were guessed. Re-detecting
+        // it against half-edited text is how the preview and the result drift
+        // apart.
+        setColumnMap(rows ? { ...detectColumns(rows), delimiter } : null);
+    };
+
+    const takeFile = (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onerror = () => setFileError(`Couldn't read ${file.name}.`);
+        reader.onload = () => takeText(String(reader.result ?? ''));
+        reader.readAsText(file);
+    };
 
     const startSearch = () => {
         updateRankingPlayersIdsList([]);
         setCurrentListVal(defaultSelector);
         setIsNewRankList(true);
-        startLoad(searchText);
+        startLoad(searchText, columnMap);
         setSearchText('');
+        setColumnMap(null);
+        setFileError(null);
         // The sheet has done its job once the list is in. Leaving it up hides
         // the list the paste just produced behind the thing that produced it.
         setShowPasteSheet(false);
@@ -440,21 +476,79 @@ const RanksPanel = ({
                                 once a list exists either: replacing the list
                                 you are looking at is the normal second use of
                                 this sheet. */}
-                            <div className="flex flex-col gap-3 p-4">
+                            <div
+                                className="flex flex-col gap-3 p-4"
+                                onDragOver={(event) => event.preventDefault()}
+                                onDrop={(event) => {
+                                    event.preventDefault();
+                                    takeFile(event.dataTransfer.files?.[0]);
+                                }}
+                            >
                                 <textarea
                                     className="border-line bg-raised-2 text-ink caret-ink-muted rounded-row w-full border p-3"
                                     placeholder="Copy + Paste rankings here..."
                                     value={searchText}
-                                    onChange={(e) => setSearchText(e.target.value)}
+                                    onChange={(e) => takeText(e.target.value)}
                                 />
-                                <button
-                                    type="button"
-                                    disabled={searchText.length < 6}
-                                    onClick={startSearch}
-                                    className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
-                                >
-                                    Submit
-                                </button>
+
+                                {/* The file picker is a second door onto the
+                                    same text, not a second code path: the file
+                                    is read straight into the textarea, so what
+                                    gets matched is always what is on screen. */}
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="border-line text-ink-muted min-h-11 rounded-full border px-3.5 text-[13px] font-semibold"
+                                    >
+                                        Choose a file
+                                    </button>
+                                    <span className="text-ink-quiet font-mono text-[10px]">or drop a .csv here</span>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values"
+                                        className="hidden"
+                                        onChange={(event) => {
+                                            takeFile(event.target.files?.[0]);
+                                            // Cleared so choosing the same file
+                                            // twice in a row still fires change.
+                                            event.target.value = '';
+                                        }}
+                                    />
+                                </div>
+
+                                {fileError && (
+                                    <p role="alert" className="text-warn m-0 text-[13px]">
+                                        {fileError}
+                                    </p>
+                                )}
+
+                                {columnMap && (
+                                    <ColumnMapper
+                                        rows={toRows(searchText, columnMap.delimiter) ?? []}
+                                        mapping={columnMap}
+                                        onChange={setColumnMap}
+                                    />
+                                )}
+
+                                {/* Pinned to the bottom of the sheet's scroll
+                                    area. The column mapper is tall enough to
+                                    push Submit past the fold on a phone - the
+                                    body does scroll, so it was reachable, but
+                                    the primary action disappearing the moment
+                                    you paste a CSV is not a thing to leave to
+                                    a scroll gesture. */}
+                                <div className="bg-raised sticky bottom-0 -mx-4 -mb-4 px-4 pt-3 pb-4">
+                                    <button
+                                        type="button"
+                                        disabled={searchText.length < 6}
+                                        onClick={startSearch}
+                                        className="bg-mine text-ground w-full rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
                             </div>
                         </Sheet>
                     )}

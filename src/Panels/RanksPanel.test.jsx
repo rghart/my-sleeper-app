@@ -134,7 +134,9 @@ describe('RanksPanel loading', () => {
         await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), 'Ja  rr Chase');
         await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-        expect(startLoad).toHaveBeenCalledWith('Ja  rr Chase');
+        // The second argument is the column map, null here because a plain
+        // one-per-line list is not a table. Still no loading vocabulary.
+        expect(startLoad).toHaveBeenCalledWith('Ja  rr Chase', null);
     });
 });
 
@@ -446,5 +448,126 @@ describe('RanksPanel saving a pasted list', () => {
         expect(within(sheet).getByPlaceholderText('Copy + Paste rankings here...')).toBeInTheDocument();
         expect(within(sheet).queryByLabelText('LIST NAME')).toBeNull();
         expect(within(sheet).queryByRole('button', { name: /Delete/ })).toBeNull();
+    });
+});
+
+// A ranking list that arrives as a table (a CSV file, or a paste out of a
+// spreadsheet, which is tab-separated) carries its columns, and the flat-line
+// parser's whole job is guessing at fields a table already labels. These cover
+// the panel's half: noticing the shape, showing the guess, and sending the
+// confirmed map on. lib/rankColumns.test.js covers the reading itself.
+describe('RanksPanel column mapping', () => {
+    const CSV = "Rank,Player,Team,Pos\n1,Ja'Marr Chase,CIN,WR\n2,Bijan Robinson,ATL,RB";
+
+    const pasteIntoSheet = async (user, text) => {
+        await openPasteSheet(user);
+        const box = screen.getByPlaceholderText('Copy + Paste rankings here...');
+        await user.click(box);
+        await user.paste(text);
+        return box;
+    };
+
+    it('offers no column mapping for a plain one-per-line list', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        await pasteIntoSheet(user, "Ja'Marr Chase\nBijan Robinson\nPuka Nacua");
+
+        expect(screen.queryByRole('combobox', { name: /name/i })).toBeNull();
+    });
+
+    it('shows the guessed mapping when the paste is a table', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        await pasteIntoSheet(user, CSV);
+
+        expect(screen.getByRole('combobox', { name: 'NAME' })).toHaveValue('1');
+        expect(screen.getByRole('combobox', { name: 'TEAM' })).toHaveValue('2');
+        expect(screen.getByRole('combobox', { name: 'POSITION' })).toHaveValue('3');
+    });
+
+    // The guess is a default, not a decision - a wrong one mislabels the whole
+    // list, so the data it applies to has to be visible beside it.
+    it('previews real rows under the mapping', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        await pasteIntoSheet(user, CSV);
+
+        expect(screen.getByRole('cell', { name: "Ja'Marr Chase" })).toBeTruthy();
+        expect(screen.getByRole('cell', { name: 'Bijan Robinson' })).toBeTruthy();
+    });
+
+    it('drops the heading row from the preview', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        await pasteIntoSheet(user, CSV);
+
+        expect(screen.queryByRole('cell', { name: 'Player' })).toBeNull();
+    });
+
+    it('sends the confirmed mapping on with the text', async () => {
+        const user = userEvent.setup();
+        const { startLoad } = renderPanel();
+        await pasteIntoSheet(user, CSV);
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        expect(startLoad).toHaveBeenCalledWith(
+            CSV,
+            expect.objectContaining({ delimiter: ',', hasHeader: true, name: 1, team: 2, position: 3 }),
+        );
+    });
+
+    it('sends the correction when the guess is overridden', async () => {
+        const user = userEvent.setup();
+        const { startLoad } = renderPanel();
+        await pasteIntoSheet(user, CSV);
+        await user.selectOptions(screen.getByRole('combobox', { name: 'TEAM' }), '3');
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        expect(startLoad).toHaveBeenCalledWith(CSV, expect.objectContaining({ team: 3 }));
+    });
+
+    it('lets a column be marked as absent', async () => {
+        const user = userEvent.setup();
+        const { startLoad } = renderPanel();
+        await pasteIntoSheet(user, CSV);
+        await user.selectOptions(screen.getByRole('combobox', { name: 'TEAM' }), '');
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        expect(startLoad).toHaveBeenCalledWith(CSV, expect.objectContaining({ team: null }));
+    });
+
+    // Editing the text after the guess must re-guess, or the map describes a
+    // table that is no longer there.
+    it('drops the mapping when the table is edited back into plain text', async () => {
+        const user = userEvent.setup();
+        const { startLoad } = renderPanel();
+        await pasteIntoSheet(user, CSV);
+        await user.clear(screen.getByPlaceholderText('Copy + Paste rankings here...'));
+        await user.click(screen.getByPlaceholderText('Copy + Paste rankings here...'));
+        await user.paste("Ja'Marr Chase\nBijan Robinson\nPuka Nacua");
+
+        expect(screen.queryByRole('combobox', { name: 'NAME' })).toBeNull();
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+        expect(startLoad).toHaveBeenCalledWith("Ja'Marr Chase\nBijan Robinson\nPuka Nacua", null);
+    });
+
+    it('offers a file picker beside the paste box', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        await openPasteSheet(user);
+
+        expect(screen.getByRole('button', { name: 'Choose a file' })).toBeTruthy();
+    });
+
+    it('reads a chosen CSV file into the paste box and maps it', async () => {
+        const user = userEvent.setup();
+        const { container } = renderPanel();
+        await openPasteSheet(user);
+
+        const file = new File([CSV], 'ranks.csv', { type: 'text/csv' });
+        await user.upload(container.querySelector('input[type="file"]'), file);
+
+        expect(await screen.findByRole('combobox', { name: 'NAME' })).toHaveValue('1');
+        expect(screen.getByPlaceholderText('Copy + Paste rankings here...')).toHaveValue(CSV);
     });
 });
