@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { defaultAnalyzedPick, managerSample, pickOptions, stationsFor, survivalAt } from './availability.js';
+import {
+    defaultAnalyzedPick,
+    managerSample,
+    ownershipSample,
+    pickOptions,
+    stationsFor,
+    survivalAt,
+} from './availability.js';
 
 describe('defaultAnalyzedPick', () => {
     // docs/leaguemate-intel.md §3g gap 1b. "My next pick" was resolved as the
@@ -240,5 +247,46 @@ describe('managerSample', () => {
 
         expect(managerSample(entry, { minDrafts: 8, minTimes: 3 }).kind).toBe('full');
         expect(managerSample(entry, { minDrafts: 20, minTimes: 3 }).kind).toBe('countOnly');
+    });
+});
+
+describe('ownershipSample', () => {
+    // The holdings half of the copy rules. Same standing lesson as
+    // `managerSample`: the risk is never the number, it is the sentence.
+    const threshold = { minDrafts: 8, minTimes: 3 };
+
+    // The one that would otherwise render as "0%" or "0 of 0" - the shape
+    // the API deliberately sends as null so this case is distinguishable.
+    it('says nothing at all when we hold no roster data for them', () => {
+        expect(ownershipSample({ owns: 0, ofLeagues: null }, threshold)).toEqual({ kind: 'none' });
+        expect(ownershipSample({ owns: 0, ofLeagues: 0 }, threshold)).toEqual({ kind: 'none' });
+        expect(ownershipSample(undefined, threshold)).toEqual({ kind: 'none' });
+    });
+
+    it('distinguishes owning him nowhere from having no data', () => {
+        expect(ownershipSample({ owns: 0, ofLeagues: 39 }, threshold)).toEqual({
+            kind: 'droppedAll',
+            owns: 0,
+            ofLeagues: 39,
+        });
+    });
+
+    it('reports the count against the leagues we can actually see', () => {
+        const sample = ownershipSample({ owns: 5, ofLeagues: 58 }, threshold);
+
+        expect(sample.kind).toBe('owns');
+        expect(sample.owns).toBe(5);
+        expect(sample.ofLeagues).toBe(58);
+        expect(sample.percent).toBe(9);
+    });
+
+    // A percentage of two leagues is a coin flip with a decimal point.
+    it('withholds the percentage below the same threshold the draft ADP uses', () => {
+        expect(ownershipSample({ owns: 1, ofLeagues: 2 }, threshold).percent).toBeNull();
+        expect(ownershipSample({ owns: 1, ofLeagues: 8 }, threshold).percent).toBe(13);
+    });
+
+    it('withholds it entirely when no threshold is supplied, rather than guessing one', () => {
+        expect(ownershipSample({ owns: 1, ofLeagues: 500 }).percent).toBeNull();
     });
 });
