@@ -3,7 +3,8 @@ import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
 const { ACTIVE_PLAYERS, AVAILABILITY, LEAGUE_INTEL, MANAGER_ACTIVITY } = APP_DB_URLS;
-const { LEAGUE, USER_LEAGUES, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } = SLEEPER_API_URLS;
+const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } =
+    SLEEPER_API_URLS;
 
 // Every function here returns its data instead of writing it to state. That is
 // the point of the module, not a stylistic preference: the two bugs in #96 and
@@ -43,18 +44,68 @@ export async function fetchLeagueSeason() {
 }
 
 /**
+ * Resolves a typed Sleeper username to the account behind it.
+ *
+ * Three-way on purpose, because the caller has three different things to say.
+ * A found account resolves to `{ userId, username }`; a username nobody owns
+ * resolves to `null`; a failed request resolves to `undefined` per this
+ * module's contract. "No such user" is not an error - it is the single most
+ * likely outcome of typing a name by hand, and the connect form tells you to
+ * check the spelling rather than offering a retry that would fail identically.
+ *
+ * Sleeper signals the not-found case with a 200 carrying a literal `null`
+ * body, not a 404, so it arrives here as a successful request with nothing in
+ * it. Checking the body is the only way to see it.
+ */
+export async function fetchSleeperUser(username) {
+    const account = await fetch(USER_BY_NAME(username))
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error resolving Sleeper username:', error);
+        });
+
+    if (account === undefined) {
+        return undefined;
+    }
+    if (!account || !account.user_id) {
+        return null;
+    }
+    // The id is kept as the string Sleeper sends. It is numeric and long
+    // enough to lose precision as a Number, and the whole app is keyed by it.
+    return { userId: String(account.user_id), username: account.display_name || username };
+}
+
+/**
+ * Every league the connected account is in for a season.
+ *
+ * Split out of the league bundle below, which used to fetch this alongside the
+ * rest. It has to come first now: with no hardcoded league id left, this list
+ * is what the app picks the starting league *from*, so it can no longer be one
+ * of the parallel requests that assumes a league was already chosen.
+ */
+export async function fetchUserLeagues({ userId, season }) {
+    return await fetch(USER_LEAGUES(userId, season))
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching leagues for this Sleeper account:', error);
+        });
+}
+
+/**
  * The five league requests that always travel together, resolved in parallel
  * and returned as one object with rosters already decorated. Resolves to
  * `undefined` if any of them fails - a partial league is not useful, and
  * silently rendering one is how a wrong board reaches the screen.
  */
-export async function fetchLeagueBundle({ leagueID, season }) {
+export async function fetchLeagueBundle({ leagueID, season, userId }) {
     const LEAGUE_PATH = LEAGUE + leagueID + '/';
     const urls = [
         LEAGUE_PATH + ROSTERS,
         LEAGUE_PATH + SLEEPER_USERS,
         LEAGUE_PATH,
-        USER_LEAGUES(season),
+        USER_LEAGUES(userId, season),
         LEAGUE_PATH + DRAFTS,
     ];
 

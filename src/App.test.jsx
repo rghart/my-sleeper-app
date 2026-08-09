@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
+import { auth } from './firebase.js';
 import rosterFlagsFixture from './lib/__fixtures__/roster-flags-2026.json';
 import realDraftFixture from './lib/__fixtures__/real-draft-2026.json';
 
@@ -24,14 +25,21 @@ vi.mock('./firebase.js', () => ({
     googleProvider: {},
 }));
 
-const authMockState = vi.hoisted(() => ({ unsubscribe: null, callback: null }));
+const authMockState = vi.hoisted(() => ({ unsubscribe: null, callback: null, user: null }));
+
+// The user the observer reports. Overridable per test because the app now
+// branches on `isAnonymous`: an anonymous visitor's Sleeper account is
+// local-only, while a real sign-in also reads the saved copy. Mutating
+// `auth.currentUser` alone does not cover it - that object feeds the
+// displayed identity, but this one is what the resolution logic receives.
+const observedUser = () => authMockState.user || { uid: 'test-uid', isAnonymous: true };
 
 vi.mock('firebase/auth', () => ({
     onAuthStateChanged: vi.fn((auth, callback) => {
         // Simplest path: report an already-signed-in (anonymous) user
         // immediately, so App skips the signInAnonymously branch entirely.
         authMockState.callback = callback;
-        callback({ uid: 'test-uid', isAnonymous: true });
+        callback({ ...observedUser(), getIdToken: vi.fn().mockResolvedValue('test-id-token') });
         authMockState.unsubscribe = vi.fn();
         return authMockState.unsubscribe;
     }),
@@ -43,6 +51,10 @@ vi.mock('firebase/auth', () => ({
 const { rosterDataRaw, managerData, playerInfo, livePicksPartial } = rosterFlagsFixture;
 const { currentDraft: draftSettings, tradedDraftPicks } = realDraftFixture;
 
+// The Sleeper account these tests connect as. This was a hardcoded constant in
+// the app itself until the app became multi-user; it lives here now because the
+// fixture's rosters and managerData are built around this manager.
+const SLEEPER_USER_ID = '521035584588267520';
 const LEAGUE_ID = '1312088290526003200';
 const OTHER_LEAGUE_ID = '9999999999999999999';
 const DRAFT_ID = 'draft123';
@@ -125,6 +137,21 @@ function mockFetch(url) {
 }
 
 describe('App', () => {
+    // Every test below renders the app expecting a league on screen, which now
+    // requires a connected Sleeper account - the id used to be a constant, so
+    // there was nothing to set up. `ryangh` is roster 1's owner in the fixture,
+    // which is what makes that roster "mine" in the assertions.
+    beforeEach(() => {
+        window.localStorage.setItem('sleeper.account', JSON.stringify({ userId: SLEEPER_USER_ID, username: 'ryangh' }));
+    });
+
+    // Cleared between tests because the app remembers the last league per
+    // account: without this, a test that switches leagues would leave the next
+    // one opening on the other league.
+    afterEach(() => {
+        window.localStorage.clear();
+    });
+
     it('renders a manager display name resolved from managerData on the draft board', async () => {
         global.fetch = vi.fn(mockFetch);
 
@@ -839,5 +866,168 @@ describe('App', () => {
         unmount();
 
         expect(authMockState.unsubscribe).toHaveBeenCalledTimes(1);
+    });
+});
+
+// The app was single-tenant until this feature: the Sleeper account was a
+// constant, so "nobody has connected one" was not a state that could exist.
+// These cover the states that constant used to make unreachable.
+describe('App, connecting a Sleeper account', () => {
+    afterEach(() => {
+        window.localStorage.clear();
+        auth.currentUser.isAnonymous = true;
+        auth.currentUser.email = null;
+        authMockState.user = null;
+    });
+
+    // Signs in for real, on both the object the app displays identity from and
+    // the one the observer hands to the account-resolution logic.
+    const signIn = () => {
+        auth.currentUser.isAnonymous = false;
+        auth.currentUser.email = 'ryan@example.com';
+        authMockState.user = { uid: 'test-uid', isAnonymous: false };
+    };
+
+    const connectFetch = (url) => {
+        if (/v1\/user\/[^/]+$/.test(url)) {
+            return jsonResponse({ user_id: SLEEPER_USER_ID, display_name: 'ryangh' });
+        }
+        return mockFetch(url);
+    };
+
+    it('asks for a Sleeper username when no account is connected', async () => {
+        global.fetch = vi.fn(connectFetch);
+
+        render(<App />);
+
+        expect(await screen.findByLabelText(/sleeper username/i)).toBeInTheDocument();
+        // The whole point of the screen: there is no league to show behind it.
+        expect(screen.queryByText(/ryangh/)).not.toBeInTheDocument();
+    });
+
+    it('loads the account’s leagues once a username is connected', async () => {
+        global.fetch = vi.fn(connectFetch);
+
+        render(<App />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText(/sleeper username/i), 'ryangh');
+        await user.click(screen.getByRole('button', { name: /^connect$/i }));
+
+        expect(await screen.findAllByText(/ryangh/, {}, { timeout: 5000 })).not.toHaveLength(0);
+        // Every league request must be built from the resolved id, not from
+        // any surviving constant.
+        expect(global.fetch.mock.calls.some(([url]) => url.includes(`/user/${SLEEPER_USER_ID}/leagues/`))).toBe(true);
+    });
+
+    it('keeps the account across a reload, so it is only typed once', async () => {
+        global.fetch = vi.fn(connectFetch);
+
+        const first = render(<App />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText(/sleeper username/i), 'ryangh');
+        await user.click(screen.getByRole('button', { name: /^connect$/i }));
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+        first.unmount();
+
+        render(<App />);
+
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+        expect(screen.queryByLabelText(/sleeper username/i)).not.toBeInTheDocument();
+    });
+
+    // A failed league-list request and an account genuinely in no leagues both
+    // end with no league to open, and it is tempting to render one message for
+    // both. Telling someone mid-outage that they are in no leagues is wrong
+    // and leaves them nothing to do about it.
+    it('separates an account in no leagues from a Sleeper that would not answer', async () => {
+        window.localStorage.setItem('sleeper.account', JSON.stringify({ userId: SLEEPER_USER_ID, username: 'ryangh' }));
+        global.fetch = vi.fn((url) => (url.includes('leagues/nfl/') ? jsonResponse([]) : mockFetch(url)));
+
+        const empty = render(<App />);
+        expect(await screen.findByText(/isn't in any leagues/i, {}, { timeout: 5000 })).toBeInTheDocument();
+        empty.unmount();
+
+        // Only the *first* league-list request fails, and every other request
+        // succeeds - including ones for a league id of `undefined`.
+        //
+        // Both of those are load-bearing. The league list is fetched twice on
+        // this path (once to choose a league, once inside the league bundle),
+        // so failing it outright fails the bundle too, and code that ignored
+        // the first failure still reached this same message by falling through
+        // into a bundle that then failed for its own reasons. Failing only the
+        // first, and serving the fallthrough's `league/undefined/` requests,
+        // means the message can only appear if the failed list was caught
+        // where it happened.
+        let leagueListCalls = 0;
+        global.fetch = vi.fn((url) => {
+            if (url.includes('leagues/nfl/')) {
+                leagueListCalls += 1;
+                if (leagueListCalls === 1) {
+                    return Promise.reject(new Error('Sleeper down'));
+                }
+            }
+            return mockFetch(url.replace('league/undefined/', `league/${LEAGUE_ID}/`));
+        });
+
+        render(<App />);
+        expect(await screen.findByText(/Couldn't load your league data/i, {}, { timeout: 5000 })).toBeInTheDocument();
+    });
+
+    // Roaming is the only reason the account is saved server-side, so the
+    // saved copy has to beat whatever this particular device had stored.
+    it('follows the signed-in account rather than the one left on this device', async () => {
+        window.localStorage.setItem('sleeper.account', JSON.stringify({ userId: '999', username: 'someone-else' }));
+        signIn();
+
+        global.fetch = vi.fn((url) => {
+            if (url.includes('/users/test-uid/sleeper_account')) {
+                return jsonResponse({ userId: SLEEPER_USER_ID, username: 'ryangh' });
+            }
+            if (url.includes('/users/test-uid')) {
+                return jsonResponse({});
+            }
+            return connectFetch(url);
+        });
+
+        render(<App />);
+
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+        expect(global.fetch.mock.calls.some(([url]) => url.includes(`/user/${SLEEPER_USER_ID}/leagues/`))).toBe(true);
+        expect(global.fetch.mock.calls.some(([url]) => url.includes('/user/999/leagues/'))).toBe(false);
+    });
+
+    // The saved account lives in the same `users/{uid}` record as every saved
+    // rank list, so an unfiltered read turns it into a phantom list in the
+    // switcher - one with no pretty_name, which renders as "dunno".
+    it('does not mistake the saved account for a saved rank list', async () => {
+        window.localStorage.setItem('sleeper.account', JSON.stringify({ userId: SLEEPER_USER_ID, username: 'ryangh' }));
+        signIn();
+
+        global.fetch = vi.fn((url) => {
+            if (url.includes('/users/test-uid/sleeper_account')) {
+                return jsonResponse({ userId: SLEEPER_USER_ID, username: 'ryangh' });
+            }
+            if (url.includes('/users/test-uid')) {
+                return jsonResponse({
+                    sleeper_account: { userId: SLEEPER_USER_ID, username: 'ryangh' },
+                    my_ranks: { pretty_name: 'My Ranks', route_name: 'my_ranks' },
+                });
+            }
+            return connectFetch(url);
+        });
+
+        render(<App />);
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+
+        // The switcher only exists on the Ranks section - RanksPanel is what
+        // publishes the list it renders from - so asserting anywhere else
+        // passes no matter what the map contains.
+        await userEvent.setup().click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
+        const switcher = await screen.findByRole('combobox', { name: 'Rank list' });
+
+        // Every option is a real saved list: the placeholder and the one list
+        // this user has. An unfiltered read adds a third for the account,
+        // labelled "dunno" because it has no pretty_name.
+        expect([...switcher.options].map((option) => option.text)).toEqual(['-- Select saved ranks list', 'My Ranks']);
     });
 });

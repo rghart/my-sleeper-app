@@ -17,6 +17,8 @@ function renderAppBar(overrides = {}) {
         myDisplayName: null,
         onSignIn: vi.fn(),
         onSignOut: vi.fn(),
+        sleeperUsername: null,
+        onDisconnectSleeper: vi.fn(),
         ...overrides,
     };
     const result = render(<AppBar {...props} />);
@@ -194,6 +196,63 @@ describe('AppBar', () => {
 
             expect(screen.getByText('SYNC')).toBeTruthy();
             expect(screen.getByText('SYNCING')).toBeTruthy();
+        });
+    });
+    // The connected Sleeper account is a second identity from the Google one:
+    // it decides whose leagues you see, not where your rank lists are saved.
+    // The drawer shows both, and they have to stay tellable apart.
+    describe('the connected Sleeper account', () => {
+        it('shows the connected username', async () => {
+            const user = userEvent.setup();
+            renderAppBar({ sleeperUsername: 'ryangh' });
+            await openDrawer(user);
+
+            expect(screen.getByText('ryangh')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /disconnect/i })).toBeInTheDocument();
+        });
+
+        it('offers nothing to disconnect when no account is connected', async () => {
+            const user = userEvent.setup();
+            renderAppBar();
+            await openDrawer(user);
+
+            expect(screen.queryByRole('button', { name: /disconnect/i })).not.toBeInTheDocument();
+        });
+
+        // Disconnecting clears the account for the signed-in user everywhere,
+        // not just on this device, so a stray tap must not do it.
+        it('asks before disconnecting rather than acting on the first tap', async () => {
+            const user = userEvent.setup();
+            const { onDisconnectSleeper } = renderAppBar({ sleeperUsername: 'ryangh' });
+            await openDrawer(user);
+
+            await user.click(screen.getByRole('button', { name: /disconnect/i }));
+
+            expect(onDisconnectSleeper).not.toHaveBeenCalled();
+            expect(screen.getByText(/disconnect .ryangh./i)).toBeInTheDocument();
+        });
+
+        it('reports the disconnect to its caller once confirmed', async () => {
+            const user = userEvent.setup();
+            const { onDisconnectSleeper } = renderAppBar({ sleeperUsername: 'ryangh' });
+            await openDrawer(user);
+
+            await user.click(screen.getByRole('button', { name: /disconnect/i }));
+            await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+
+            expect(onDisconnectSleeper).toHaveBeenCalledTimes(1);
+        });
+
+        it('backs out of the confirmation without disconnecting', async () => {
+            const user = userEvent.setup();
+            const { onDisconnectSleeper } = renderAppBar({ sleeperUsername: 'ryangh' });
+            await openDrawer(user);
+
+            await user.click(screen.getByRole('button', { name: /disconnect/i }));
+            await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+            expect(onDisconnectSleeper).not.toHaveBeenCalled();
+            expect(screen.getByText('ryangh')).toBeInTheDocument();
         });
     });
 });

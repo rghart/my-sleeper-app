@@ -7,7 +7,9 @@ import {
     fetchLeagueBundle,
     fetchLeagueSeason,
     fetchPlayerData,
+    fetchSleeperUser,
     fetchTradedDraftPicks,
+    fetchUserLeagues,
 } from './sleeperApi.js';
 import rosterFlagsFixture from './__fixtures__/roster-flags-2026.json';
 
@@ -255,6 +257,66 @@ describe('sleeperApi', () => {
             global.fetch = vi.fn(() => jsonResponse(body));
 
             expect(await fetchAvailability({ draftId: 'draft123', userId: '99' })).toEqual(body);
+        });
+    });
+    describe('fetchSleeperUser', () => {
+        // The three outcomes are the whole point of this function: the connect
+        // form says something different for each, and collapsing any two of
+        // them tells the user to retry something that cannot succeed, or
+        // reports a typo as an outage.
+        it('resolves a username to the account behind it', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ user_id: '521035584588267520', display_name: 'ryangh' }));
+
+            expect(await fetchSleeperUser('ryangh')).toEqual({ userId: '521035584588267520', username: 'ryangh' });
+        });
+
+        // Sleeper answers an unknown username with 200 and a literal `null`
+        // body rather than a 404, so this arrives as a *successful* request
+        // with nothing in it. Reading the status alone would call it a hit.
+        it('resolves to null for a username nobody owns', async () => {
+            global.fetch = vi.fn(() => jsonResponse(null));
+
+            expect(await fetchSleeperUser('nobody')).toBeNull();
+        });
+
+        it('resolves to undefined when the request fails, which is the retryable case', async () => {
+            global.fetch = vi.fn(() => Promise.reject(new Error('offline')));
+
+            expect(await fetchSleeperUser('ryangh')).toBeUndefined();
+        });
+
+        // Sleeper sends ids as JSON strings, and that is load-bearing rather
+        // than incidental: they are past Number.MAX_SAFE_INTEGER, so anything
+        // that routes one through a JS number has already silently changed the
+        // last digits and now names a different manager. Nothing here can undo
+        // that, so what this pins is that the string arrives verbatim.
+        it('passes the id through as the exact string Sleeper sent', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ user_id: '521035584588267520', display_name: 'ryangh' }));
+
+            const { userId } = await fetchSleeperUser('ryangh');
+            expect(userId).toBe('521035584588267520');
+            expect(String(Number(userId))).not.toBe(userId);
+        });
+
+        it('falls back to the typed name when the account has no display name', async () => {
+            global.fetch = vi.fn(() => jsonResponse({ user_id: '1' }));
+
+            expect((await fetchSleeperUser('Typed_Name')).username).toBe('Typed_Name');
+        });
+    });
+
+    describe('fetchUserLeagues', () => {
+        it('asks for the leagues of the account it is given', async () => {
+            global.fetch = vi.fn(() => jsonResponse([{ league_id: '1' }]));
+
+            expect(await fetchUserLeagues({ userId: '999', season: '2026' })).toEqual([{ league_id: '1' }]);
+            expect(global.fetch.mock.calls[0][0]).toBe('https://api.sleeper.app/v1/user/999/leagues/nfl/2026');
+        });
+
+        it("resolves to undefined on failure, per this module's contract", async () => {
+            global.fetch = vi.fn(() => Promise.reject(new Error('offline')));
+
+            expect(await fetchUserLeagues({ userId: '999', season: '2026' })).toBeUndefined();
         });
     });
 });

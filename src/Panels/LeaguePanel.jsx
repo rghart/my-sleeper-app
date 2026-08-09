@@ -12,6 +12,7 @@ const LeaguePanel = ({
     rankingPlayersIdsList,
     updateDraftBoard,
     myDisplayName,
+    sleeperUserId,
     addToRoster,
     fillSlot,
     savedRankLists,
@@ -54,6 +55,7 @@ const LeaguePanel = ({
                             rosterInfo={rosterInfo}
                             rankingPlayersIdsList={rankingPlayersIdsList}
                             myDisplayName={myDisplayName}
+                            sleeperUserId={sleeperUserId}
                             updateDraftBoard={updateDraftBoard}
                             savedRankLists={savedRankLists}
                             savedRankListsLoading={savedRankListsLoading}
