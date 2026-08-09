@@ -10,7 +10,7 @@ import ClockCard from '../Components/ClockCard';
 import DraftSourceSheet, { readLastMock, writeLastMock } from './DraftSourceSheet';
 import RankListSwitcher from '../Components/RankListSwitcher';
 import { managerLabel, pickNumberLabel } from './pickLabels.js';
-import { SLEEPER_API_URLS, SLEEPER_USER_ID } from '../urls';
+import { SLEEPER_API_URLS } from '../urls';
 import { fetchAvailability } from '../lib/sleeperApi.js';
 import { syncLiveDraft } from '../lib/liveDraft.js';
 import { pollIntervalMs } from '../lib/draftClock.js';
@@ -38,6 +38,7 @@ const DraftPanel = ({
     rosterInfo,
     rankingPlayersIdsList,
     myDisplayName,
+    sleeperUserId,
     updateDraftBoard,
     savedRankLists,
     savedRankListsLoading,
@@ -149,14 +150,18 @@ const DraftPanel = ({
     // What does go stale is the board itself - who is still to pick, and who
     // is already gone - and that is what `picksMade` changing means.
     useEffect(() => {
-        if (!isBestAvailableOpen || intelPlayerIds.length === 0) {
+        // No connected account means no "will he last to my pick" to answer -
+        // the whole response is relative to one manager's remaining picks -
+        // and sending `user_id=undefined` would ask the API a question about
+        // nobody rather than failing outright.
+        if (!isBestAvailableOpen || intelPlayerIds.length === 0 || !sleeperUserId) {
             return;
         }
         let cancelled = false;
 
         fetchAvailability({
             draftId: currentDraftId,
-            userId: SLEEPER_USER_ID,
+            userId: sleeperUserId,
             playerIds: intelPlayerIds,
         }).then((response) => {
             // Resolves to undefined on any failure, and intel is additive, so
@@ -170,7 +175,7 @@ const DraftPanel = ({
         return () => {
             cancelled = true;
         };
-    }, [isBestAvailableOpen, currentDraftId, picksMade, intelPlayerIds]);
+    }, [isBestAvailableOpen, currentDraftId, picksMade, intelPlayerIds, sleeperUserId]);
 
     const onTheClock = nextUnpickedPick(currentDraft.built_draft);
     // null, not a "nobody is up" sentence: ClockCard reads this as the signal

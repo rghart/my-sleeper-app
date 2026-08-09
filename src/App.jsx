@@ -17,14 +17,27 @@ import {
     fetchLeagueBundle,
     fetchLeagueSeason,
     fetchPlayerData,
+    fetchSleeperUser,
     fetchTradedDraftPicks,
+    fetchUserLeagues,
 } from './lib/sleeperApi.js';
+import {
+    pickStartingLeague,
+    readLastLeagueId,
+    readLocalAccount,
+    readRemoteAccount,
+    reconcileAccounts,
+    writeLastLeagueId,
+    writeLocalAccount,
+    writeRemoteAccount,
+} from './lib/sleeperIdentity.js';
 import { addPlayerToRoster, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
 import { checkErrors } from './lib/http.js';
 import { auth } from './firebase.js';
-import APP_DB_URLS, { SLEEPER_USER_ID } from './urls.js';
+import APP_DB_URLS from './urls.js';
+import ConnectSleeper from './Components/ConnectSleeper';
 import BestAvailable, { countAvailable } from './Components/BestAvailable';
 import { draftDefaultOwnership } from './Components/OwnershipFilters';
 
@@ -51,6 +64,16 @@ const DEFAULT_SAVED_RANK_LISTS = {
 // vocabulary with App at all, so these names stay private to this file.
 const LEAGUE_LOAD_FAILED = "Couldn't load your league data. The Sleeper API may be unavailable.";
 const TRADED_PICKS_FAILED = "Couldn't load traded draft picks. The board shows every pick under its original owner.";
+const NO_LEAGUES = "This Sleeper account isn't in any leagues for the current season.";
+
+// The `users/{uid}` record is not only rank lists any more - the connected
+// Sleeper account is saved in the same subtree, so a signed-in user's record
+// now has a key that is not a list. Filtering on shape rather than on the one
+// known key name keeps the rank-list switcher from sprouting a phantom entry
+// for it (labelled "dunno", since it has no pretty_name), and keeps doing so
+// for whatever gets stored there next.
+const onlyRankLists = (record) =>
+    Object.fromEntries(Object.entries(record).filter(([, value]) => value && value.route_name));
 
 const LOADING = {
     NONE: 'none',
@@ -86,11 +109,20 @@ class App extends React.Component {
         draftWarning: null,
         loading: LOADING.INITIAL,
         rankingPlayersIdsList: [],
-        leagueID: '1312088290526003200',
+        // No hardcoded league any more - it is chosen from whatever leagues
+        // the connected account is actually in (see startLoadingLeagues).
+        leagueID: null,
         rosterSlots: [],
         notFoundPlayers: [],
         signedIn: false,
         signedInEmail: null,
+        // The Sleeper account the app is pointed at, `{ userId, username }`,
+        // and whether we have finished looking for one yet. The second flag is
+        // what keeps the connect screen from flashing on every load before
+        // storage has been read - "not connected" and "don't know yet" are
+        // different screens.
+        sleeperAccount: null,
+        accountResolved: false,
         season: null,
         myDisplayName: null,
         savedRankLists: DEFAULT_SAVED_RANK_LISTS,
@@ -100,20 +132,82 @@ class App extends React.Component {
     selectRosterInfo = memoizeRosterInfo();
 
     componentDidMount() {
-        this.unsubscribeAuth = observeAuthState((user) => {
-            if (user) {
-                const { playerInfo } = this.state;
-                this.setState(currentUserIdentity());
-                if (playerInfo && Object.keys(playerInfo).length === 0) {
-                    this.loadEverything();
-                } else {
-                    this.loadLeague(playerInfo);
-                }
-            } else {
+        this.unsubscribeAuth = observeAuthState(async (user) => {
+            if (!user) {
                 signInAnonymous();
+                return;
+            }
+            const { playerInfo } = this.state;
+            this.setState(currentUserIdentity());
+
+            // Resolved before anything loads, because it decides *what* loads:
+            // every league request below is built from this account's id.
+            const sleeperAccount = await this.resolveSleeperAccount(user);
+            this.setState({ sleeperAccount, accountResolved: true });
+
+            if (playerInfo && Object.keys(playerInfo).length === 0) {
+                this.loadEverything(sleeperAccount);
+            } else {
+                this.loadLeague(playerInfo, sleeperAccount);
             }
         });
     }
+
+    // Where the connected account comes from, and the one place the two
+    // storage sides are reconciled. Signed-out visitors have only the local
+    // one; signing in with Google brings a saved account down (or pushes the
+    // local one up, if the account is new). See reconcileAccounts for why the
+    // remote copy wins.
+    resolveSleeperAccount = async (user) => {
+        const local = readLocalAccount();
+        if (user.isAnonymous) {
+            return local;
+        }
+        const { account, promote } = reconcileAccounts({ local, remote: await readRemoteAccount(user) });
+        if (promote) {
+            await writeRemoteAccount(user, account);
+        }
+        // Mirrored back down so the next signed-out visit to this device opens
+        // on the same account rather than back on whatever it had before.
+        if (account) {
+            writeLocalAccount(account);
+        }
+        return account;
+    };
+
+    // Connecting from the ConnectSleeper screen. The account is stored before
+    // anything is fetched: a load failure should still leave you connected,
+    // otherwise a flaky network bounces you back to the form and loses the
+    // username you just typed.
+    connectSleeperAccount = async (account) => {
+        writeLocalAccount(account);
+        if (this.state.signedIn) {
+            await writeRemoteAccount(auth.currentUser, account);
+        }
+        this.setState({ sleeperAccount: account, leagueID: null, loadError: null, loading: LOADING.INITIAL }, () =>
+            this.loadLeague(this.state.playerInfo, account),
+        );
+    };
+
+    // Deliberately clears both copies, not just this device's: "disconnect"
+    // read as a per-device action would silently reconnect the account on the
+    // next sign-in, from the copy still in the database.
+    disconnectSleeperAccount = async () => {
+        writeLocalAccount(null);
+        if (this.state.signedIn) {
+            await writeRemoteAccount(auth.currentUser, null);
+        }
+        this.setState({
+            sleeperAccount: null,
+            leagueID: null,
+            leagueData: {},
+            myDisplayName: null,
+            rosterSlots: [],
+            loadError: null,
+            draftWarning: null,
+            loading: LOADING.NONE,
+        });
+    };
 
     componentDidUpdate(prevProps, prevState) {
         // Mirrors the effect RanksPanel used to run on `[signedIn]`: a fresh
@@ -152,7 +246,7 @@ class App extends React.Component {
             });
         if (result) {
             this.setState({
-                savedRankLists: { ...DEFAULT_SAVED_RANK_LISTS, ...result },
+                savedRankLists: { ...DEFAULT_SAVED_RANK_LISTS, ...onlyRankLists(result) },
                 savedRankListsLoading: false,
             });
         } else {
@@ -175,42 +269,81 @@ class App extends React.Component {
     // board. Each step passes its result to the next as an argument instead of
     // writing it to state and reading it back: #96 and #98 were both a read of
     // a value that had not settled, and neither is expressible in this shape.
-    loadEverything = async () => {
+    loadEverything = async (sleeperAccount) => {
         const playerInfo = await fetchPlayerData();
         if (playerInfo) {
             this.setState({ playerInfo });
         }
-        await this.loadLeague(playerInfo || this.state.playerInfo);
+        await this.loadLeague(playerInfo || this.state.playerInfo, sleeperAccount);
     };
 
     // `playerInfo` is a parameter rather than a state read for the same
     // reason: on the very first load the setState above has not necessarily
     // flushed, and warnAboutMissingRosterPlayers would compare rosters against
     // an empty database and warn about every player in the league.
-    loadLeague = async (playerInfo) => {
+    loadLeague = async (playerInfo, sleeperAccount = this.state.sleeperAccount) => {
+        // Nothing to load without an account, and this is not a failure: it is
+        // the connect screen's state, which render() picks up from
+        // `sleeperAccount` being null.
+        if (!sleeperAccount) {
+            this.setState({ loading: LOADING.NONE });
+            return;
+        }
+
         const season = this.state.season || (await fetchLeagueSeason());
-        const leagueData = await fetchLeagueBundle({ leagueID: this.state.leagueID, season });
+        const leagueID = this.state.leagueID || (await this.chooseLeague(sleeperAccount, season));
+        // Three outcomes, and they must not be collapsed: a league to open, a
+        // Sleeper account genuinely in no leagues, and a failed request.
+        // Telling someone whose league list failed to load that they are in no
+        // leagues is both wrong and unactionable.
+        if (leagueID === undefined) {
+            this.setState({ season, loading: LOADING.NONE, loadError: LEAGUE_LOAD_FAILED });
+            return;
+        }
+        if (leagueID === null) {
+            this.setState({ season, loading: LOADING.NONE, loadError: NO_LEAGUES });
+            return;
+        }
+
+        const leagueData = await fetchLeagueBundle({ leagueID, season, userId: sleeperAccount.userId });
         if (!leagueData) {
             // Both panels read league data unconditionally - LeaguePanel goes
             // straight for currentLeague.name - so there is nothing to render
             // them from and no partial view worth showing. Before this the app
             // fell through to a render with leagueData still empty and threw,
             // leaving a blank page.
-            this.setState({ season, loading: LOADING.NONE, loadError: LEAGUE_LOAD_FAILED });
+            this.setState({ season, leagueID, loading: LOADING.NONE, loadError: LEAGUE_LOAD_FAILED });
             return;
         }
 
         this.warnAboutMissingRosterPlayers(leagueData.rosterData, playerInfo);
         this.setState({
             season,
+            leagueID,
             leagueData,
             loadError: null,
             loading: LOADING.LEAGUE_PANEL,
-            myDisplayName: resolveMyDisplayName(leagueData.managerData, SLEEPER_USER_ID),
+            myDisplayName: resolveMyDisplayName(leagueData.managerData, sleeperAccount.userId),
             rosterSlots: toRosterSlots(leagueData.currentLeague.roster_positions),
         });
 
         await this.loadDraft(leagueData);
+    };
+
+    // Which league to open on for an account that has not picked one this
+    // session. Costs one extra request that the league bundle also makes -
+    // unavoidable, because the bundle is built *from* a league id, so
+    // something has to know the list before it can run at all.
+    //
+    // Returns `undefined` when the list could not be fetched and `null` when
+    // it came back empty, keeping apart the two states the caller renders
+    // different messages for.
+    chooseLeague = async (sleeperAccount, season) => {
+        const leagues = await fetchUserLeagues({ userId: sleeperAccount.userId, season });
+        if (!leagues) {
+            return undefined;
+        }
+        return pickStartingLeague({ leagues, lastLeagueId: readLastLeagueId(sleeperAccount.userId) });
     };
 
     loadDraft = async (leagueData) => {
@@ -304,6 +437,11 @@ class App extends React.Component {
     };
 
     updateLeagueID = (leagueID) => {
+        // Remembered per account so the next visit opens here, which is what
+        // the hardcoded league id used to give for free.
+        if (this.state.sleeperAccount) {
+            writeLastLeagueId(this.state.sleeperAccount.userId, leagueID);
+        }
         this.setState(
             {
                 leagueID,
@@ -477,146 +615,170 @@ class App extends React.Component {
             savedRankLists,
             savedRankListsLoading,
             season,
+            sleeperAccount,
+            accountResolved,
         } = this.state;
         if (loading === LOADING.INITIAL) {
             return <Spinner size="page" />;
-        } else {
-            const rosterInfo = this.selectRosterInfo({
-                rosterData: leagueData.rosterData,
-                builtDraft: leagueData.currentDraft?.built_draft,
-            });
-            const lineupSet = buildLineupSet(rosterSlots);
-            // One element, two possible slots: beside the league section on a
-            // wide screen, or as the main column when Ranks is the active
-            // section. Built once so the two call sites cannot drift apart.
-            const ranksPanel = (
-                <RanksPanel
-                    isLoading={loading === LOADING.RANKS_PANEL}
-                    signedIn={signedIn}
-                    playerInfo={playerInfo}
-                    rosterInfo={rosterInfo}
-                    updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
-                    startLoad={this.startLoad}
-                    addToRoster={this.addToRoster}
-                    updatePlayerId={this.updatePlayerId}
-                    notFoundPlayers={notFoundPlayers}
-                    rankingPlayersIdsList={rankingPlayersIdsList}
-                    myDisplayName={myDisplayName}
-                    lineupSet={lineupSet}
-                    savedRankLists={savedRankLists}
-                    savedRankListsLoading={savedRankListsLoading}
-                    updateSavedRankLists={this.updateSavedRankLists}
-                />
-            );
+        }
+
+        // No Sleeper account connected - the state that could not exist while
+        // the account was a constant. Checked before everything below because
+        // none of it has anything to render: no league, no roster, no draft.
+        // `accountResolved` gates it so this does not flash on top of a load
+        // that is about to find a stored account.
+        if (accountResolved && !sleeperAccount) {
             return (
-                <RankListProvider>
-                    <SyncStatusProvider>
-                        <div>
-                            {/*
-                            The shell renders its own top bar, because the bar's
-                            section pills and the tab bar have to share one
-                            active id. So this is an either/or, not a stack: the
-                            bare bar below covers the states where there is no
-                            shell yet - still loading a league, or a load error
-                            that replaced everything under it - and the shell
-                            takes over the moment there is a league to navigate.
-                            Rendering both is what it looked like first, and it
-                            put two top bars on the screen.
-                        */}
-                            {!loadError && leagueData.currentLeague ? (
-                                <AppShell
-                                    sections={SECTIONS}
-                                    // The league bundle already carries the draft's status, so this is
-                                    // known the moment the shell can mount. Reading it off
-                                    // currentDraft instead would be a render too late: that is
-                                    // filled by loadDraft, which resolves after the shell is
-                                    // already on screen.
-                                    defaultSectionId={defaultSectionFor(leagueData.currentLeagueDrafts?.[0]?.status)}
-                                    identity={{
-                                        signedIn,
-                                        signedInEmail,
-                                        myDisplayName,
-                                        onSignIn: this.googleSignIn,
-                                        onSignOut: this.signOut,
-                                    }}
-                                    leagueID={leagueID}
-                                    leagueIds={leagueData.leagueIds}
-                                    updateLeagueID={this.updateLeagueID}
-                                    // Inside the shell rather than above it: the
-                                    // shell owns the top bar now, so a banner
-                                    // rendered as a sibling would sit above the bar
-                                    // instead of under it.
-                                    banner={
-                                        draftWarning ? (
-                                            <ErrorBanner
-                                                message={draftWarning}
-                                                variant="warning"
-                                                onRetry={this.retryDraftLoad}
-                                            />
-                                        ) : null
-                                    }
-                                    renderAside={this.renderBestAvailableRail}
-                                    renderSection={(activeId) => {
-                                        if (activeId === 'ranks') {
-                                            return ranksPanel;
-                                        }
-                                        if (activeId === 'leaguemates') {
-                                            return <LeaguemateIntelPanel leagueID={leagueID} season={season} />;
-                                        }
-                                        return (
-                                            <LeaguePanel
-                                                view={activeId === 'lineup' ? 'weekly' : 'draft'}
-                                                leagueData={leagueData}
-                                                rankingPlayersIdsList={rankingPlayersIdsList}
-                                                rosterSlots={rosterSlots}
-                                                playerInfo={playerInfo}
-                                                rosterInfo={rosterInfo}
-                                                isLoading={loading === LOADING.LEAGUE_PANEL}
-                                                removeFromLineup={this.removeFromLineup}
-                                                updateDraftBoard={this.updateDraftBoard}
-                                                myDisplayName={myDisplayName}
-                                                addToRoster={this.addToRoster}
-                                                fillSlot={this.fillSlot}
-                                                savedRankLists={savedRankLists}
-                                                savedRankListsLoading={savedRankListsLoading}
-                                                signedIn={signedIn}
-                                                lineupSet={lineupSet}
-                                            />
-                                        );
-                                    }}
-                                />
-                            ) : (
-                                <>
-                                    <AppBar
-                                        signedIn={signedIn}
-                                        signedInEmail={signedInEmail}
-                                        myDisplayName={myDisplayName}
-                                        onSignIn={this.googleSignIn}
-                                        onSignOut={this.signOut}
-                                    />
-                                    {/* The banner is a card, so it needs the
-                                        screen's own gutter around it rather
-                                        than sitting flush to the viewport
-                                        edges with its corners rounded. */}
-                                    <div className="p-3.5 md:p-4">
-                                        {loadError ? (
-                                            <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} />
-                                        ) : null}
-                                        {!loadError && draftWarning ? (
-                                            <ErrorBanner
-                                                message={draftWarning}
-                                                variant="warning"
-                                                onRetry={this.retryDraftLoad}
-                                            />
-                                        ) : null}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </SyncStatusProvider>
-                </RankListProvider>
+                <div>
+                    <AppBar signedIn={signedIn} signedInEmail={signedInEmail} onSignIn={this.googleSignIn} />
+                    <ConnectSleeper
+                        onConnect={this.connectSleeperAccount}
+                        resolveUsername={fetchSleeperUser}
+                        signedIn={signedIn}
+                        onSignIn={this.googleSignIn}
+                    />
+                </div>
             );
         }
+
+        const rosterInfo = this.selectRosterInfo({
+            rosterData: leagueData.rosterData,
+            builtDraft: leagueData.currentDraft?.built_draft,
+        });
+        const lineupSet = buildLineupSet(rosterSlots);
+        // One element, two possible slots: beside the league section on a
+        // wide screen, or as the main column when Ranks is the active
+        // section. Built once so the two call sites cannot drift apart.
+        const ranksPanel = (
+            <RanksPanel
+                isLoading={loading === LOADING.RANKS_PANEL}
+                signedIn={signedIn}
+                playerInfo={playerInfo}
+                rosterInfo={rosterInfo}
+                updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
+                startLoad={this.startLoad}
+                addToRoster={this.addToRoster}
+                updatePlayerId={this.updatePlayerId}
+                notFoundPlayers={notFoundPlayers}
+                rankingPlayersIdsList={rankingPlayersIdsList}
+                myDisplayName={myDisplayName}
+                lineupSet={lineupSet}
+                savedRankLists={savedRankLists}
+                savedRankListsLoading={savedRankListsLoading}
+                updateSavedRankLists={this.updateSavedRankLists}
+            />
+        );
+        return (
+            <RankListProvider>
+                <SyncStatusProvider>
+                    <div>
+                        {/*
+                        The shell renders its own top bar, because the bar's
+                        section pills and the tab bar have to share one
+                        active id. So this is an either/or, not a stack: the
+                        bare bar below covers the states where there is no
+                        shell yet - still loading a league, or a load error
+                        that replaced everything under it - and the shell
+                        takes over the moment there is a league to navigate.
+                        Rendering both is what it looked like first, and it
+                        put two top bars on the screen.
+                    */}
+                        {!loadError && leagueData.currentLeague ? (
+                            <AppShell
+                                sections={SECTIONS}
+                                // The league bundle already carries the draft's status, so this is
+                                // known the moment the shell can mount. Reading it off
+                                // currentDraft instead would be a render too late: that is
+                                // filled by loadDraft, which resolves after the shell is
+                                // already on screen.
+                                defaultSectionId={defaultSectionFor(leagueData.currentLeagueDrafts?.[0]?.status)}
+                                identity={{
+                                    signedIn,
+                                    signedInEmail,
+                                    myDisplayName,
+                                    sleeperUsername: sleeperAccount?.username,
+                                    onSignIn: this.googleSignIn,
+                                    onSignOut: this.signOut,
+                                    onDisconnectSleeper: this.disconnectSleeperAccount,
+                                }}
+                                leagueID={leagueID}
+                                leagueIds={leagueData.leagueIds}
+                                updateLeagueID={this.updateLeagueID}
+                                // Inside the shell rather than above it: the
+                                // shell owns the top bar now, so a banner
+                                // rendered as a sibling would sit above the bar
+                                // instead of under it.
+                                banner={
+                                    draftWarning ? (
+                                        <ErrorBanner
+                                            message={draftWarning}
+                                            variant="warning"
+                                            onRetry={this.retryDraftLoad}
+                                        />
+                                    ) : null
+                                }
+                                renderAside={this.renderBestAvailableRail}
+                                renderSection={(activeId) => {
+                                    if (activeId === 'ranks') {
+                                        return ranksPanel;
+                                    }
+                                    if (activeId === 'leaguemates') {
+                                        return <LeaguemateIntelPanel leagueID={leagueID} season={season} />;
+                                    }
+                                    return (
+                                        <LeaguePanel
+                                            view={activeId === 'lineup' ? 'weekly' : 'draft'}
+                                            leagueData={leagueData}
+                                            rankingPlayersIdsList={rankingPlayersIdsList}
+                                            rosterSlots={rosterSlots}
+                                            playerInfo={playerInfo}
+                                            rosterInfo={rosterInfo}
+                                            isLoading={loading === LOADING.LEAGUE_PANEL}
+                                            removeFromLineup={this.removeFromLineup}
+                                            updateDraftBoard={this.updateDraftBoard}
+                                            myDisplayName={myDisplayName}
+                                            sleeperUserId={sleeperAccount?.userId}
+                                            addToRoster={this.addToRoster}
+                                            fillSlot={this.fillSlot}
+                                            savedRankLists={savedRankLists}
+                                            savedRankListsLoading={savedRankListsLoading}
+                                            signedIn={signedIn}
+                                            lineupSet={lineupSet}
+                                        />
+                                    );
+                                }}
+                            />
+                        ) : (
+                            <>
+                                <AppBar
+                                    signedIn={signedIn}
+                                    signedInEmail={signedInEmail}
+                                    myDisplayName={myDisplayName}
+                                    onSignIn={this.googleSignIn}
+                                    onSignOut={this.signOut}
+                                />
+                                {/* The banner is a card, so it needs the
+                                    screen's own gutter around it rather
+                                    than sitting flush to the viewport
+                                    edges with its corners rounded. */}
+                                <div className="p-3.5 md:p-4">
+                                    {loadError ? (
+                                        <ErrorBanner message={loadError} onRetry={this.retryLeagueLoad} />
+                                    ) : null}
+                                    {!loadError && draftWarning ? (
+                                        <ErrorBanner
+                                            message={draftWarning}
+                                            variant="warning"
+                                            onRetry={this.retryDraftLoad}
+                                        />
+                                    ) : null}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </SyncStatusProvider>
+            </RankListProvider>
+        );
     }
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBodyScrollLock } from '../useBodyScrollLock.js';
 import { SECTIONS, PLANNED_SECTIONS } from '../sections.js';
 import { avatarInitials } from './avatarInitials.js';
@@ -24,10 +24,13 @@ const Drawer = ({
     leagueCount = 0,
     signedIn,
     signedInEmail,
+    sleeperUsername,
     onSignIn,
     onSignOut,
+    onDisconnectSleeper,
 }) => {
     const panelRef = useRef(null);
+    const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
 
     useBodyScrollLock();
 
@@ -125,6 +128,58 @@ const Drawer = ({
 
                 <div className="mt-auto flex flex-col gap-3">
                     <div className="bg-line-mid h-px w-full" />
+
+                    {/* The connected Sleeper account, kept visually separate
+                        from the sign-in block below because they are two
+                        different identities: this one decides whose leagues
+                        you are looking at, that one decides where your rank
+                        lists are saved. Disconnecting clears the account
+                        everywhere, not just on this device, which is why it
+                        asks first. */}
+                    {sleeperUsername ? (
+                        confirmingDisconnect ? (
+                            <div className="border-line rounded-row flex flex-col gap-2.5 border p-3">
+                                <p className="text-ink m-0 text-[13px]">
+                                    Disconnect “{sleeperUsername}”? Your saved rank lists stay.
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setConfirmingDisconnect(false);
+                                            onDisconnectSleeper?.();
+                                            onClose();
+                                        }}
+                                        className="bg-danger text-ground min-h-11 rounded-full px-3.5 text-[13px] font-semibold"
+                                    >
+                                        Disconnect
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmingDisconnect(false)}
+                                        className="border-line text-ink-muted min-h-11 rounded-full border px-3.5 text-[13px] font-semibold"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="min-w-0">
+                                <p className="text-ink m-0 truncate text-[13px] font-medium">{sleeperUsername}</p>
+                                <p className="text-ink-quiet m-0 font-mono text-[10px]">
+                                    Sleeper ·{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmingDisconnect(true)}
+                                        className="underline"
+                                    >
+                                        disconnect
+                                    </button>
+                                </p>
+                            </div>
+                        )
+                    ) : null}
+
                     {signedIn ? (
                         <div className="flex items-center gap-3">
                             <span className="bg-raised-2 border-line text-ink-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-mono text-[11px] font-semibold">

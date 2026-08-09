@@ -16,8 +16,7 @@ const sleeperAPI = 'https://api.sleeper.app/';
 const V1 = 'v1/';
 const LEAGUE = 'league/';
 const DRAFT = 'draft/';
-const SLEEPER_USER_ID = '521035584588267520';
-const USER = 'user/' + SLEEPER_USER_ID + '/';
+const USER = 'user/';
 const ROSTERS = 'rosters/';
 const SLEEPER_USERS = 'users/';
 const LEAGUES = 'leagues/nfl/';
@@ -51,7 +50,14 @@ const APP_DB_URLS = {
 
 const SLEEPER_API_URLS = {
     LEAGUE: sleeperAPI + V1 + LEAGUE,
-    USER_LEAGUES: (season) => sleeperAPI + V1 + USER + LEAGUES + season,
+    // Both keyed by the connected Sleeper account rather than a constant: the
+    // app used to be pinned to one hardcoded user id, and every one of these
+    // is a place that pinning leaked into a URL.
+    USER_LEAGUES: (userId, season) => sleeperAPI + V1 + USER + userId + '/' + LEAGUES + season,
+    // Sleeper has no OAuth, so a username lookup is the whole "connect your
+    // account" handshake: this resolves the name someone types to the
+    // `user_id` every other request here is built from.
+    USER_BY_NAME: (username) => sleeperAPI + V1 + USER + encodeURIComponent(username),
     NFL_STATE: sleeperAPI + V1 + STATE,
     DRAFT: sleeperAPI + V1 + DRAFT,
     ROSTERS: ROSTERS,
@@ -62,4 +68,4 @@ const SLEEPER_API_URLS = {
 };
 
 export default APP_DB_URLS;
-export { SLEEPER_API_URLS, SLEEPER_USER_ID };
+export { SLEEPER_API_URLS };

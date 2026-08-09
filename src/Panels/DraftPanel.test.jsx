@@ -27,6 +27,9 @@ const rosterData = decorateRosters({ rosterData: rosterDataRaw, managerData });
 const rosterInfo = buildRosterInfo({ rosterData, builtDraft: null });
 
 const DRAFT_ID = 'draft123';
+// The connected Sleeper account these tests act as - a prop now that the panel
+// no longer imports a hardcoded id.
+const SLEEPER_USER_ID = '521035584588267520';
 const FREE_AGENT = { id: '13307', name: 'Marlin Klein' };
 
 const jsonResponse = (data) => Promise.resolve({ ok: true, json: () => Promise.resolve(data) });
@@ -83,6 +86,10 @@ function renderPanel(overrides = {}) {
         playerInfo,
         rosterInfo,
         rankingPlayersIdsList: [rankEntry(FREE_AGENT.id)],
+        // Leaguemate intel is answered relative to one manager's remaining
+        // picks, so the panel asks for none without a connected account. This
+        // used to be a hardcoded constant inside the panel.
+        sleeperUserId: SLEEPER_USER_ID,
         updateDraftBoard,
         ...overrides,
     };

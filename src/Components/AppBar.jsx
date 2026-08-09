@@ -17,8 +17,10 @@ const AppBar = ({
     signedIn,
     signedInEmail,
     myDisplayName,
+    sleeperUsername,
     onSignIn,
     onSignOut,
+    onDisconnectSleeper,
     sections,
     activeId,
     onNavigate,
@@ -125,8 +127,10 @@ const AppBar = ({
                     leagueCount={leagueIds ? leagueIds.length : 0}
                     signedIn={signedIn}
                     signedInEmail={signedInEmail}
+                    sleeperUsername={sleeperUsername}
                     onSignIn={onSignIn}
                     onSignOut={onSignOut}
+                    onDisconnectSleeper={onDisconnectSleeper}
                 />
             ) : null}
         </>
