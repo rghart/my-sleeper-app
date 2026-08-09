@@ -878,6 +878,10 @@ describe('App, connecting a Sleeper account', () => {
         auth.currentUser.isAnonymous = true;
         auth.currentUser.email = null;
         authMockState.user = null;
+        // The app routes on the hash, and jsdom keeps one location for the
+        // whole file - so a test that navigates leaves every later test
+        // mounting on that section instead of the default one.
+        window.location.hash = '';
     });
 
     // Signs in for real, on both the object the app displays identity from and
@@ -1029,5 +1033,62 @@ describe('App, connecting a Sleeper account', () => {
         // this user has. An unfiltered read adds a third for the account,
         // labelled "dunno" because it has no pretty_name.
         expect([...switcher.options].map((option) => option.text)).toEqual(['-- Select saved ranks list', 'My Ranks']);
+    });
+    // The read-failure half of the same problem, and the one that actually
+    // bit: a denied read leaves a signed-in user on the connect screen with no
+    // account and no explanation, identical to ordinary first use. Only this
+    // path can tell them the difference.
+    it('says why it is still asking when the saved account could not be read', async () => {
+        signIn();
+
+        global.fetch = vi.fn((url) => {
+            if (url.includes('sleeper_account')) {
+                return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+            }
+            if (url.includes('/users/test-uid')) {
+                return jsonResponse({});
+            }
+            return connectFetch(url);
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('status')).toHaveTextContent(/couldn.t be read/i);
+        // Still usable - the failure is about roaming, not about this device.
+        expect(screen.getByLabelText(/sleeper username/i)).toBeInTheDocument();
+    });
+
+    // A failed save is the one that must never be silent: the app keeps
+    // working perfectly off localStorage, so without a banner the only symptom
+    // is that the account never appears on any other device - noticed weeks
+    // later, if ever.
+    it('reports a Sleeper account that could not be saved to the profile', async () => {
+        signIn();
+
+        // Reads succeed, writes are refused - the shape a too-narrow database
+        // rule actually takes, and the reason this cannot be inferred from the
+        // read alone.
+        global.fetch = vi.fn((url, options) => {
+            if (url.includes('sleeper_account')) {
+                if (options && options.method === 'PUT') {
+                    return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+                }
+                return jsonResponse(null);
+            }
+            if (url.includes('/users/test-uid')) {
+                return jsonResponse({});
+            }
+            return connectFetch(url);
+        });
+
+        render(<App />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText(/sleeper username/i), 'ryangh');
+        await user.click(screen.getByRole('button', { name: /^connect$/i }));
+
+        // The league still loads: the account works on this device, and
+        // failing the save is not a reason to withhold what already works.
+        expect(await screen.findAllByText(/ryangh/, {}, { timeout: 5000 })).not.toHaveLength(0);
+        expect(screen.getByText(/couldn't save your sleeper account/i)).toBeInTheDocument();
     });
 });

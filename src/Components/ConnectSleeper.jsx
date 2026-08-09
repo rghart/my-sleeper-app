@@ -12,11 +12,19 @@ const primaryPill = 'bg-mine text-ground min-h-11 rounded-full px-3.5 text-[13px
 // an omission: Sleeper has no auth API at all, so this is a public lookup of
 // public league data, and the copy says so rather than implying a login.
 //
+// Once signed in, the footer below has to keep saying something and say the
+// right thing. Signing in here looks like it should produce an account and
+// does not - there is nothing saved for a first-time user to load - and an
+// unexplained "still asking me for my username" reads as broken rather than as
+// first use. The third case is the one worth catching: if the saved copy could
+// not be read at all, this screen is not evidence of anything, and connecting
+// will not roam either.
+//
 // The three outcomes of that lookup are deliberately distinct. A name nobody
 // owns is the expected result of a typo and gets a "check the spelling"
 // message with no retry button, because retrying fails identically. A failed
 // request is the one worth retrying. A hit connects immediately.
-const ConnectSleeper = ({ onConnect, resolveUsername, signedIn, onSignIn }) => {
+const ConnectSleeper = ({ onConnect, resolveUsername, signedIn, signedInEmail, syncFailed, onSignIn }) => {
     const [username, setUsername] = useState('');
     const [status, setStatus] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -106,7 +114,17 @@ const ConnectSleeper = ({ onConnect, resolveUsername, signedIn, onSignIn }) => {
                     </button>{' '}
                     to save rank lists and keep this account across devices.
                 </p>
-            ) : null}
+            ) : syncFailed ? (
+                <p role="status" className="text-danger m-0 px-1 text-[12px]">
+                    Signed in{signedInEmail ? ` as ${signedInEmail}` : ''}, but your saved Sleeper account couldn’t be
+                    read. Connecting still works on this device — it just won’t follow you to others.
+                </p>
+            ) : (
+                <p className="text-ink-quiet m-0 px-1 text-[12px]">
+                    Signed in{signedInEmail ? ` as ${signedInEmail}` : ''}. No Sleeper account saved yet — connect one
+                    and it’ll follow you to your other devices.
+                </p>
+            )}
         </div>
     );
 };
