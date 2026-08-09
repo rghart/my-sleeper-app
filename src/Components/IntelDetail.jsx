@@ -1,7 +1,7 @@
 import PositionTag from './PositionTag';
 import { TermTip } from './IntelTermTip';
 import { gapPhrase, gapTone, survivalPhrase, survivalTone } from './intelGlossary.js';
-import { managerSample, stationsFor, survivalAt } from '../lib/availability.js';
+import { managerSample, ownershipSample, stationsFor, survivalAt } from '../lib/availability.js';
 
 // The drill-down (docs/leaguemate-intel.md §3 Frontend).
 //
@@ -54,6 +54,55 @@ function evidenceFor(sample) {
             return `took him ${sample.times}× of ${sample.of} drafts · their ADP ${sample.adp}`;
     }
 }
+
+/**
+ * The holdings half of a manager row: "has 5 of 58 · 9%".
+ *
+ * Returns null rather than a zero when there is no roster data, which is the
+ * whole reason the API sends `ofLeagues: null` instead of 0 - a manager we
+ * cannot see and a manager who owns him nowhere are different, and only one
+ * of them is a fact about him.
+ */
+function holdingPhrase(sample) {
+    switch (sample.kind) {
+        case 'none':
+            return null;
+        case 'droppedAll':
+            return `has him in none of their ${sample.ofLeagues}`;
+        default:
+            return sample.percent === null
+                ? `has him in ${sample.owns} of ${sample.ofLeagues}`
+                : `has him in ${sample.owns} of ${sample.ofLeagues} · ${sample.percent}%`;
+    }
+}
+
+const ManagerRow = ({ entry, threshold }) => {
+    const holding = holdingPhrase(ownershipSample(entry, threshold));
+
+    // `times of of` was printed unconditionally, which reads as "0 of 0" for
+    // a manager who owns him and has no crawled drafts - and that is not a
+    // rare case, it is the one this whole read exists for.
+    const drafted = entry.of > 0 ? `${entry.times} of ${entry.of}` : null;
+
+    // Two lines rather than one. Measured at 375px with real data, the single
+    // line truncated on exactly the rows carrying the most information -
+    // "babaghanoush123 11 of 27 · has him in 14 of 39 · 36%" needed 304px of a
+    // 219px column, so the holdings half was the part that got cut. Giving it
+    // its own full-width line costs a row of height and loses nothing.
+    return (
+        <div className="py-0.5">
+            <div className="flex items-baseline justify-between gap-2">
+                <span className="text-ink-quiet truncate text-[12px]">
+                    {entry.manager} {drafted && <span className="text-ink-dim">{drafted}</span>}
+                </span>
+                <span className="text-ink-dim shrink-0 font-mono text-[10px] tabular-nums">
+                    {entry.picks.slice(0, 3).join('  ')}
+                </span>
+            </div>
+            {holding && <p className="text-ink-dim text-[11px] leading-tight">{holding}</p>}
+        </div>
+    );
+};
 
 const Station = ({ station, threshold, isLast }) => {
     const { probability, isMine, mate, tookCount, draftsSeen } = station;
@@ -227,21 +276,17 @@ const IntelDetail = ({ target, board, atPick, threshold, onBack }) => {
 
                 {perManager.length > 0 && (
                     <div className="border-line-mid border-t pt-2">
+                        {/*
+                         * "Everyone who has drafted him" until this listed
+                         * owners too, and a heading is a claim like any other
+                         * figure. Most entries here now arrive by ownership
+                         * rather than by a pick.
+                         */}
                         <p className="text-ink-dim mb-1 font-mono text-[10px] tracking-[.08em] uppercase">
-                            Everyone who has drafted him
+                            Who has drafted or holds him
                         </p>
                         {perManager.slice(0, 4).map((entry) => (
-                            <div key={entry.manager} className="flex items-baseline justify-between gap-2 py-0.5">
-                                <span className="text-ink-quiet truncate text-[12px]">
-                                    {entry.manager}{' '}
-                                    <span className="text-ink-dim">
-                                        {entry.times} of {entry.of}
-                                    </span>
-                                </span>
-                                <span className="text-ink-dim shrink-0 font-mono text-[10px] tabular-nums">
-                                    {entry.picks.slice(0, 3).join('  ')}
-                                </span>
-                            </div>
+                            <ManagerRow key={entry.manager} entry={entry} threshold={threshold} />
                         ))}
                         <p className="text-ink-dim mt-1 font-mono text-[9px]">round.slot @ overall pick</p>
                     </div>

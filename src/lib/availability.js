@@ -135,6 +135,39 @@ export function managerSample({ times, of, adp, picks } = {}, threshold) {
     return { kind: 'countOnly', times, of };
 }
 
+/**
+ * How much can honestly be said about how much of a player a manager owns.
+ *
+ * The sibling of `managerSample` and deliberately separate from it: drafting
+ * and holding are different questions about the same person, and 94% of real
+ * ownership never appears in a draft at all (measured 2026-08-09). A manager
+ * can own him having never drafted him, or have drafted him twice and moved
+ * him on since.
+ *
+ * `ofLeagues` is null when we hold no roster data for that manager, which is
+ * not the same as owning him nowhere - so that case says nothing rather than
+ * printing a zero.
+ *
+ * A percentage is gated on the same `minDrafts` the draft ADP is gated on.
+ * `cunglomerate` is in two leagues we can see; "50%" of that is a coin flip
+ * with a decimal point, where "1 of 2" is just true.
+ */
+export function ownershipSample({ owns, ofLeagues } = {}, threshold) {
+    const { minDrafts } = threshold || {};
+
+    // No roster data for this manager at all. "0 of 0" is not a fact about
+    // him, and it is the shape most likely to be rendered as 0%.
+    if (!ofLeagues) return { kind: 'none' };
+
+    const percent = ofLeagues >= (minDrafts || Infinity) ? Math.round((100 * owns) / ofLeagues) : null;
+
+    // Drafted him at some point, holds him nowhere now. Worth stating - it
+    // is the difference between liking a player and committing to one.
+    if (!owns) return { kind: 'droppedAll', owns: 0, ofLeagues };
+
+    return { kind: 'owns', owns, ofLeagues, percent };
+}
+
 // "4.9@39" - round.slot @ overall (§4e). The overall pick is the only part
 // worth showing next to a name; the rest is receipts for the detail view.
 function pickNumber(pickString) {
