@@ -10,6 +10,8 @@ const renderConnect = (overrides = {}) => {
         onConnect: vi.fn(),
         resolveUsername: vi.fn().mockResolvedValue(ACCOUNT),
         signedIn: false,
+        signedInEmail: null,
+        syncFailed: false,
         onSignIn: vi.fn(),
         ...overrides,
     };
@@ -86,5 +88,40 @@ describe('ConnectSleeper', () => {
         renderConnect({ signedIn: true });
 
         expect(screen.queryByRole('button', { name: /sign in with google/i })).not.toBeInTheDocument();
+    });
+    // Signing in here produces no account and cannot - there is nothing saved
+    // for a first-time user to load - so the screen has to say why it is still
+    // asking. Left unexplained it reads as the sign-in having failed.
+    describe('once signed in', () => {
+        it('explains that nothing is saved yet rather than going silent', () => {
+            renderConnect({ signedIn: true, signedInEmail: 'ryan@example.com' });
+
+            expect(screen.getByText(/no sleeper account saved yet/i)).toBeInTheDocument();
+            expect(screen.getByText(/ryan@example.com/)).toBeInTheDocument();
+        });
+
+        // The distinction the whole flag exists for: "nothing saved" and
+        // "could not read what is saved" look identical from this screen, and
+        // only the second one means connecting will not roam.
+        it('says so when the saved account could not be read at all', () => {
+            renderConnect({ signedIn: true, signedInEmail: 'ryan@example.com', syncFailed: true });
+
+            expect(screen.getByRole('status')).toHaveTextContent(/couldn.t be read/i);
+            expect(screen.queryByText(/no sleeper account saved yet/i)).not.toBeInTheDocument();
+        });
+
+        it('still connects normally in that state, since this device works', async () => {
+            const { onConnect } = renderConnect({ signedIn: true, syncFailed: true });
+
+            await typeAndSubmit('ryangh');
+
+            expect(onConnect).toHaveBeenCalledWith(ACCOUNT);
+        });
+
+        it('names no email when the account has none to show', () => {
+            renderConnect({ signedIn: true, signedInEmail: null });
+
+            expect(screen.getByText(/^Signed in\. No Sleeper account saved yet/)).toBeInTheDocument();
+        });
     });
 });

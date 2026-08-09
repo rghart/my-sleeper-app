@@ -65,6 +65,8 @@ const DEFAULT_SAVED_RANK_LISTS = {
 const LEAGUE_LOAD_FAILED = "Couldn't load your league data. The Sleeper API may be unavailable.";
 const TRADED_PICKS_FAILED = "Couldn't load traded draft picks. The board shows every pick under its original owner.";
 const NO_LEAGUES = "This Sleeper account isn't in any leagues for the current season.";
+const ACCOUNT_SYNC_FAILED =
+    "Couldn't save your Sleeper account to your profile. It still works on this device, but won't follow you to others.";
 
 // The `users/{uid}` record is not only rank lists any more - the connected
 // Sleeper account is saved in the same subtree, so a signed-in user's record
@@ -123,6 +125,11 @@ class App extends React.Component {
         // different screens.
         sleeperAccount: null,
         accountResolved: false,
+        // The saved copy of the account could not be read or written while
+        // signed in - almost always a database-rules problem. Tracked because
+        // both failures are otherwise invisible: the app keeps working off
+        // localStorage and simply never roams.
+        accountSyncFailed: false,
         season: null,
         myDisplayName: null,
         savedRankLists: DEFAULT_SAVED_RANK_LISTS,
@@ -161,11 +168,18 @@ class App extends React.Component {
     resolveSleeperAccount = async (user) => {
         const local = readLocalAccount();
         if (user.isAnonymous) {
+            this.setState({ accountSyncFailed: false });
             return local;
         }
-        const { account, promote } = reconcileAccounts({ local, remote: await readRemoteAccount(user) });
-        if (promote) {
-            await writeRemoteAccount(user, account);
+        const remote = await readRemoteAccount(user);
+        // A failed read and "nothing saved yet" both leave a signed-in user on
+        // the connect screen, and used to be indistinguishable from there -
+        // the first is a problem to report, the second is just first use.
+        this.setState({ accountSyncFailed: remote === undefined });
+
+        const { account, promote } = reconcileAccounts({ local, remote });
+        if (promote && !(await writeRemoteAccount(user, account))) {
+            this.setState({ accountSyncFailed: true });
         }
         // Mirrored back down so the next signed-out visit to this device opens
         // on the same account rather than back on whatever it had before.
@@ -181,11 +195,19 @@ class App extends React.Component {
     // username you just typed.
     connectSleeperAccount = async (account) => {
         writeLocalAccount(account);
-        if (this.state.signedIn) {
-            await writeRemoteAccount(auth.currentUser, account);
-        }
-        this.setState({ sleeperAccount: account, leagueID: null, loadError: null, loading: LOADING.INITIAL }, () =>
-            this.loadLeague(this.state.playerInfo, account),
+        // Whether the save landed is reported, not swallowed. Failing quietly
+        // here is the worst version of this: the app works perfectly on this
+        // device, and the account silently never follows you anywhere else.
+        const accountSyncFailed = this.state.signedIn ? !(await writeRemoteAccount(auth.currentUser, account)) : false;
+        this.setState(
+            {
+                sleeperAccount: account,
+                accountSyncFailed,
+                leagueID: null,
+                loadError: null,
+                loading: LOADING.INITIAL,
+            },
+            () => this.loadLeague(this.state.playerInfo, account),
         );
     };
 
@@ -427,6 +449,18 @@ class App extends React.Component {
         this.setState({ loadError: null, loading: LOADING.INITIAL }, () => this.loadLeague(this.state.playerInfo));
     };
 
+    // The account save is the only thing retried here - the account itself is
+    // already connected and working off localStorage, so there is nothing to
+    // reload, only a write to attempt again.
+    retrySaveAccount = async () => {
+        const { signedIn, sleeperAccount } = this.state;
+        if (!signedIn || !sleeperAccount) {
+            this.setState({ accountSyncFailed: false });
+            return;
+        }
+        this.setState({ accountSyncFailed: !(await writeRemoteAccount(auth.currentUser, sleeperAccount)) });
+    };
+
     // Retries only the draft load, not the whole league: leagueData is already
     // in state and is not what failed, mirroring retryLeagueLoad's reasoning
     // about the player database above.
@@ -534,7 +568,9 @@ class App extends React.Component {
     // failure.
     signOut = async () => {
         if (await signOutUser()) {
-            this.setState({ rankingPlayersIdsList: [] });
+            // accountSyncFailed described the signed-in user's saved copy, so
+            // it stops applying the moment there is no signed-in user.
+            this.setState({ rankingPlayersIdsList: [], accountSyncFailed: false });
         }
     };
 
@@ -617,6 +653,7 @@ class App extends React.Component {
             season,
             sleeperAccount,
             accountResolved,
+            accountSyncFailed,
         } = this.state;
         if (loading === LOADING.INITIAL) {
             return <Spinner size="page" />;
@@ -635,6 +672,8 @@ class App extends React.Component {
                         onConnect={this.connectSleeperAccount}
                         resolveUsername={fetchSleeperUser}
                         signedIn={signedIn}
+                        signedInEmail={signedInEmail}
+                        syncFailed={accountSyncFailed}
                         onSignIn={this.googleSignIn}
                     />
                 </div>
@@ -709,13 +748,28 @@ class App extends React.Component {
                                 // rendered as a sibling would sit above the bar
                                 // instead of under it.
                                 banner={
-                                    draftWarning ? (
-                                        <ErrorBanner
-                                            message={draftWarning}
-                                            variant="warning"
-                                            onRetry={this.retryDraftLoad}
-                                        />
-                                    ) : null
+                                    <>
+                                        {/* Both are warnings about something
+                                            already on screen being incomplete,
+                                            so they stack rather than replace
+                                            each other - a failed account save
+                                            does not stop being true because
+                                            the traded picks also failed. */}
+                                        {accountSyncFailed ? (
+                                            <ErrorBanner
+                                                message={ACCOUNT_SYNC_FAILED}
+                                                variant="warning"
+                                                onRetry={this.retrySaveAccount}
+                                            />
+                                        ) : null}
+                                        {draftWarning ? (
+                                            <ErrorBanner
+                                                message={draftWarning}
+                                                variant="warning"
+                                                onRetry={this.retryDraftLoad}
+                                            />
+                                        ) : null}
+                                    </>
                                 }
                                 renderAside={this.renderBestAvailableRail}
                                 renderSection={(activeId) => {
