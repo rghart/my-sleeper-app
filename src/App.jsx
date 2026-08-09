@@ -492,18 +492,21 @@ class App extends React.Component {
     // The caller no longer names the loading state it wants: there was only
     // ever one caller and it always asked for the ranks panel, so the message
     // it passed just travelled back down to it as a prop.
-    startLoad = (searchText) => {
+    // `columnMap` is the mapping the paste sheet confirmed for a list that
+    // arrived as a table, or null for a plain one-per-line list. It rides
+    // through unread - only createRankings knows what is in it.
+    startLoad = (searchText, columnMap = null) => {
         this.setState(
             {
                 loading: LOADING.RANKS_PANEL,
             },
-            () => setTimeout(() => this.updateRankings(searchText), 0),
+            () => setTimeout(() => this.updateRankings(searchText, columnMap), 0),
         );
     };
 
-    updateRankings = (searchText) => {
+    updateRankings = (searchText, columnMap = null) => {
         const { playerInfo } = this.state;
-        const [searchResultsArray, notFoundPlayers] = createRankings(searchText, playerInfo);
+        const [searchResultsArray, notFoundPlayers] = createRankings(searchText, playerInfo, columnMap);
 
         this.setState({
             rankingPlayersIdsList: searchResultsArray,
