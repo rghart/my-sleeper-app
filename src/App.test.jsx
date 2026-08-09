@@ -1034,6 +1034,30 @@ describe('App, connecting a Sleeper account', () => {
         // labelled "dunno" because it has no pretty_name.
         expect([...switcher.options].map((option) => option.text)).toEqual(['-- Select saved ranks list', 'My Ranks']);
     });
+    // The read-failure half of the same problem, and the one that actually
+    // bit: a denied read leaves a signed-in user on the connect screen with no
+    // account and no explanation, identical to ordinary first use. Only this
+    // path can tell them the difference.
+    it('says why it is still asking when the saved account could not be read', async () => {
+        signIn();
+
+        global.fetch = vi.fn((url) => {
+            if (url.includes('sleeper_account')) {
+                return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+            }
+            if (url.includes('/users/test-uid')) {
+                return jsonResponse({});
+            }
+            return connectFetch(url);
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('status')).toHaveTextContent(/couldn.t be read/i);
+        // Still usable - the failure is about roaming, not about this device.
+        expect(screen.getByLabelText(/sleeper username/i)).toBeInTheDocument();
+    });
+
     // A failed save is the one that must never be silent: the app keeps
     // working perfectly off localStorage, so without a banner the only symptom
     // is that the account never appears on any other device - noticed weeks
