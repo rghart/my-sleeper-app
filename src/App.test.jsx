@@ -947,9 +947,27 @@ describe('App, connecting a Sleeper account', () => {
         expect(await screen.findByText(/isn't in any leagues/i, {}, { timeout: 5000 })).toBeInTheDocument();
         empty.unmount();
 
-        global.fetch = vi.fn((url) =>
-            url.includes('leagues/nfl/') ? Promise.reject(new Error('Sleeper down')) : mockFetch(url),
-        );
+        // Only the *first* league-list request fails, and every other request
+        // succeeds - including ones for a league id of `undefined`.
+        //
+        // Both of those are load-bearing. The league list is fetched twice on
+        // this path (once to choose a league, once inside the league bundle),
+        // so failing it outright fails the bundle too, and code that ignored
+        // the first failure still reached this same message by falling through
+        // into a bundle that then failed for its own reasons. Failing only the
+        // first, and serving the fallthrough's `league/undefined/` requests,
+        // means the message can only appear if the failed list was caught
+        // where it happened.
+        let leagueListCalls = 0;
+        global.fetch = vi.fn((url) => {
+            if (url.includes('leagues/nfl/')) {
+                leagueListCalls += 1;
+                if (leagueListCalls === 1) {
+                    return Promise.reject(new Error('Sleeper down'));
+                }
+            }
+            return mockFetch(url.replace('league/undefined/', `league/${LEAGUE_ID}/`));
+        });
 
         render(<App />);
         expect(await screen.findByText(/Couldn't load your league data/i, {}, { timeout: 5000 })).toBeInTheDocument();
@@ -1001,6 +1019,15 @@ describe('App, connecting a Sleeper account', () => {
         render(<App />);
         await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
-        await waitFor(() => expect(screen.queryByText('dunno')).not.toBeInTheDocument());
+        // The switcher only exists on the Ranks section - RanksPanel is what
+        // publishes the list it renders from - so asserting anywhere else
+        // passes no matter what the map contains.
+        await userEvent.setup().click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
+        const switcher = await screen.findByRole('combobox', { name: 'Rank list' });
+
+        // Every option is a real saved list: the placeholder and the one list
+        // this user has. An unfiltered read adds a third for the account,
+        // labelled "dunno" because it has no pretty_name.
+        expect([...switcher.options].map((option) => option.text)).toEqual(['-- Select saved ranks list', 'My Ranks']);
     });
 });
