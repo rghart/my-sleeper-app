@@ -252,13 +252,32 @@ describe('didHappen', () => {
 });
 
 describe('movedPlayers', () => {
-    const players = { 4001: { name: 'Some Player', position: 'WR' } };
+    const players = { 4001: { name: 'Some Player', position: 'WR' }, 4002: { name: 'Other Guy', position: 'RB' } };
 
     it('resolves ids to names through the map the endpoint sends', () => {
-        const moved = movedPlayers({ adds: { 4001: 1 }, drops: {} }, players);
+        const moved = movedPlayers({ adds: { 4001: 1 }, drops: {}, rosterId: 1 }, players);
 
         expect(moved.adds).toEqual([{ id: '4001', name: 'Some Player', position: 'WR' }]);
         expect(moved.drops).toEqual([]);
+    });
+
+    it("shows a trade from this manager's side only", () => {
+        // adds/drops are league-wide, so both sides of a trade appear in each.
+        // Unfiltered this rendered "+Some Player −Some Player" against live
+        // data, which reads as nonsense.
+        const trade = { adds: { 4001: 1, 4002: 2 }, drops: { 4001: 2, 4002: 1 }, rosterId: 1 };
+        const moved = movedPlayers(trade, players);
+
+        expect(moved.adds.map((p) => p.name)).toEqual(['Some Player']);
+        expect(moved.drops.map((p) => p.name)).toEqual(['Other Guy']);
+    });
+
+    it('shows the move unsided when the roster is unknown, rather than hiding it', () => {
+        // A league whose roster map could not be fetched. A partial answer
+        // beats a blank one.
+        const trade = { adds: { 4001: 1, 4002: 2 }, drops: {}, rosterId: null };
+
+        expect(movedPlayers(trade, players).adds).toHaveLength(2);
     });
 
     it('falls back to the id rather than dropping a player the lookup misses', () => {

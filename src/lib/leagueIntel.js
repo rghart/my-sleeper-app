@@ -149,19 +149,34 @@ export function didHappen(transaction) {
 }
 
 /**
- * The players added and dropped, resolved to names through the `players` map
- * the endpoint sends alongside.
+ * The players this manager added and dropped, resolved to names through the
+ * `players` map the endpoint sends alongside.
+ *
+ * **Filtered to their own roster.** `adds`/`drops` are league-wide: a trade
+ * adds a player to one roster and drops him from another, so rendering both
+ * sides showed the same player as added *and* dropped. Caught against live
+ * data, where a real trade read "+Marvin Harrison −Marvin Harrison".
+ * `rosterId` is which roster is theirs; when it is null (a league whose
+ * roster map could not be fetched) the move is shown unsided rather than
+ * hidden, because a partial answer beats a blank one.
  *
  * Falls back to the raw id rather than dropping a player the lookup misses -
  * a transaction that silently lists two of its three players is worse than
  * one showing an id.
  */
 export function movedPlayers(transaction, players = {}) {
+    const rosterId = transaction?.rosterId;
+
+    const mine = (moves) =>
+        Object.entries(moves || {})
+            .filter(([, roster]) => rosterId == null || roster === rosterId)
+            .map(([id]) => id);
+
     const named = (ids) => ids.map((id) => ({ id, name: players[id]?.name || id, position: players[id]?.position }));
 
     return {
-        adds: named(Object.keys(transaction?.adds || {})),
-        drops: named(Object.keys(transaction?.drops || {})),
+        adds: named(mine(transaction?.adds)),
+        drops: named(mine(transaction?.drops)),
     };
 }
 
