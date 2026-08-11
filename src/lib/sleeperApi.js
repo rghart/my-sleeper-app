@@ -238,7 +238,11 @@ export async function fetchAvailability({ draftId, userId, playerIds, atPick }) 
 }
 
 /**
- * The market's current dynasty values, best player first.
+ * The market's current values for a league shape, best player first.
+ *
+ * `settings` is that shape - see `leagueMarketSettings` in lib/marketValues.js.
+ * Omitted entirely, the API answers with the slice it stores, which is a
+ * superflex 12-team full-PPR dynasty league and quite possibly not yours.
  *
  * The response carries `settings` alongside the values, and it is not
  * optional decoration: these are superflex, 12-team, full-PPR numbers, and in
@@ -248,8 +252,19 @@ export async function fetchAvailability({ draftId, userId, playerIds, atPick }) 
  *
  * Resolves to `undefined` on failure, per this module's contract.
  */
-export async function fetchMarketValues() {
-    return await fetch(MARKET_VALUES)
+export async function fetchMarketValues(settings) {
+    // Only what the caller could work out, because the API falls back field
+    // by field - a league whose scoring settings did not load should still get
+    // its own size and format rather than nothing.
+    const params = new URLSearchParams();
+    if (settings?.dynasty != null) params.set('dynasty', String(settings.dynasty));
+    if (settings?.numQbs != null) params.set('num_qbs', String(settings.numQbs));
+    if (settings?.numTeams != null) params.set('num_teams', String(settings.numTeams));
+    if (settings?.ppr != null) params.set('ppr', String(settings.ppr));
+
+    const query = params.toString();
+
+    return await fetch(query ? `${MARKET_VALUES}?${query}` : MARKET_VALUES)
         .then(checkErrors)
         .then((response) => response.json())
         .catch((error) => {

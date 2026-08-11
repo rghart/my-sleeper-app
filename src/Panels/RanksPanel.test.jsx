@@ -755,6 +755,44 @@ describe('RanksPanel market import', () => {
         await user.click(screen.getByRole('button', { name: 'Import as a rank list' }));
     };
 
+    // The reason the endpoint takes params at all. Asking without saying which
+    // league you are in gets an answer about somebody else's.
+    it('asks the market about this league, not the default one', async () => {
+        const user = userEvent.setup();
+        renderPanel({ marketSettings: { dynasty: false, numQbs: 1, numTeams: 10, ppr: 0.5 } });
+        stubFetch(marketResponse);
+
+        await openAndImport(user);
+
+        await vi.waitFor(() => {
+            const url = global.fetch.mock.calls.map(([u]) => String(u)).find((u) => u.includes('/values'));
+            expect(url).toBeTruthy();
+            const params = new URLSearchParams(url.split('?')[1]);
+            expect(Object.fromEntries(params)).toEqual({
+                dynasty: 'false',
+                num_qbs: '1',
+                num_teams: '10',
+                ppr: '0.5',
+            });
+        });
+    });
+
+    // A league whose shape could not be read must still be able to import -
+    // the API answers with its stored slice, and the response says which.
+    it('asks without params when the league shape is unknown', async () => {
+        const user = userEvent.setup();
+        renderPanel({ marketSettings: null });
+        stubFetch(marketResponse);
+
+        await openAndImport(user);
+
+        await vi.waitFor(() => {
+            const url = global.fetch.mock.calls.map(([u]) => String(u)).find((u) => u.includes('/values'));
+            expect(url).toBeTruthy();
+            expect(url).not.toContain('?');
+        });
+    });
+
     it('offers the import above the paste box', async () => {
         const user = userEvent.setup();
         renderPanel();

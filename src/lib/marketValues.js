@@ -8,6 +8,46 @@
 // person.
 
 /**
+ * The league shape to ask the market about, read off Sleeper's league object.
+ *
+ * Values are priced against a format and the difference is not a rounding: in
+ * superflex the market's best player is a quarterback, in single-QB he is a
+ * running back. Asking without saying which league you are in gets you an
+ * answer about somebody else's.
+ *
+ * Only the fields the league actually answers are included, and the API falls
+ * back field by field - so a league object missing its scoring settings costs
+ * the PPR and nothing else, rather than the whole request.
+ */
+export function leagueMarketSettings(league) {
+    if (!league) return null;
+
+    const settings = {};
+
+    // `settings.type` is Sleeper's own: 0 redraft, 1 keeper, 2 dynasty. A
+    // keeper league is not a dynasty one and is closer to redraft for pricing,
+    // so only 2 counts.
+    if (league.settings?.type != null) settings.dynasty = league.settings.type === 2;
+
+    if (league.total_rosters) settings.numTeams = league.total_rosters;
+
+    // A SUPER_FLEX slot is what makes a league two-QB, not a second QB slot -
+    // and it is by far the common way to build one. Two literal QB slots count
+    // too, which is the rarer version of the same league.
+    const positions = league.roster_positions;
+    if (Array.isArray(positions)) {
+        const quarterbacks = positions.filter((slot) => slot === 'QB').length;
+        settings.numQbs = positions.includes('SUPER_FLEX') ? 2 : Math.max(quarterbacks, 1);
+    }
+
+    // Reception scoring is the one scoring field the market is priced on.
+    // `0` is a real answer (standard scoring) and must not be read as absent.
+    if (league.scoring_settings?.rec != null) settings.ppr = league.scoring_settings.rec;
+
+    return Object.keys(settings).length > 0 ? settings : null;
+}
+
+/**
  * The response's `asOf` as epoch milliseconds, or null.
  *
  * The API sends an ISO string and `agoLabel` subtracts from `Date.now()`, so

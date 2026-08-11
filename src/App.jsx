@@ -32,6 +32,7 @@ import {
     writeRemoteAccount,
 } from './lib/sleeperIdentity.js';
 import { insertAtRank, resolvedEntry } from './lib/rankList.js';
+import { leagueMarketSettings } from './lib/marketValues.js';
 import { addPlayerToRoster, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
@@ -725,6 +726,7 @@ class App extends React.Component {
                 addToRoster={this.addToRoster}
                 updatePlayerId={this.updatePlayerId}
                 resolveMissingPlayer={this.resolveMissingPlayer}
+                marketSettings={leagueMarketSettings(leagueData.currentLeague)}
                 notFoundPlayers={notFoundPlayers}
                 rankingPlayersIdsList={rankingPlayersIdsList}
                 myDisplayName={myDisplayName}
