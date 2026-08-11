@@ -6,6 +6,7 @@ import SaveListSheet from './SaveListSheet';
 import SegmentedControl from '../Components/SegmentedControl';
 import Sheet from '../Components/Sheet';
 import ColumnMapper from '../Components/ColumnMapper';
+import PlayerSearch from '../Components/PlayerSearch';
 import { detectColumns, detectDelimiter, toRows } from '../lib/rankColumns.js';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
@@ -89,6 +90,7 @@ const RanksPanel = ({
     rankingPlayersIdsList,
     addToRoster,
     updatePlayerId,
+    resolveMissingPlayer,
     notFoundPlayers,
     myDisplayName,
     savedRankLists,
@@ -584,18 +586,37 @@ const RanksPanel = ({
                             />
                         ))}
                         {notFoundPlayers.length > 0 && (
-                            <div className="flex flex-col gap-1 px-1 pt-3">
+                            <div className="flex flex-col gap-2 px-1 pt-4">
                                 <p className="text-ink-dim m-0 font-mono text-[11px]">
                                     {notFoundPlayers.length} pasted line{notFoundPlayers.length === 1 ? '' : 's'}{' '}
                                     matched nothing
                                 </p>
-                                {notFoundPlayers.map((item, index) => (
-                                    <p
-                                        key={`${item}-${index}`}
-                                        className="text-ink-dim m-0 truncate font-mono text-[11px]"
+                                {/* A miss used to be a sentence and nothing
+                                    more, so the only way to fix one was to
+                                    re-paste the whole list with the name spelt
+                                    differently. Each one carries the rank it
+                                    was going to occupy, so a player picked
+                                    here drops into that slot. */}
+                                {notFoundPlayers.map((item) => (
+                                    <div
+                                        key={item.ranking}
+                                        className="border-line rounded-row flex flex-col gap-1.5 border border-dashed p-2.5"
                                     >
-                                        {item}
-                                    </p>
+                                        <span className="flex items-baseline justify-between gap-2">
+                                            <span className="text-ink-muted truncate text-[13px]">
+                                                {item.search_string}
+                                            </span>
+                                            <span className="text-ink-quiet shrink-0 font-mono text-[10px] tracking-[.08em]">
+                                                RANK {item.ranking}
+                                            </span>
+                                        </span>
+                                        <PlayerSearch
+                                            playerInfo={playerInfo}
+                                            onPick={(playerId) => resolveMissingPlayer(item, playerId)}
+                                            placeholder="Find this player…"
+                                            label={`Find a player for “${item.search_string}”`}
+                                        />
+                                    </div>
                                 ))}
                             </div>
                         )}

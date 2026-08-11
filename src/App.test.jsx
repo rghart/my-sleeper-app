@@ -1092,3 +1092,74 @@ describe('App, connecting a Sleeper account', () => {
         expect(screen.getByText(/couldn't save your sleeper account/i)).toBeInTheDocument();
     });
 });
+
+// Fixing a pasted line the matcher could not place. The pieces are covered
+// apart - insertAtRank in lib/rankList.test.js, the control in
+// RanksPanel.test.jsx - but App.resolveMissingPlayer is the glue that has to
+// move both halves at once, and glue in this file has hidden bugs before.
+describe('App, fixing an unmatched line', () => {
+    beforeEach(() => {
+        localStorage.setItem('sleeper.account', JSON.stringify({ userId: SLEEPER_USER_ID, username: 'ryangh' }));
+        global.fetch = vi.fn(mockFetch);
+    });
+
+    afterEach(() => {
+        // This file keeps one jsdom location for every test in it, so a test
+        // that navigates leaves every later one mounting on that section.
+        window.location.hash = '';
+        localStorage.clear();
+    });
+
+    const pasteAndResolve = async (user) => {
+        render(<App />);
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+        await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+
+        const box = screen.getByPlaceholderText('Copy + Paste rankings here...');
+        await user.click(box);
+        // A real player, then a name nobody has. The second line is the miss,
+        // and it takes rank 2.
+        await user.paste(`1. ${SWAPPED_PLAYER.name}\n2. Zzzz Qqqqmore`);
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+    };
+
+    it('offers a search for the line it could not place', async () => {
+        const user = userEvent.setup();
+        await pasteAndResolve(user);
+
+        expect(await screen.findByText('1 pasted line matched nothing')).toBeTruthy();
+        expect(screen.getByRole('textbox', { name: /Find a player for/ })).toBeTruthy();
+    });
+
+    it('puts the player picked into the list and drops the miss', async () => {
+        const user = userEvent.setup();
+        await pasteAndResolve(user);
+
+        await screen.findByText('1 pasted line matched nothing');
+        const box = screen.getByRole('textbox', { name: /Find a player for/ });
+        await user.click(box);
+        await user.paste('Marlin');
+        await user.click(await screen.findByRole('button', { name: /Marlin Klein/ }));
+
+        // Both halves, in one commit: the player is in the list and the miss
+        // is gone. Either one alone is a bug this test exists to catch.
+        expect(screen.getByRole('group', { name: /^Marlin Klein, / })).toBeTruthy();
+        expect(screen.queryByText(/matched nothing/)).toBeNull();
+    });
+
+    it('gives the resolved player the rank the miss was holding', async () => {
+        const user = userEvent.setup();
+        await pasteAndResolve(user);
+
+        await screen.findByText('1 pasted line matched nothing');
+        await user.click(screen.getByRole('textbox', { name: /Find a player for/ }));
+        await user.paste('Marlin');
+        await user.click(await screen.findByRole('button', { name: /Marlin Klein/ }));
+
+        // The rank renders as ListRow's leading ordinal - a bare numeral,
+        // not the "Rank: n" label, which only appears in the editing branch.
+        const row = screen.getByRole('group', { name: /^Marlin Klein, / });
+        expect(within(row).getByText('2')).toBeTruthy();
+    });
+});

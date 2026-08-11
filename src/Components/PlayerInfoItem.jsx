@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ListRow from './ListRow';
 import PositionTag from './PositionTag';
+import PlayerSearch from './PlayerSearch';
 import { playerAccessibleName, playerAvailabilityText } from './playerInfoLabels.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
@@ -17,7 +18,6 @@ const PlayerInfoItem = ({
     myDisplayName,
 }) => {
     const [editingPlayer, setEditingPlayer] = useState(false);
-    const [searchValue, setSearchValue] = useState('');
     const taken = isTaken(rosterInfo, player.player_id);
     const rosteredByName = rosteredBy(rosterInfo, player.player_id);
     const inLineup = isInLineup(lineupSet, player.player_id);
@@ -104,44 +104,11 @@ const PlayerInfoItem = ({
                                     <i>&quot;{searchData.search_string}&quot; </i> - Search score:{' '}
                                     {searchData.match_results[0][1]}
                                 </p>
-                                <input
-                                    type="text"
-                                    onChange={(e) => setSearchValue(e.target.value)}
+                                <PlayerSearch
+                                    playerInfo={playerInfo}
+                                    onPick={updatePlayerInfo}
                                     placeholder="Manually update player"
-                                    className="border-line text-ink bg-raised-2 rounded-row w-full border px-2 py-1 text-sm"
                                 />
-                                {searchValue.length > 2 && (
-                                    <div className="flex max-h-[100px] flex-col gap-1 overflow-y-scroll">
-                                        {Object.values(playerInfo)
-                                            .filter((candidate) =>
-                                                candidate.full_name
-                                                    ? candidate.full_name
-                                                          .toLowerCase()
-                                                          .includes(searchValue.toLowerCase()) &&
-                                                      ['QB', 'RB', 'WR', 'TE'].includes(candidate.position)
-                                                    : null,
-                                            )
-                                            .sort((a, b) => a.search_rank - b.search_rank)
-                                            .map((candidate) => (
-                                                <button
-                                                    type="button"
-                                                    key={candidate.player_id}
-                                                    onClick={() => updatePlayerInfo(candidate.player_id)}
-                                                    className="border-line text-ink hover:border-ink-muted rounded-row flex w-full items-center gap-2 border px-2 py-1 text-left text-sm"
-                                                >
-                                                    <span className="min-w-0 flex-1 truncate">
-                                                        {candidate.full_name}
-                                                    </span>
-                                                    <PositionTag position={candidate.position} />
-                                                    {candidate.team && (
-                                                        <span className="text-ink-muted shrink-0 text-xs">
-                                                            {candidate.team}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            ))}
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>

@@ -31,6 +31,7 @@ import {
     writeLocalAccount,
     writeRemoteAccount,
 } from './lib/sleeperIdentity.js';
+import { insertAtRank, resolvedEntry } from './lib/rankList.js';
 import { addPlayerToRoster, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
@@ -530,6 +531,23 @@ class App extends React.Component {
         this.setState({ rankingPlayersIdsList: newRankingPlayersIdsList });
     };
 
+    // A line the matcher could not place, resolved by hand. Until now a miss
+    // was a dead end: the panel listed it and there was nothing to do about it
+    // but re-paste the whole list with the name spelt differently.
+    //
+    // Functional setState because the two pieces have to move together - the
+    // player joins the list in the same commit the miss leaves it, or a fast
+    // second pick reads a stale list and drops the first one.
+    resolveMissingPlayer = (miss, playerId) => {
+        this.setState((prevState) => ({
+            rankingPlayersIdsList: insertAtRank(
+                prevState.rankingPlayersIdsList,
+                resolvedEntry({ playerId, ranking: miss.ranking, searchString: miss.search_string }),
+            ),
+            notFoundPlayers: prevState.notFoundPlayers.filter((item) => item.ranking !== miss.ranking),
+        }));
+    };
+
     addToRoster = (player) => {
         this.setState((prevState) => addPlayerToRoster({ player, rosterSlots: prevState.rosterSlots }));
     };
@@ -701,6 +719,7 @@ class App extends React.Component {
                 startLoad={this.startLoad}
                 addToRoster={this.addToRoster}
                 updatePlayerId={this.updatePlayerId}
+                resolveMissingPlayer={this.resolveMissingPlayer}
                 notFoundPlayers={notFoundPlayers}
                 rankingPlayersIdsList={rankingPlayersIdsList}
                 myDisplayName={myDisplayName}

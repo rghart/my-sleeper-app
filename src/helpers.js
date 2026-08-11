@@ -59,7 +59,11 @@ const createRankings = (searchText, playerInfo, columnMap = null) => {
                 search_string: describeParsed(parsed),
             });
         } else {
-            notFoundPlayers.push(`Couldn't find ${describeParsed(parsed)} Rank: ${ranking}`);
+            // An object rather than the sentence it used to be. A miss is
+            // something the user can now resolve by hand, and resolving it
+            // needs the rank it was going to occupy - which a formatted
+            // string had thrown away.
+            notFoundPlayers.push({ ranking, search_string: describeParsed(parsed) });
         }
         ranking += 1;
     });

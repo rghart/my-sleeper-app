@@ -40,7 +40,15 @@ describe('createRankings', () => {
     it('reports a line it could not match, without breaking the paste', () => {
         const [results, notFound] = createRankings('Bijan Robinson\nNobody Whatsoever\nPuka Nacua', playerInfo);
         expect(winners(results)).toEqual(['1', '2']);
-        expect(notFound).toEqual(["Couldn't find Nobody Whatsoever Rank: 2"]);
+        expect(notFound).toEqual([{ ranking: 2, search_string: 'Nobody Whatsoever' }]);
+    });
+
+    // The rank is what makes a miss fixable rather than just reported: the
+    // panel offers a search against it, and the player picked drops into this
+    // slot. A formatted sentence had thrown it away.
+    it('carries the rank a miss was going to occupy', () => {
+        const [, notFound] = createRankings('Bijan Robinson\nNobody Whatsoever\nPuka Nacua', playerInfo);
+        expect(notFound[0].ranking).toBe(2);
     });
 
     // A miss still occupies its place in the list the user pasted, so the rank
@@ -50,11 +58,11 @@ describe('createRankings', () => {
         expect(results[0].ranking).toBe(2);
     });
 
-    // The miss message used to interpolate the team and position raw, so a
+    // The miss label used to interpolate the team and position raw, so a
     // two-token name that missed rendered "undefined  undefined" to the user.
-    it('names only the fields the line carried in a miss message', () => {
+    it('names only the fields the line carried in a miss label', () => {
         const [, notFound] = createRankings('Nobody Whatsoever', playerInfo);
-        expect(notFound[0]).not.toMatch(/undefined|null/);
+        expect(notFound[0].search_string).not.toMatch(/undefined|null/);
     });
 
     it.each([
