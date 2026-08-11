@@ -21,22 +21,55 @@ const indexCache = new WeakMap();
  *
  * Sorted by `search_rank` because the order survives into the results: Fuse
  * returns equal-scoring matches in index order, so two players who match a
- * line equally well come back best-known-first.
+ * line equally well come back best-known-first. The per-surname indexes in
+ * `buckets` are built from this same array, so they inherit that order.
  */
+const fuseOver = (players) =>
+    new Fuse(
+        players,
+        { useExtendedSearch: true, includeScore: true, keys: FUSE_KEYS },
+        Fuse.createIndex(FUSE_KEYS, players),
+    );
+
 export function playerIndex(playerInfo) {
     const cached = indexCache.get(playerInfo);
     if (cached) return cached;
 
     const players = Object.values(playerInfo);
     players.sort((a, b) => a.search_rank - b.search_rank);
-    const fuse = new Fuse(
-        players,
-        { useExtendedSearch: true, includeScore: true, keys: FUSE_KEYS },
-        Fuse.createIndex(FUSE_KEYS, players),
-    );
 
-    indexCache.set(playerInfo, fuse);
-    return fuse;
+    // `players` is kept beside the index so `matchPlayer` can narrow to a
+    // surname before searching, and `buckets` memoises the small index built
+    // for each surname - a list with several Browns in it pays for one.
+    const index = { fuse: fuseOver(players), players, buckets: new Map() };
+
+    indexCache.set(playerInfo, index);
+    return index;
+}
+
+/**
+ * A small index over just the players whose surname contains `last`.
+ *
+ * Containment rather than equality, which matters more than it looks: the
+ * surname clause is Fuse's fuzzy-match operator, so `brown` already matches
+ * `Brownlee` at score 0 in the full search. Narrowing to an exact `brown`
+ * would drop those, and a dropped score-0 candidate can change the winner.
+ * Containment keeps every candidate the full search would have scored at or
+ * near 0 and only gives up the genuinely fuzzy ones - a misspelt surname,
+ * which is what the fallback in `matchPlayer` is for.
+ */
+function bucketFor(index, last) {
+    const key = last.toLowerCase();
+    const cached = index.buckets.get(key);
+    if (cached) return cached;
+
+    const players = index.players.filter((player) => player.search_last_name?.includes(key));
+    // Null rather than an empty index: "no surname like this" is the signal
+    // the caller needs to fall back, and building a Fuse over nothing to
+    // discover that is waste.
+    const bucket = players.length > 0 ? fuseOver(players) : null;
+    index.buckets.set(key, bucket);
+    return bucket;
 }
 
 /**
@@ -57,11 +90,8 @@ export function playerIndex(playerInfo) {
  * 9.67s -> 5.10s, with identical winners. A line carrying both fields still
  * emits all four and is unchanged.
  *
- * That leaves the honest number bad: seconds, for a paste. The cost is the
- * fuzzy surname match scanning every player, and an exact-surname prefilter
- * measures at 1.7ms/line against 62.5. It is not done here because it would
- * stop tolerating a misspelt surname, which is a matching-quality decision
- * rather than a refactor.
+ * The remaining cost is that every branch is scanned against every player,
+ * which is what `bucketFor` addresses - see `matchPlayer`.
  */
 function queryFor({ first, last, team, position }) {
     const name = [
@@ -91,9 +121,27 @@ const MAX_CANDIDATES = 5;
 export function matchPlayer(parsed, index) {
     if (!parsed?.last) return [];
 
-    return index
-        .search(queryFor(parsed))
-        .filter((result) => POSITIONS.includes(result.item.position))
-        .slice(0, MAX_CANDIDATES)
-        .map((result) => [result.item.player_id, result.score.toFixed(3)]);
+    const query = queryFor(parsed);
+    const take = (results) =>
+        results
+            .filter((result) => POSITIONS.includes(result.item.position))
+            .slice(0, MAX_CANDIDATES)
+            .map((result) => [result.item.player_id, result.score.toFixed(3)]);
+
+    // Almost every line names a surname that exists, so almost every line is
+    // answered by an index a few dozen players wide instead of nine thousand.
+    // A Fuse score is computed per record and does not depend on the size of
+    // the corpus, so the narrow search returns the same players with the same
+    // scores - it just does not have to look at everyone to say so.
+    const bucket = bucketFor(index, parsed.last);
+    if (bucket) {
+        const narrow = take(bucket.search(query));
+        if (narrow.length > 0) return narrow;
+    }
+
+    // Nothing contained that surname, or nothing in the bucket survived the
+    // position filter. Either way the full fuzzy search is the only thing that
+    // can still match a misspelt name, and it is rare enough to be worth its
+    // cost when it happens.
+    return take(index.fuse.search(query));
 }
