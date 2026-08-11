@@ -62,6 +62,7 @@ function renderPanel(overrides = {}) {
         addToRoster: vi.fn(),
         updatePlayerId: vi.fn(),
         notFoundPlayers: [],
+        resolveMissingPlayer: vi.fn(),
         myDisplayName: MY_DISPLAY_NAME,
         // savedRankLists/updateSavedRankLists are lifted to App (see
         // App.jsx's loadSavedRankLists/updateSavedRankLists) - RanksPanel now
@@ -569,5 +570,74 @@ describe('RanksPanel column mapping', () => {
 
         expect(await screen.findByRole('combobox', { name: 'NAME' })).toHaveValue('1');
         expect(screen.getByPlaceholderText('Copy + Paste rankings here...')).toHaveValue(CSV);
+    });
+});
+
+// A pasted line the matcher could not place used to be a sentence and nothing
+// else - the only way to act on one was to re-paste the whole list. Each miss
+// now carries the rank it was going to occupy and offers a search against it.
+describe('RanksPanel unmatched lines', () => {
+    const miss = { ranking: 2, search_string: 'Nobdy Whatsoever' };
+
+    // Marlin Klein is the free agent from the fixture at the top of this file.
+    const searchFor = async (user, text) => {
+        const box = screen.getByRole('textbox', { name: /Find a player for/ });
+        await user.click(box);
+        await user.paste(text);
+        return box;
+    };
+
+    it('says how many lines matched nothing', () => {
+        renderPanel({ notFoundPlayers: [miss] });
+
+        expect(screen.getByText('1 pasted line matched nothing')).toBeTruthy();
+    });
+
+    it('shows what the line said and the rank it was going to take', () => {
+        renderPanel({ notFoundPlayers: [miss] });
+
+        expect(screen.getByText('Nobdy Whatsoever')).toBeTruthy();
+        expect(screen.getByText('RANK 2')).toBeTruthy();
+    });
+
+    it('offers a search against the line, not just a report of it', () => {
+        renderPanel({ notFoundPlayers: [miss] });
+
+        expect(screen.getByRole('textbox', { name: 'Find a player for “Nobdy Whatsoever”' })).toBeTruthy();
+    });
+
+    it('resolves the miss with the player picked', async () => {
+        const user = userEvent.setup();
+        // Empty list: the fixture's own rows render player names too, and the
+        // point here is the name offered by the search.
+        const { resolveMissingPlayer } = renderPanel({ notFoundPlayers: [miss], rankingPlayersIdsList: [] });
+
+        await searchFor(user, 'Marlin');
+        await user.click(screen.getByRole('button', { name: /Marlin Klein/ }));
+
+        expect(resolveMissingPlayer).toHaveBeenCalledWith(miss, FREE_AGENT.id);
+    });
+
+    it('waits for a real query before listing anyone', async () => {
+        const user = userEvent.setup();
+        renderPanel({ notFoundPlayers: [miss], rankingPlayersIdsList: [] });
+
+        await searchFor(user, 'Ma');
+
+        expect(screen.queryByRole('button', { name: /Marlin Klein/ })).toBeNull();
+    });
+
+    it('gives each miss its own search', () => {
+        renderPanel({
+            notFoundPlayers: [miss, { ranking: 5, search_string: 'Someone Else' }],
+        });
+
+        expect(screen.getAllByRole('textbox', { name: /Find a player for/ })).toHaveLength(2);
+    });
+
+    it('says nothing at all when every line matched', () => {
+        renderPanel({ notFoundPlayers: [] });
+
+        expect(screen.queryByText(/matched nothing/)).toBeNull();
     });
 });
