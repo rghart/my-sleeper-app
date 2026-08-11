@@ -641,3 +641,82 @@ describe('RanksPanel unmatched lines', () => {
         expect(screen.queryByText(/matched nothing/)).toBeNull();
     });
 });
+
+// Tiers render as groups of the same rows, not different rows. The property
+// that matters most is the negative one: a list with no tier structure has to
+// look exactly as it did before any of this existed.
+describe('RanksPanel tiers', () => {
+    const tiered = (playerId, ranking, tier, tier_label) => ({
+        match_results: [[playerId, '0.000']],
+        ranking: String(ranking),
+        search_string: 'a pasted rank line',
+        tier,
+        tier_label,
+    });
+
+    // FREE_AGENT and MY_PLAYER both survive the default filters;
+    // OTHERS_PLAYER does not, which is what the emptied-tier case leans on.
+    const twoTiers = [
+        tiered(FREE_AGENT.id, 1, 1, 'Tier 1 \u00b7 Elite'),
+        tiered(MY_PLAYER.id, 2, 2, 'Tier 2 \u00b7 Solid'),
+    ];
+
+    it('heads each tier with its label', () => {
+        renderPanel({ rankingPlayersIdsList: twoTiers });
+
+        expect(screen.getByRole('heading', { name: /Tier 1 \u00b7 Elite/ })).toBeTruthy();
+        expect(screen.getByRole('heading', { name: /Tier 2 \u00b7 Solid/ })).toBeTruthy();
+    });
+
+    it('counts the players in each tier', () => {
+        renderPanel({
+            rankingPlayersIdsList: [
+                tiered(FREE_AGENT.id, 1, 1, 'Tier 1'),
+                tiered(MY_PLAYER.id, 2, 1, 'Tier 1'),
+                tiered(OTHERS_PLAYER.id, 3, 2, 'Tier 2'),
+            ],
+        });
+
+        const tierOne = screen.getByRole('region', { name: 'Tier 1' });
+        expect(within(tierOne).getByRole('heading').textContent).toContain('2');
+    });
+
+    it('puts each player under their own tier', () => {
+        renderPanel({ rankingPlayersIdsList: twoTiers });
+
+        expect(within(screen.getByRole('region', { name: /Tier 1/ })).getByText(FREE_AGENT.name)).toBeTruthy();
+        expect(within(screen.getByRole('region', { name: /Tier 2/ })).getByText(MY_PLAYER.name)).toBeTruthy();
+    });
+
+    // The reason grouping happens after filtering rather than before.
+    it('drops a tier the filters have emptied, rather than heading nothing', () => {
+        renderPanel({
+            rankingPlayersIdsList: [tiered(FREE_AGENT.id, 1, 1, 'Tier 1'), tiered(OTHERS_PLAYER.id, 2, 2, 'Tier 2')],
+        });
+
+        // Tier 2 holds only someone else's player, hidden by default.
+        expect(screen.getByRole('region', { name: 'Tier 1' })).toBeTruthy();
+        expect(screen.queryByRole('region', { name: 'Tier 2' })).toBeNull();
+    });
+
+    it('keeps the surviving tiers apart when the ones between are filtered out', () => {
+        renderPanel({
+            rankingPlayersIdsList: [
+                tiered(FREE_AGENT.id, 1, 1, 'Tier 1'),
+                tiered(OTHERS_PLAYER.id, 2, 2, 'Tier 2'),
+                tiered(MY_PLAYER.id, 3, 3, 'Tier 3'),
+            ],
+        });
+
+        expect(screen.getByRole('region', { name: 'Tier 1' })).toBeTruthy();
+        expect(screen.getByRole('region', { name: 'Tier 3' })).toBeTruthy();
+    });
+
+    // An untiered list renders as it always has - no heading, not even one.
+    it('draws no tier heading for a list without tiers', () => {
+        renderPanel();
+
+        expect(screen.queryByRole('heading', { name: /Tier/ })).toBeNull();
+        expect(screen.getByText(FREE_AGENT.name)).toBeTruthy();
+    });
+});

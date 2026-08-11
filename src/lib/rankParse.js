@@ -157,3 +157,29 @@ export function parseRankLine(line) {
 export function describeParsed({ first, last, team, position }) {
     return [first, last, team, position].filter(Boolean).join(' ');
 }
+
+/**
+ * The tier a line announces, or null where it is not announcing one.
+ *
+ * Tiered lists are ordinary, and until now every one of their headings was
+ * read as a player: `Tier 1` parses to the name `Tier` and lands in the miss
+ * list, and `Tier 2 - Elite` parses to `Tier Elite` and could match somebody.
+ * So this is a fix for tiered pastes as much as it is a feature.
+ *
+ * The word `tier` and a number are both required. A bare `T3` is not enough -
+ * ranking lists are full of `RB1`-shaped labels, and guessing wrong here costs
+ * a real player rather than a heading. Surrounding punctuation is stripped, so
+ * `--- Tier 4 ---`, `TIER 3:` and `Tier 2 - Elite` all read.
+ */
+export function readTierMarker(line) {
+    const trimmed = line.replace(/^[^a-zA-Z0-9]+/, '').replace(/[^a-zA-Z0-9]+$/, '');
+    const match = trimmed.match(/^tier\s*[:#-]?\s*(\d+)\s*[:.\-–—]?\s*(.*)$/i);
+    if (!match) return null;
+
+    const [, number, rest] = match;
+    const descriptor = rest.trim();
+    return {
+        number: Number(number),
+        label: descriptor ? `Tier ${number} · ${descriptor}` : `Tier ${number}`,
+    };
+}

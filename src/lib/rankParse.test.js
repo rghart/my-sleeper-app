@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeParsed, parseRankLine } from './rankParse.js';
+import { describeParsed, parseRankLine, readTierMarker } from './rankParse.js';
 
 describe('parseRankLine', () => {
     it('reads a bare first and last name', () => {
@@ -159,5 +159,40 @@ describe('describeParsed', () => {
     // user as "Couldn't find Bijan Robinson undefined  undefined Rank: 1".
     it('omits the fields the line did not carry, rather than printing undefined', () => {
         expect(describeParsed({ first: 'Bijan', last: 'Robinson', team: null, position: null })).toBe('Bijan Robinson');
+    });
+});
+
+describe('readTierMarker', () => {
+    it.each([
+        ['Tier 1', 1, 'Tier 1'],
+        ['TIER 3:', 3, 'Tier 3'],
+        ['tier 2', 2, 'Tier 2'],
+        ['--- Tier 4 ---', 4, 'Tier 4'],
+        ['** Tier 5 **', 5, 'Tier 5'],
+        ['Tier #6', 6, 'Tier 6'],
+    ])('reads %s', (line, number, label) => {
+        expect(readTierMarker(line)).toEqual({ number, label });
+    });
+
+    it.each([
+        ['Tier 2 - Elite', 'Tier 2 \u00b7 Elite'],
+        ['Tier 1: Studs', 'Tier 1 \u00b7 Studs'],
+        ['Tier 7 Dart throws', 'Tier 7 \u00b7 Dart throws'],
+    ])('keeps the descriptor in %s', (line, label) => {
+        expect(readTierMarker(line).label).toBe(label);
+    });
+
+    // The word and the number are both required. Ranking lists are full of
+    // `RB1`-shaped labels, and reading one of those as a heading would cost a
+    // real player rather than a heading.
+    it.each([
+        ['a bare abbreviation', 'T3'],
+        ['a positional label', 'RB1'],
+        ['the word with no number', 'Tier'],
+        ['a name that starts with the word', 'Tiernan Smith'],
+        ['a player line', "1. Ja'Marr Chase CIN WR"],
+        ['an empty line', ''],
+    ])('does not read %s as a tier', (_label, line) => {
+        expect(readTierMarker(line)).toBeNull();
     });
 });

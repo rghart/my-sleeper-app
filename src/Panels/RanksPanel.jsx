@@ -8,6 +8,7 @@ import Sheet from '../Components/Sheet';
 import ColumnMapper from '../Components/ColumnMapper';
 import PlayerSearch from '../Components/PlayerSearch';
 import { detectColumns, detectDelimiter, toRows } from '../lib/rankColumns.js';
+import { groupByTier } from '../lib/rankTiers.js';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
 import Spinner from '../Components/Spinner';
@@ -352,6 +353,27 @@ const RanksPanel = ({
         )
         .filter((results) => (filters.showRookiesOnly ? playerInfo[results.match_results[0][0]].years_exp < 1 : true));
 
+    // Grouped after filtering, not before: a position chip can empty a tier
+    // out of the middle of a list, and a heading over nothing is worse than no
+    // heading. Null for a list that has no tier structure.
+    const tierGroups = groupByTier(filteredResults);
+
+    const renderRow = (results, i) => (
+        <PlayerInfoItem
+            key={`${results.match_results[0]}${i}`}
+            player={playerInfo[results.match_results[0][0]]}
+            playerInfo={playerInfo}
+            rosterInfo={rosterInfo}
+            lineupSet={lineupSet}
+            isNewRankList={isNewRankList}
+            addToRoster={addToRoster}
+            updatePlayerId={updatePlayerId}
+            searchData={results}
+            adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
+            myDisplayName={myDisplayName}
+        />
+    );
+
     const adpTypeLabel = adpType ? ADP_TYPE_LABELS[adpType] : null;
 
     const nonDefaultFilterCount =
@@ -570,21 +592,32 @@ const RanksPanel = ({
                     )}
 
                     <div className="flex flex-col gap-0.5 px-2">
-                        {filteredResults.map((results, i) => (
-                            <PlayerInfoItem
-                                key={`${results.match_results[0]}${i}`}
-                                player={playerInfo[results.match_results[0][0]]}
-                                playerInfo={playerInfo}
-                                rosterInfo={rosterInfo}
-                                lineupSet={lineupSet}
-                                isNewRankList={isNewRankList}
-                                addToRoster={addToRoster}
-                                updatePlayerId={updatePlayerId}
-                                searchData={results}
-                                adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
-                                myDisplayName={myDisplayName}
-                            />
-                        ))}
+                        {/* Tiers are groups of the same rows, not different
+                            rows, so the row itself is written once and the
+                            grouped and ungrouped shapes both reach for it.
+                            `tierGroups` is null for a list with no tier
+                            structure, which renders exactly as it always
+                            has - no heading, not even one. */}
+                        {tierGroups
+                            ? tierGroups.map((group) => (
+                                  <section key={group.tier} aria-label={group.label} className="flex flex-col gap-0.5">
+                                      {/* The count is pushed to the far edge
+                                          rather than set beside the label: a
+                                          numeral trailing "TIER 2 · SOLID
+                                          STARTERS" by one space reads as part
+                                          of the name of the tier. */}
+                                      <h4 className="border-line-quiet bg-ground sticky top-0 z-10 m-0 flex items-baseline gap-2 border-b px-1.5 py-1.5">
+                                          <span className="text-ink-dim min-w-0 truncate font-mono text-[11px] font-semibold tracking-[.12em] uppercase">
+                                              {group.label}
+                                          </span>
+                                          <span className="text-ink-quiet ml-auto shrink-0 font-mono text-[10px] tracking-[.08em]">
+                                              {group.entries.length}
+                                          </span>
+                                      </h4>
+                                      {group.entries.map(renderRow)}
+                                  </section>
+                              ))
+                            : filteredResults.map(renderRow)}
                         {notFoundPlayers.length > 0 && (
                             <div className="flex flex-col gap-2 px-1 pt-4">
                                 <p className="text-ink-dim m-0 font-mono text-[11px]">
