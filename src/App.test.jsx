@@ -77,6 +77,18 @@ function mockFetch(url) {
     if (url.includes('legacy/players')) {
         return jsonResponse(playerInfo);
     }
+    if (url.includes('/api/v1/values')) {
+        // Two real fixture players, so an imported list can be told apart from
+        // a pasted one on screen.
+        return jsonResponse({
+            settings: { source: 'fantasycalc', format: 'dynasty', numQbs: 2, numTeams: 12, ppr: 1 },
+            asOf: '2026-08-11T08:30:02Z',
+            values: [
+                { playerId: '13307', overallRank: 1, positionRank: 1, value: 9000 },
+                { playerId: '13274', overallRank: 2, positionRank: 1, value: 8000 },
+            ],
+        });
+    }
     if (url.includes('dlf_adp')) {
         // RanksPanel fetches this on mount regardless of the App-level flow
         // under test; give it a successful response so it stays out of the way.
@@ -1161,5 +1173,60 @@ describe('App, fixing an unmatched line', () => {
         // not the "Rank: n" label, which only appears in the editing branch.
         const row = screen.getByRole('group', { name: /^Marlin Klein, / });
         expect(within(row).getByText('2')).toBeTruthy();
+    });
+});
+
+// Importing the market's values, through the real App rather than the panel.
+// The list arrives already keyed by Sleeper id, so what needs an integration
+// test is not the matching (there is none) but the state: a list replaced from
+// any source has to take the previous list's misses with it.
+describe('App, importing market values', () => {
+    beforeEach(() => {
+        localStorage.setItem('sleeper.account', JSON.stringify({ userId: SLEEPER_USER_ID, username: 'ryangh' }));
+        global.fetch = vi.fn(mockFetch);
+    });
+
+    afterEach(() => {
+        window.location.hash = '';
+        localStorage.clear();
+    });
+
+    const openRanks = async (user) => {
+        render(<App />);
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+        await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
+    };
+
+    it('fills the rank list from the market', async () => {
+        const user = userEvent.setup();
+        await openRanks(user);
+
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'Import as a rank list' }));
+
+        expect(await screen.findByRole('group', { name: /^Marlin Klein, / })).toBeTruthy();
+    });
+
+    // The bug this fixes predates the import: opening a saved list after a
+    // paste that missed left "1 pasted line matched nothing" attached to a
+    // list that was never pasted. Replacing the list from any source drops
+    // the misses with it.
+    it("drops the previous list's misses when a new list replaces it", async () => {
+        const user = userEvent.setup();
+        await openRanks(user);
+
+        // A paste that misses, so there is something to leave behind.
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        const box = screen.getByPlaceholderText('Copy + Paste rankings here...');
+        await user.click(box);
+        await user.paste('1. Zzzz Qqqqmore');
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+        expect(await screen.findByText(/matched nothing/)).toBeTruthy();
+
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'Import as a rank list' }));
+
+        await screen.findByRole('group', { name: /^Marlin Klein, / });
+        expect(screen.queryByText(/matched nothing/)).toBeNull();
     });
 });

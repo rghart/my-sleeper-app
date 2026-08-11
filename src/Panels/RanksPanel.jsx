@@ -14,6 +14,9 @@ import APP_DB_URLS from '../urls.js';
 import Spinner from '../Components/Spinner';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 import { fetchRequest } from '../lib/http.js';
+import { fetchMarketValues } from '../lib/sleeperApi.js';
+import { asOfMillis, settingsLabel, toRankList } from '../lib/marketValues.js';
+import { agoLabel } from '../lib/relativeTime.js';
 import { positionClass } from './pickLabels.js';
 import { usePublishRankList } from '../RankList.jsx';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
@@ -124,6 +127,14 @@ const RanksPanel = ({
     // edits on the next keystroke.
     const [columnMap, setColumnMap] = useState(null);
     const [fileError, setFileError] = useState(null);
+    // Held from the last import rather than fetched on mount: the settings and
+    // the timestamp are only ever shown next to the import control, and
+    // fetching 31KB of values to label a button nobody has pressed is work for
+    // nothing.
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState(null);
+    const [marketSettings, setMarketSettings] = useState(null);
+    const [marketAsOf, setMarketAsOf] = useState(null);
     const pasteButtonRef = useRef(null);
     const saveButtonRef = useRef(null);
     const filtersChipRef = useRef(null);
@@ -152,6 +163,39 @@ const RanksPanel = ({
         reader.onerror = () => setFileError(`Couldn't read ${file.name}.`);
         reader.onload = () => takeText(String(reader.result ?? ''));
         reader.readAsText(file);
+    };
+
+    // The one route into the rank list that parses nothing and matches
+    // nothing: the values arrive keyed by Sleeper id, so `toRankList` is a
+    // lookup rather than a search. Everything the paste box needs
+    // (lib/rankParse.js, lib/rankMatch.js) exists to bridge human text to
+    // those ids, and this side of the sheet never crosses that bridge.
+    const importMarketValues = async () => {
+        setImporting(true);
+        setImportError(null);
+
+        const response = await fetchMarketValues();
+        const entries = toRankList(response?.values, playerInfo);
+        setImporting(false);
+
+        // Three-way, not two: a failed request and a market that has nothing
+        // to say are different, and telling someone their league is fine when
+        // the server is down is the failure this app keeps re-learning.
+        if (!response) {
+            setImportError("Couldn't reach the value feed. Try again, or paste a list below.");
+            return;
+        }
+        if (entries.length === 0) {
+            setImportError('The value feed came back empty. Paste a list below instead.');
+            return;
+        }
+
+        setMarketSettings(settingsLabel(response.settings));
+        setMarketAsOf(asOfMillis(response.asOf));
+        updateRankingPlayersIdsList(entries);
+        setCurrentListVal(defaultSelector);
+        setIsNewRankList(true);
+        setShowPasteSheet(false);
     };
 
     const startSearch = () => {
@@ -508,6 +552,57 @@ const RanksPanel = ({
                                     takeFile(event.dataTransfer.files?.[0]);
                                 }}
                             >
+                                {/* Above the paste box, because it is the only
+                                    thing here that works with nothing in hand.
+                                    A first run otherwise lands on an empty
+                                    Ranks screen with everything downstream -
+                                    best available, the board's order, the
+                                    lineup builder - waiting on a list the user
+                                    has to go and find. */}
+                                <div className="border-line rounded-row flex flex-col gap-2 border p-3">
+                                    <span className="flex items-baseline justify-between gap-2">
+                                        <span className="text-ink text-[14px] font-semibold">
+                                            Start from the market
+                                        </span>
+                                        {marketAsOf && (
+                                            <span className="text-ink-quiet shrink-0 font-mono text-[10px]">
+                                                {agoLabel(marketAsOf)}
+                                            </span>
+                                        )}
+                                    </span>
+                                    {/* Never just "current rankings". These are
+                                        one provider's values at fixed settings,
+                                        and in a 1QB or 10-team league they are
+                                        about a different game rather than
+                                        slightly off. */}
+                                    <span className="text-ink-quiet font-mono text-[10px] tracking-[.06em]">
+                                        {marketSettings
+                                            ? `FantasyCalc · ${marketSettings}`
+                                            : 'FantasyCalc trade values'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        disabled={importing}
+                                        onClick={importMarketValues}
+                                        className="border-line text-ink min-h-11 rounded-full border px-3.5 text-[13px] font-semibold disabled:opacity-50"
+                                    >
+                                        {importing ? 'Importing…' : 'Import as a rank list'}
+                                    </button>
+                                    {importError && (
+                                        <p role="alert" className="text-warn m-0 text-[13px]">
+                                            {importError}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <span className="flex items-center gap-2.5">
+                                    <span className="bg-line-mid h-px flex-1" />
+                                    <span className="text-ink-dim font-mono text-[10px] tracking-[.14em] uppercase">
+                                        or
+                                    </span>
+                                    <span className="bg-line-mid h-px flex-1" />
+                                </span>
+
                                 <textarea
                                     className="border-line bg-raised-2 text-ink caret-ink-muted rounded-row w-full border p-3"
                                     placeholder="Copy + Paste rankings here..."
