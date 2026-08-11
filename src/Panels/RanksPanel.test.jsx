@@ -759,7 +759,11 @@ describe('RanksPanel market import', () => {
     // league you are in gets an answer about somebody else's.
     it('asks the market about this league, not the default one', async () => {
         const user = userEvent.setup();
-        renderPanel({ marketSettings: { dynasty: false, numQbs: 1, numTeams: 10, ppr: 0.5 } });
+        // `superflex` is included deliberately: it is display-only, and this
+        // assertion is exact, so a leak of it into the query fails here.
+        renderPanel({
+            marketSettings: { dynasty: false, numQbs: 1, numTeams: 10, ppr: 0.5, superflex: false },
+        });
         stubFetch(marketResponse);
 
         await openAndImport(user);
@@ -853,16 +857,46 @@ describe('RanksPanel market import', () => {
         expect(screen.getByText('Start from the market').closest('div').textContent).not.toMatch(/NaN/);
     });
 
+    const importThenReopen = async (user) => {
+        await openAndImport(user);
+        await vi.waitFor(() => expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull());
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+    };
+
     it('shows the settings it read back from the response', async () => {
         const user = userEvent.setup();
         renderPanel();
         stubFetch(marketResponse);
 
-        await openAndImport(user);
-        await vi.waitFor(() => expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull());
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await importThenReopen(user);
+
+        // No league to hand, so the quarterback count is all that can honestly
+        // be said - naming a format would be describing a league nobody has
+        // described.
+        expect(screen.getByText(/Dynasty · 2QB · 12-team · PPR/)).toBeTruthy();
+    });
+
+    // Superflex and two-QB are different leagues that price alike, so the
+    // response says 2 for both. Only the league object knows which.
+    it('names superflex when the league has a superflex slot', async () => {
+        const user = userEvent.setup();
+        renderPanel({ marketSettings: { numQbs: 2, numTeams: 12, superflex: true } });
+        stubFetch(marketResponse);
+
+        await importThenReopen(user);
 
         expect(screen.getByText(/Dynasty · superflex · 12-team · PPR/)).toBeTruthy();
+    });
+
+    it('does not call a two-QB league superflex', async () => {
+        const user = userEvent.setup();
+        renderPanel({ marketSettings: { numQbs: 2, numTeams: 12, superflex: false } });
+        stubFetch(marketResponse);
+
+        await importThenReopen(user);
+
+        expect(screen.queryByText(/superflex/)).toBeNull();
+        expect(screen.getByText(/Dynasty · 2QB · 12-team · PPR/)).toBeTruthy();
     });
 
     it('says so when the feed cannot be reached, rather than emptying the list', async () => {

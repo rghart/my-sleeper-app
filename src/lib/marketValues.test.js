@@ -61,14 +61,35 @@ describe('toRankList', () => {
 describe('settingsLabel', () => {
     it('reads the settings back as a sentence', () => {
         expect(settingsLabel({ format: 'dynasty', numQbs: 2, numTeams: 12, ppr: 1 })).toBe(
-            'Dynasty · superflex · 12-team · PPR',
+            'Dynasty · 2QB · 12-team · PPR',
         );
+    });
+
+    // Superflex and two-QB are different leagues that price alike, so the
+    // response carries a count of 2 for both. Calling every 2 "superflex" told
+    // anyone in a two-QB league their list was priced for a format they are
+    // not in.
+    it('names superflex only when the league actually has a superflex slot', () => {
+        const response = { format: 'dynasty', numQbs: 2, numTeams: 12, ppr: 1 };
+
+        expect(settingsLabel(response, { superflex: true })).toBe('Dynasty · superflex · 12-team · PPR');
+        expect(settingsLabel(response, { superflex: false })).toBe('Dynasty · 2QB · 12-team · PPR');
+    });
+
+    // With only the response to hand, the count is a claim about what the
+    // values are priced on rather than about a league nobody has described.
+    it('falls back to the count when the league is unknown', () => {
+        expect(settingsLabel({ format: 'dynasty', numQbs: 2, numTeams: 12, ppr: 1 }, null)).toContain('2QB');
     });
 
     it('names a single-QB format rather than calling it superflex', () => {
         expect(settingsLabel({ format: 'dynasty', numQbs: 1, numTeams: 10, ppr: 0.5 })).toBe(
             'Dynasty · 1QB · 10-team · half-PPR',
         );
+    });
+
+    it('names a redraft league redraft', () => {
+        expect(settingsLabel({ format: 'redraft', numQbs: 1, numTeams: 12, ppr: 1 })).toContain('redraft');
     });
 
     it('has nothing to say without settings', () => {
@@ -109,6 +130,7 @@ describe('leagueMarketSettings', () => {
             dynasty: true,
             numTeams: 12,
             numQbs: 2,
+            superflex: true,
             ppr: 1,
         });
     });
@@ -124,10 +146,30 @@ describe('leagueMarketSettings', () => {
         expect(leagueMarketSettings(league({ roster_positions: positions })).numQbs).toBe(1);
     });
 
-    // The rarer way to build the same league.
+    // A different league, not the same one built differently: two QB slots
+    // force a second starter, a superflex slot only permits one. They price
+    // alike, which is why the provider takes one number for both.
     it('counts two literal QB slots as two quarterbacks', () => {
         const positions = ['QB', 'QB', 'RB', 'WR', 'TE', 'BN'];
-        expect(leagueMarketSettings(league({ roster_positions: positions })).numQbs).toBe(2);
+        const settings = leagueMarketSettings(league({ roster_positions: positions }));
+
+        expect(settings.numQbs).toBe(2);
+        expect(settings.superflex).toBe(false);
+    });
+
+    // The count is how many quarterbacks a lineup can hold, so the two slot
+    // kinds add. The previous reading stopped at the superflex and said two.
+    it('adds a superflex on top of the QB slots', () => {
+        const positions = ['QB', 'QB', 'SUPER_FLEX', 'RB', 'WR', 'BN'];
+        expect(leagueMarketSettings(league({ roster_positions: positions })).numQbs).toBe(3);
+    });
+
+    it('reports a single-QB league as neither superflex nor two-QB', () => {
+        const positions = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'BN'];
+        const settings = leagueMarketSettings(league({ roster_positions: positions }));
+
+        expect(settings.numQbs).toBe(1);
+        expect(settings.superflex).toBe(false);
     });
 
     // Sleeper's own encoding: 0 redraft, 1 keeper, 2 dynasty. A keeper league
