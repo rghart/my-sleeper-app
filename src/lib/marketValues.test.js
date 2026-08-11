@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asOfMillis, settingsLabel, toRankList } from './marketValues.js';
+import { asOfMillis, leagueMarketSettings, settingsLabel, toRankList } from './marketValues.js';
 
 const playerInfo = {
     1: { player_id: '1', full_name: 'Josh Allen', position: 'QB', team: 'BUF' },
@@ -89,5 +89,79 @@ describe('asOfMillis', () => {
         ['a value that is not a date', 'whenever'],
     ])('has nothing to report for %s', (_label, asOf) => {
         expect(asOfMillis(asOf)).toBeNull();
+    });
+});
+
+// Reading the league shape off Sleeper's own league object. Getting this wrong
+// is not a rounding error - asking the market about superflex when the league
+// is single-QB returns a list whose best player plays a different position.
+describe('leagueMarketSettings', () => {
+    const league = (overrides = {}) => ({
+        total_rosters: 12,
+        settings: { type: 2 },
+        roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'BN'],
+        scoring_settings: { rec: 1 },
+        ...overrides,
+    });
+
+    it('reads a superflex dynasty league', () => {
+        expect(leagueMarketSettings(league())).toEqual({
+            dynasty: true,
+            numTeams: 12,
+            numQbs: 2,
+            ppr: 1,
+        });
+    });
+
+    // A SUPER_FLEX slot is what makes a league two-QB, and it is by far the
+    // common way to build one.
+    it('counts a SUPER_FLEX slot as a second quarterback', () => {
+        expect(leagueMarketSettings(league()).numQbs).toBe(2);
+    });
+
+    it('reads a single-QB league as one', () => {
+        const positions = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'BN'];
+        expect(leagueMarketSettings(league({ roster_positions: positions })).numQbs).toBe(1);
+    });
+
+    // The rarer way to build the same league.
+    it('counts two literal QB slots as two quarterbacks', () => {
+        const positions = ['QB', 'QB', 'RB', 'WR', 'TE', 'BN'];
+        expect(leagueMarketSettings(league({ roster_positions: positions })).numQbs).toBe(2);
+    });
+
+    // Sleeper's own encoding: 0 redraft, 1 keeper, 2 dynasty. A keeper league
+    // prices closer to redraft than to dynasty.
+    it.each([
+        [0, false],
+        [1, false],
+        [2, true],
+    ])('reads settings.type %i as dynasty=%s', (type, dynasty) => {
+        expect(leagueMarketSettings(league({ settings: { type } })).dynasty).toBe(dynasty);
+    });
+
+    // Standard scoring is a real answer, not a missing one.
+    it('keeps a zero PPR rather than treating it as absent', () => {
+        expect(leagueMarketSettings(league({ scoring_settings: { rec: 0 } })).ppr).toBe(0);
+    });
+
+    it('reads half PPR', () => {
+        expect(leagueMarketSettings(league({ scoring_settings: { rec: 0.5 } })).ppr).toBe(0.5);
+    });
+
+    // The API falls back field by field, so a league missing one field should
+    // cost that field and nothing else.
+    it('omits only the field the league cannot answer', () => {
+        const settings = leagueMarketSettings(league({ scoring_settings: undefined }));
+        expect(settings).not.toHaveProperty('ppr');
+        expect(settings).toMatchObject({ dynasty: true, numTeams: 12, numQbs: 2 });
+    });
+
+    it.each([
+        ['no league', undefined],
+        ['a null league', null],
+        ['a league with nothing readable', {}],
+    ])('has nothing to say for %s', (_label, value) => {
+        expect(leagueMarketSettings(value)).toBeNull();
     });
 });

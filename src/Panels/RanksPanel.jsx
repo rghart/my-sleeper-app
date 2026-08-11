@@ -95,6 +95,7 @@ const RanksPanel = ({
     addToRoster,
     updatePlayerId,
     resolveMissingPlayer,
+    marketSettings: leagueShape,
     notFoundPlayers,
     myDisplayName,
     savedRankLists,
@@ -174,7 +175,7 @@ const RanksPanel = ({
         setImporting(true);
         setImportError(null);
 
-        const response = await fetchMarketValues();
+        const response = await fetchMarketValues(leagueShape);
         const entries = toRankList(response?.values, playerInfo);
         setImporting(false);
 
