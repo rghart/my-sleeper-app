@@ -191,7 +191,10 @@ const RanksPanel = ({
             return;
         }
 
-        setMarketSettings(settingsLabel(response.settings));
+        // The league shape is passed alongside the response because the
+        // response cannot tell superflex from a true two-QB league - both are
+        // a quarterback count of 2 to the provider.
+        setMarketSettings(settingsLabel(response.settings, leagueShape));
         setMarketAsOf(asOfMillis(response.asOf));
         updateRankingPlayersIdsList(entries);
         setCurrentListVal(defaultSelector);

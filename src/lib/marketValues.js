@@ -31,13 +31,29 @@ export function leagueMarketSettings(league) {
 
     if (league.total_rosters) settings.numTeams = league.total_rosters;
 
-    // A SUPER_FLEX slot is what makes a league two-QB, not a second QB slot -
-    // and it is by far the common way to build one. Two literal QB slots count
-    // too, which is the rarer version of the same league.
+    // Two-QB and superflex are different leagues, not two names for one. A
+    // two-QB league has two dedicated QB slots and you *must* start two; a
+    // superflex slot takes any position, so you *may* start a second. Both
+    // raise quarterback value, which is why they price alike and why the old
+    // reading here got away with treating them as the same thing.
+    //
+    // How many quarterbacks a lineup can hold is the sum, not either one: a
+    // league with two QB slots and a superflex can start three, and the
+    // previous version reported two because it stopped at the superflex.
     const positions = league.roster_positions;
     if (Array.isArray(positions)) {
         const quarterbacks = positions.filter((slot) => slot === 'QB').length;
-        settings.numQbs = positions.includes('SUPER_FLEX') ? 2 : Math.max(quarterbacks, 1);
+        const superflex = positions.includes('SUPER_FLEX');
+        settings.numQbs = Math.max(quarterbacks + (superflex ? 1 : 0), 1);
+        // Display only, and deliberately not sent: FantasyCalc prices on a
+        // quarterback count and has no notion of *which* format produced it,
+        // so this exists so the card can name the league correctly rather
+        // than to change what is asked for. A true two-QB league forces the
+        // second starter and so wants a quarterback slightly more than a
+        // superflex league does - that is a distinction the provider's
+        // parameter cannot carry, and inventing a number for it would be
+        // making one up.
+        settings.superflex = superflex;
     }
 
     // Reception scoring is the one scoring field the market is priced on.
@@ -62,17 +78,36 @@ export function asOfMillis(asOf) {
 }
 
 /** How the settings read in a sentence, so nothing has to claim more. */
-export function settingsLabel(settings) {
+export function settingsLabel(settings, league) {
     if (!settings) return null;
     const { format, numQbs, numTeams, ppr } = settings;
     return [
         format === 'dynasty' ? 'Dynasty' : format,
-        numQbs >= 2 ? 'superflex' : `${numQbs}QB`,
+        quarterbackTerm(numQbs, league),
         `${numTeams}-team`,
         ppr === 1 ? 'PPR' : ppr === 0.5 ? 'half-PPR' : `${ppr} PPR`,
     ]
         .filter(Boolean)
         .join(' · ');
+}
+
+/**
+ * What to call the quarterback format.
+ *
+ * The response cannot answer this. It carries a quarterback *count*, and
+ * both a superflex league and a genuine two-QB league arrive as 2 - so
+ * labelling every 2 "superflex" told anyone in a two-QB league their list was
+ * priced for a format they are not in. The league object knows the
+ * difference; the response never will.
+ *
+ * Falls back to the count when the league is unknown, which reads as `2QB`.
+ * That is a claim about what the values are priced on rather than about a
+ * league nobody has described, and is the honest thing to say with only the
+ * response to hand.
+ */
+function quarterbackTerm(numQbs, league) {
+    if (league?.superflex) return 'superflex';
+    return `${numQbs}QB`;
 }
 
 /**
