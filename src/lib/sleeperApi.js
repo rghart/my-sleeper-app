@@ -2,7 +2,7 @@ import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { ACTIVE_PLAYERS, AVAILABILITY, LEAGUE_INTEL, MANAGER_ACTIVITY } = APP_DB_URLS;
+const { ACTIVE_PLAYERS, AVAILABILITY, LEAGUE_INTEL, MANAGER_ACTIVITY, MARKET_VALUES } = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } =
     SLEEPER_API_URLS;
 
@@ -234,5 +234,25 @@ export async function fetchAvailability({ draftId, userId, playerIds, atPick }) 
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error fetching leaguemate intel:', error);
+        });
+}
+
+/**
+ * The market's current dynasty values, best player first.
+ *
+ * The response carries `settings` alongside the values, and it is not
+ * optional decoration: these are superflex, 12-team, full-PPR numbers, and in
+ * a 1-QB or 10-team league they are about a different game rather than
+ * slightly off. Render one only with the other to hand - same rule as
+ * `coverage` on manager activity.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchMarketValues() {
+    return await fetch(MARKET_VALUES)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching market values:', error);
         });
 }

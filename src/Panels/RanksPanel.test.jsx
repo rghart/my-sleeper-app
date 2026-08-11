@@ -720,3 +720,149 @@ describe('RanksPanel tiers', () => {
         expect(screen.getByText(FREE_AGENT.name)).toBeTruthy();
     });
 });
+
+// Importing the market's values. The point of this route is that it does no
+// guessing - the values arrive keyed by Sleeper id - so what these cover is
+// the wiring and, mostly, that the screen does not overclaim about what the
+// numbers are.
+describe('RanksPanel market import', () => {
+    const marketResponse = {
+        settings: { source: 'fantasycalc', format: 'dynasty', numQbs: 2, numTeams: 12, ppr: 1 },
+        asOf: '2026-08-11T08:30:02Z',
+        values: [
+            { playerId: FREE_AGENT.id, overallRank: 1, positionRank: 1, value: 9000 },
+            { playerId: MY_PLAYER.id, overallRank: 2, positionRank: 1, value: 8000 },
+        ],
+    };
+
+    // The ADP request fires on mount and goes through the same global fetch,
+    // so the stub answers by URL rather than unconditionally. It has to be
+    // installed *after* renderPanel, which assigns its own global.fetch and
+    // would otherwise clobber it.
+    const stubFetch = (valuesResponse, { ok = true } = {}) => {
+        global.fetch = vi.fn((url) => {
+            if (String(url).includes('/api/v1/values')) {
+                return ok
+                    ? Promise.resolve({ ok: true, statusText: 'OK', json: () => Promise.resolve(valuesResponse) })
+                    : Promise.resolve({ ok: false, status: 500, statusText: 'Server Error' });
+            }
+            return Promise.resolve({ ok: true, statusText: 'OK', json: () => Promise.resolve({}) });
+        });
+    };
+
+    const openAndImport = async (user) => {
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'Import as a rank list' }));
+    };
+
+    it('offers the import above the paste box', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        stubFetch(marketResponse);
+
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+
+        expect(screen.getByRole('button', { name: 'Import as a rank list' })).toBeTruthy();
+    });
+
+    it('builds a rank list in the order the market ranks them', async () => {
+        const user = userEvent.setup();
+        const { updateRankingPlayersIdsList } = renderPanel();
+        stubFetch(marketResponse);
+
+        await openAndImport(user);
+
+        await vi.waitFor(() => expect(updateRankingPlayersIdsList).toHaveBeenCalled());
+        const entries = updateRankingPlayersIdsList.mock.calls.at(-1)[0];
+        expect(entries.map((entry) => entry.match_results[0][0])).toEqual([FREE_AGENT.id, MY_PLAYER.id]);
+        expect(entries.map((entry) => entry.ranking)).toEqual([1, 2]);
+    });
+
+    it('closes the sheet once the list is in', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        stubFetch(marketResponse);
+
+        await openAndImport(user);
+
+        await vi.waitFor(() => expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull());
+    });
+
+    // The standing rule for this whole feature: the numbers are fine, the
+    // sentence next to them overclaims. These are one provider's values at
+    // fixed settings, and a 1QB league is a different game.
+    it('says what the values are of, rather than calling them the rankings', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        stubFetch(marketResponse);
+
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+
+        expect(screen.getByText(/FantasyCalc/)).toBeTruthy();
+    });
+
+    // It rendered "NaNd ago": the API sends an ISO string and agoLabel
+    // subtracts from Date.now(). Every unit test passed; a browser caught it.
+    it('renders a readable age, not NaN, for the value list', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        stubFetch(marketResponse);
+
+        await openAndImport(user);
+        await vi.waitFor(() => expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull());
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+
+        expect(screen.getByText('Start from the market').closest('div').textContent).not.toMatch(/NaN/);
+    });
+
+    it('shows the settings it read back from the response', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        stubFetch(marketResponse);
+
+        await openAndImport(user);
+        await vi.waitFor(() => expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull());
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+
+        expect(screen.getByText(/Dynasty · superflex · 12-team · PPR/)).toBeTruthy();
+    });
+
+    it('says so when the feed cannot be reached, rather than emptying the list', async () => {
+        const user = userEvent.setup();
+        const { updateRankingPlayersIdsList } = renderPanel();
+        stubFetch(null, { ok: false });
+
+        await openAndImport(user);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(/Couldn't reach the value feed/);
+        expect(updateRankingPlayersIdsList).not.toHaveBeenCalled();
+    });
+
+    // A reachable feed with nothing in it is a different situation from an
+    // unreachable one, and collapsing them tells someone the server is down
+    // when it is answering.
+    it('tells an empty feed apart from an unreachable one', async () => {
+        const user = userEvent.setup();
+        const { updateRankingPlayersIdsList } = renderPanel();
+        stubFetch({ settings: marketResponse.settings, asOf: null, values: [] });
+
+        await openAndImport(user);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(/came back empty/);
+        expect(updateRankingPlayersIdsList).not.toHaveBeenCalled();
+    });
+
+    it('drops a value the player pool has never heard of', async () => {
+        const user = userEvent.setup();
+        const { updateRankingPlayersIdsList } = renderPanel();
+        stubFetch({
+            ...marketResponse,
+            values: [...marketResponse.values, { playerId: '99999999', overallRank: 3, positionRank: 9, value: 1 }],
+        });
+
+        await openAndImport(user);
+
+        await vi.waitFor(() => expect(updateRankingPlayersIdsList).toHaveBeenCalled());
+        expect(updateRankingPlayersIdsList.mock.calls.at(-1)[0]).toHaveLength(2);
+    });
+});

@@ -486,8 +486,13 @@ class App extends React.Component {
         );
     };
 
+    // Replacing the list drops the misses with it. They belong to the paste
+    // that produced them, so leaving them behind attaches "3 pasted lines
+    // matched nothing" to a list that was never pasted - visible today by
+    // opening a saved list after a paste that missed, and now also the
+    // difference between an imported list and the one before it.
     updateRankingPlayersIdsList = (rankingPlayersIdsList) => {
-        this.setState({ rankingPlayersIdsList });
+        this.setState({ rankingPlayersIdsList, notFoundPlayers: [] });
     };
 
     // The caller no longer names the loading state it wants: there was only
