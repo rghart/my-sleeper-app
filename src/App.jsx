@@ -5,6 +5,7 @@ import ErrorBanner from './Components/ErrorBanner';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import LeaguemateIntelPanel from './Panels/LeaguemateIntelPanel';
+import MoversPanel from './Panels/MoversPanel';
 import Spinner from './Components/Spinner';
 import { SyncStatusProvider } from './SyncStatus.jsx';
 import { RankListProvider, useRankList } from './RankList.jsx';
@@ -807,6 +808,16 @@ class App extends React.Component {
                                     }
                                     if (activeId === 'leaguemates') {
                                         return <LeaguemateIntelPanel leagueID={leagueID} season={season} />;
+                                    }
+                                    if (activeId === 'movers') {
+                                        return (
+                                            <MoversPanel
+                                                marketSettings={leagueMarketSettings(leagueData.currentLeague)}
+                                                playerInfo={playerInfo}
+                                                rosterInfo={rosterInfo}
+                                                myDisplayName={myDisplayName}
+                                            />
+                                        );
                                     }
                                     return (
                                         <LeaguePanel

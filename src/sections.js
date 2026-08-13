@@ -16,6 +16,14 @@ export const SECTIONS = [
     // would leave per-league content depending on a league you can neither
     // see nor change. 'global' is still unused.
     { id: 'leaguemates', label: 'Leaguemates', scope: 'league' },
+    // Movers is 'league' scope for the same reason, and it is the less
+    // obvious case: the values are market-wide, so this looks like the
+    // 'global' section the docstring above imagines. But *which* set of
+    // values is true for you depends on whether your league can start a
+    // second quarterback - KeepTradeCut prices 1QB and superflex as separate
+    // lists - so hiding the league switcher would leave the numbers
+    // depending on a league you could neither see nor change.
+    { id: 'movers', label: 'Movers', scope: 'league' },
 ];
 
 export const DEFAULT_SECTION_ID = 'draft';
