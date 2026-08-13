@@ -6,6 +6,7 @@ const fta = import.meta.env.DEV ? '/' : 'https://fantasyteamassistant.com/';
 const ftaLegacy = 'api/legacy/players';
 const ftaAvailability = (draftId) => `api/v1/drafts/${draftId}/availability`;
 const ftaMarketValues = 'api/v1/values';
+const ftaDynastyValues = 'api/v1/dynasty-values';
 const ftaLeagueIntel = (leagueId) => `api/v1/leagues/${leagueId}/intel`;
 const ftaManagerActivity = (userId) => `api/v1/users/${userId}/activity`;
 const latestUpdateAttempt = 'latest_update_attempt/';
@@ -38,6 +39,12 @@ const APP_DB_URLS = {
     // Sleeper id. A rank list the user does not have to supply - see
     // lib/marketValues.js for what is and is not claimed about it.
     MARKET_VALUES: fta + ftaMarketValues,
+    // KeepTradeCut values and how far each has moved. Distinct from
+    // MARKET_VALUES above, and the two are not interchangeable: that one is
+    // FantasyCalc and *seeds* a rank list for a league shape, this one is KTC
+    // and *decorates* rows that already exist. It is also the only source
+    // that can price a draft pick.
+    DYNASTY_VALUES: fta + ftaDynastyValues,
     // The leaguemates of one league, and what they do in their other ones
     // (docs/leaguemate-intel.md §3e). Keyed by league despite being the
     // "cross-league" view - the cross-league part is what the managers do

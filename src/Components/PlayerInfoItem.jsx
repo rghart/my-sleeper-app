@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import ListRow from './ListRow';
+import PlayerAvatar from './PlayerAvatar';
 import PositionTag from './PositionTag';
 import PlayerSearch from './PlayerSearch';
+import ValueChip from './ValueChip';
 import { playerAccessibleName, playerAvailabilityText } from './playerInfoLabels.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
@@ -16,6 +18,10 @@ const PlayerInfoItem = ({
     isNewRankList,
     adpData,
     myDisplayName,
+    // `{ value, changePct }` for this player, or undefined when the values
+    // fetch failed or the market has never seen him. Undefined renders
+    // nothing at all rather than a placeholder - see ValueChip.
+    marketValue,
 }) => {
     const [editingPlayer, setEditingPlayer] = useState(false);
     const taken = isTaken(rosterInfo, player.player_id);
@@ -165,6 +171,7 @@ const PlayerInfoItem = ({
             ordinal={searchData.ranking}
             ordinalWidth="22px"
             ordinalClassName="text-right text-[12px] font-medium text-ink-muted"
+            leading={<PlayerAvatar playerId={player.player_id} name={player.full_name} team={player.team} />}
             // A single always-visible name replaces the old full-text/abbr-text
             // pair, a width-hiding mechanism whose hidden fallback shipped a
             // real defect once (PR #116). It stays a nested button so clicking
@@ -183,8 +190,23 @@ const PlayerInfoItem = ({
             leadingDot={lowConfidenceMatch ? 'warn' : undefined}
             meta={
                 <>
-                    <span>{player.team ? player.team : 'FA'}</span>
-                    <span> · </span>
+                    {/* The market value leads the line, and the team
+                        abbreviation it replaces is not lost - it moved onto
+                        the avatar as a logo, which is what freed the room.
+                        Only a team-less player still needs the letters, since
+                        there is no logo to carry it. */}
+                    {marketValue && (
+                        <>
+                            <ValueChip value={marketValue.value} changePct={marketValue.changePct} />
+                            <span> · </span>
+                        </>
+                    )}
+                    {!player.team && (
+                        <>
+                            <span>FA</span>
+                            <span> · </span>
+                        </>
+                    )}
                     <span>{playerAvailabilityText({ taken, rosteredByName })}</span>
                 </>
             }

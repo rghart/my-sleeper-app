@@ -39,6 +39,11 @@ const ListRow = ({
     // column, so they pass their own override here rather than ListRow
     // hardcoding one typography for every caller.
     ordinalClassName = 'text-[12px] text-ink-dim',
+    // Sits between the ordinal and the name block — an avatar, in practice.
+    // Given its own slot rather than folded into `name` because the name is a
+    // truncating flex child and anything inside it inherits that: an avatar
+    // there would compress before the text did, which is backwards.
+    leading,
     name,
     nameTone = 'default',
     flag,
@@ -66,6 +71,7 @@ const ListRow = ({
                     {ordinal}
                 </span>
             )}
+            {leading}
             <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-2">
                     {leadingDot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT_TONE[leadingDot]}`} />}
