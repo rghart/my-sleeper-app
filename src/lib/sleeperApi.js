@@ -2,7 +2,7 @@ import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { ACTIVE_PLAYERS, AVAILABILITY, LEAGUE_INTEL, MANAGER_ACTIVITY, MARKET_VALUES } = APP_DB_URLS;
+const { ACTIVE_PLAYERS, AVAILABILITY, DYNASTY_VALUES, LEAGUE_INTEL, MANAGER_ACTIVITY, MARKET_VALUES } = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } =
     SLEEPER_API_URLS;
 
@@ -198,6 +198,37 @@ export async function fetchManagerActivity({ userId, season, limit, types }) {
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error fetching manager activity:', error);
+        });
+}
+
+/**
+ * Dynasty market values keyed by Sleeper id, each with how far it has moved
+ * over `window` days, plus rookie pick values.
+ *
+ * `superflex` is not cosmetic. KeepTradeCut prices 1QB and superflex
+ * separately and they are different games — in superflex the most valuable
+ * asset is a quarterback — so a league's own shape decides which one is
+ * true for it. Derived from the league rather than pinned, same rule
+ * `leagueMarketSettings` already follows for FantasyCalc.
+ *
+ * Resolves to `undefined` on failure, per this module's contract. Values are
+ * additive decoration: a rank list without them is exactly the list this app
+ * rendered before, so callers drop the column rather than failing the screen.
+ */
+export async function fetchDynastyValues({ superflex = true, window } = {}) {
+    const params = new URLSearchParams();
+    // Sent only when false: the API defaults to superflex, and an absent
+    // param and `true` mean the same thing to it.
+    if (!superflex) params.set('superflex', 'false');
+    if (window != null) params.set('window', String(window));
+
+    const query = params.toString();
+
+    return await fetch(query ? `${DYNASTY_VALUES}?${query}` : DYNASTY_VALUES)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching dynasty values:', error);
         });
 }
 

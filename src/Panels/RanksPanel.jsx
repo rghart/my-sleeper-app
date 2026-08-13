@@ -14,7 +14,8 @@ import APP_DB_URLS from '../urls.js';
 import Spinner from '../Components/Spinner';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 import { fetchRequest } from '../lib/http.js';
-import { fetchMarketValues } from '../lib/sleeperApi.js';
+import { fetchDynastyValues, fetchMarketValues } from '../lib/sleeperApi.js';
+import { usesSuperflexValues, valuesByPlayerId } from '../lib/dynastyValues.js';
 import { asOfMillis, settingsLabel, toRankList } from '../lib/marketValues.js';
 import { agoLabel } from '../lib/relativeTime.js';
 import { positionClass } from './pickLabels.js';
@@ -106,6 +107,10 @@ const RanksPanel = ({
     const [searchText, setSearchText] = useState('');
     const [currentListVal, setCurrentListVal] = useState(defaultSelector);
     const [adp, setADP] = useState({});
+    // `{}` rather than undefined: rows look values up unconditionally, and an
+    // absent entry is exactly how a player the market has never priced — or a
+    // failed fetch — renders. Values are additive decoration.
+    const [dynastyValues, setDynastyValues] = useState({});
     const [adpType, setADPType] = useState();
     const [filters, setFilters] = useState({
         showTaken: false,
@@ -360,6 +365,28 @@ const RanksPanel = ({
         getADP();
     }, []);
 
+    // Dynasty values, fetched once per league shape. Additive decoration, so
+    // a failure leaves `{}` and every row renders exactly as it did before
+    // this feature existed - the same contract the survival chips follow.
+    //
+    // Keyed on the superflex boolean rather than the whole league object: the
+    // API has two variants and re-fetching because an unrelated league field
+    // changed identity would be a request for the same bytes.
+    const superflex = usesSuperflexValues(leagueShape);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        fetchDynastyValues({ superflex }).then((response) => {
+            if (cancelled) return;
+            setDynastyValues(valuesByPlayerId(response));
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [superflex]);
+
     // The saved-lists fetch itself now lives in App (loadSavedRankLists) - it
     // resets isNewRankList/currentListVal back to the default whenever
     // signedIn goes false, which App's version of this effect can't reach
@@ -418,6 +445,7 @@ const RanksPanel = ({
             updatePlayerId={updatePlayerId}
             searchData={results}
             adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
+            marketValue={dynastyValues[results.match_results[0][0]]}
             myDisplayName={myDisplayName}
         />
     );
