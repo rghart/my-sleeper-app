@@ -44,6 +44,12 @@ export function movers(values, { direction = 'up', basis = 'percent', limit } = 
     const ranked = (values || [])
         .filter((entry) => {
             const moved = entry?.[key];
+            // The null check is deliberate but not load-bearing: `null > 0`
+            // and `null < 0` are both false, so the direction comparison
+            // below already excludes a missing reading. Deleting it changes
+            // no behaviour (a sabotage run confirmed the tests stay green) —
+            // it is here to say that "no reading" is an anticipated state
+            // rather than something that happens to fall through.
             if (moved == null || moved === 0) return false;
             return direction === 'up' ? moved > 0 : moved < 0;
         })

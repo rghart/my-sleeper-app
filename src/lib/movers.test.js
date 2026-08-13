@@ -24,8 +24,12 @@ describe('movers', () => {
     });
 
     it('drops a player with no reading rather than treating him as flat', () => {
-        // `change` is null when there was nothing to compare against. Sorting
-        // that as 0 would bury genuinely flat players under invisible ones.
+        // `change` is null when there was nothing to compare against.
+        //
+        // This asserts a real guarantee but is over-determined: the direction
+        // comparison excludes null on its own, so deleting the explicit guard
+        // in `movers` leaves this green. Kept as a statement of the contract
+        // callers rely on, not as cover for that line.
         const all = [...movers(values, { direction: 'up' }), ...movers(values, { direction: 'down' })];
         expect(all.map((e) => e.playerId)).not.toContain('unknown');
     });
