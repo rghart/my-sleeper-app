@@ -57,6 +57,86 @@ function renderItem(playerId, { lineupSet = new Set(), ...overrides } = {}) {
     return props;
 }
 
+describe('PlayerInfoItem injury', () => {
+    // Injury status and body part come from Sleeper's player dump; the
+    // expected return date rides on the value row, because only KeepTradeCut
+    // publishes one. The two arrive by different routes and the row has to
+    // read either without the other.
+    const injured = (attrs) => ({ ...playerInfo[FREE_AGENT_ID], ...attrs });
+
+    it('badges an injured player and spells the status out in the name', () => {
+        renderItem(FREE_AGENT_ID, {
+            player: injured({ injury_status: 'Questionable', injury_body_part: 'Hamstring' }),
+        });
+
+        expect(screen.getByTestId('injury-tag')).toHaveTextContent('Q');
+        expect(screen.getByRole('group', { name: /questionable, hamstring/i })).toBeInTheDocument();
+    });
+
+    // The detail is a popover rather than meta-line text because that line is
+    // measurably full — 145px of content in 155px of room at 375px.
+    it('opens the detail, with the return date, when the badge is tapped', async () => {
+        const user = userEvent.setup();
+        renderItem(FREE_AGENT_ID, {
+            player: injured({ injury_status: 'Questionable', injury_body_part: 'Hamstring' }),
+            marketValue: { value: 4300, changePct: null, injuryReturn: '2026-08-22' },
+        });
+
+        await user.click(screen.getByTestId('injury-tag'));
+
+        expect(screen.getByText('Hamstring')).toBeInTheDocument();
+        expect(screen.getByText(/Expected (back|due back) Aug 22/)).toBeInTheDocument();
+    });
+
+    // Real behaviour, but structurally guaranteed rather than defended: the
+    // badge is a sibling of the name button, so nothing propagates. Kept as a
+    // regression guard on that structure, not as cover for the
+    // `stopPropagation` call, which sabotage shows no test can currently reach.
+    it('does not open the edit form when the badge is tapped', async () => {
+        const user = userEvent.setup();
+        renderItem(FREE_AGENT_ID, { player: injured({ injury_status: 'IR' }) });
+
+        await user.click(screen.getByTestId('injury-tag'));
+
+        expect(screen.queryByPlaceholderText('Manually update player')).not.toBeInTheDocument();
+    });
+
+    it('keeps the meta line free of injury text, which does not fit on it', () => {
+        renderItem(FREE_AGENT_ID, {
+            player: injured({ injury_status: 'Questionable', injury_body_part: 'Hamstring' }),
+            marketValue: { value: 4300, changePct: null, injuryReturn: '2026-08-22' },
+        });
+
+        expect(screen.queryByText(/· Hamstring/)).not.toBeInTheDocument();
+    });
+
+    it('shows the injury even when the market has never seen the player', () => {
+        // A rank list holds players with no value entry at all, and the
+        // injury is the half that does not depend on one.
+        renderItem(FREE_AGENT_ID, {
+            player: injured({ injury_status: 'IR' }),
+            marketValue: undefined,
+        });
+
+        expect(screen.getByTestId('injury-tag')).toHaveTextContent('IR');
+    });
+
+    it('leaves a healthy player exactly as he was', () => {
+        renderItem(FREE_AGENT_ID);
+
+        expect(screen.queryByTestId('injury-tag')).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: /free agent$/i })).toBeInTheDocument();
+    });
+
+    // The trap this whole mapping exists for: 61 players carry `NA`, which is
+    // not an injury.
+    it('does not badge a player whose status is NA', () => {
+        renderItem(FREE_AGENT_ID, { player: injured({ injury_status: 'NA' }) });
+
+        expect(screen.queryByTestId('injury-tag')).not.toBeInTheDocument();
+    });
+});
+
 describe('PlayerInfoItem', () => {
     it('shows a free agent as available and offers the Add button', () => {
         renderItem(FREE_AGENT_ID);

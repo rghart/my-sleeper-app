@@ -4,6 +4,8 @@ import PlayerAvatar from './PlayerAvatar';
 import PositionTag from './PositionTag';
 import PlayerSearch from './PlayerSearch';
 import ValueChip from './ValueChip';
+import InjuryTag from './InjuryTag';
+import { injuryAccessibleText } from './injuryLabels.js';
 import { playerAccessibleName, playerAvailabilityText } from './playerInfoLabels.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 
@@ -32,7 +34,19 @@ const PlayerInfoItem = ({
     // background (`.search-alert`); the `--color-warn` border below is the
     // replacement, and it is independent of taken/mine.
     const lowConfidenceMatch = Number(searchData.match_results[0][1]) > 0;
-    const accessibleName = playerAccessibleName({ player, taken, rosteredByName, isMine, lowConfidenceMatch });
+    // Status and body part come from Sleeper's player dump, the expected
+    // return date from the value row — the only place that publishes one. A
+    // player with no value entry still shows his injury; only the "back
+    // Aug 22" part goes missing.
+    const injuryReturn = marketValue?.injuryReturn;
+    const accessibleName = playerAccessibleName({
+        player,
+        taken,
+        rosteredByName,
+        isMine,
+        lowConfidenceMatch,
+        injury: injuryAccessibleText(player, injuryReturn),
+    });
 
     const updatePlayerInfo = (newPlayerId) => {
         const newSearchData = { ...searchData };
@@ -186,6 +200,7 @@ const PlayerInfoItem = ({
                 </button>
             }
             nameTone={taken ? 'muted' : 'default'}
+            nameAfter={<InjuryTag player={player} injuryReturn={injuryReturn} detail />}
             flag={isMine ? { text: 'YOU', tone: 'mine' } : undefined}
             leadingDot={lowConfidenceMatch ? 'warn' : undefined}
             meta={
@@ -207,6 +222,11 @@ const PlayerInfoItem = ({
                             <span> · </span>
                         </>
                     )}
+                    {/* No injury detail here, deliberately. Measured at
+                        375px against a real list: this line has 155px and the
+                        value chip plus a manager name already need 145, so
+                        appending the status truncated 7 of 14 rows and ate the
+                        return date. It lives in the badge's popover instead. */}
                     <span>{playerAvailabilityText({ taken, rosteredByName })}</span>
                 </>
             }

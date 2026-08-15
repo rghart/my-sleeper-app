@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import ListRow from './ListRow';
+import InjuryTag from './InjuryTag';
+import { injuryAccessibleText, injuryDetail } from './injuryLabels.js';
 import PositionTag from './PositionTag';
 import OwnershipFilters, { DEFAULT_OWNERSHIP, matchesOwnership } from './OwnershipFilters';
 import IntelDetail from './IntelDetail';
@@ -294,7 +296,16 @@ const BestAvailable = ({
                     // draft's read-only sheet has no lineup to compare against
                     // and passes none.
                     const started = Boolean(lineupSet) && isInLineup(lineupSet, id);
-                    const accessibleName = playerAccessibleName({ player, taken, rosteredByName, isMine, started });
+                    const accessibleName = playerAccessibleName({
+                        player,
+                        taken,
+                        rosteredByName,
+                        isMine,
+                        started,
+                        // No return date: this list has no values to read one
+                        // from, same as the lineup slot rows.
+                        injury: injuryAccessibleText(player, null),
+                    });
 
                     const target = targetsById.get(id);
                     const survival = survivalAt(target, atPick);
@@ -319,12 +330,24 @@ const BestAvailable = ({
                                 ordinalClassName="text-right text-[12px] text-ink-muted"
                                 name={player.full_name}
                                 nameTone={unavailable ? 'muted' : 'default'}
+                                // Plain, not the Ranks row's tappable variant:
+                                // this row is sometimes a button itself and a
+                                // button cannot nest one. The detail goes on
+                                // the meta line instead, which has the room the
+                                // Ranks meta line measurably does not.
+                                nameAfter={<InjuryTag player={player} />}
                                 flag={isMine ? { text: 'YOU', tone: 'mine' } : undefined}
                                 meta={
                                     <>
                                         <span>{player.team ? player.team : 'FA'}</span>
                                         <span> · </span>
                                         <span>{taken ? `rostered by ${rosteredByName}` : 'free agent'}</span>
+                                        {injuryDetail(player, null) && (
+                                            <>
+                                                <span> · </span>
+                                                <span className="text-warn">{injuryDetail(player, null)}</span>
+                                            </>
+                                        )}
                                     </>
                                 }
                                 trailing={

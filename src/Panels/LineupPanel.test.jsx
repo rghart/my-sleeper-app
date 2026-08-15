@@ -168,6 +168,36 @@ describe('LineupPanel', () => {
     });
 });
 
+describe('LineupPanel injury', () => {
+    // A lineup slot is where an injury matters most and where the return date
+    // is least available: this panel fetches no values, so it shows the status
+    // and body part and says nothing about when he is back.
+    const hurt = (attrs) => ({
+        ...PLAYER_INFO,
+        [STARTER.player_id]: { ...STARTER, ...attrs },
+    });
+
+    it('badges a hurt starter and puts the detail on the meta line', () => {
+        renderLineup({ playerInfo: hurt({ injury_status: 'Questionable', injury_body_part: 'Hamstring' }) });
+
+        expect(screen.getByTestId('injury-tag')).toHaveTextContent('Q');
+        expect(screen.getByText(/LV · Q · Hamstring/)).toBeInTheDocument();
+    });
+
+    it('spells the status out in the slot name', () => {
+        renderLineup({ playerInfo: hurt({ injury_status: 'IR' }) });
+
+        expect(screen.getByRole('button', { name: /on injured reserve/i })).toBeInTheDocument();
+    });
+
+    it('leaves a healthy starter row unchanged', () => {
+        renderLineup();
+
+        expect(screen.queryByTestId('injury-tag')).not.toBeInTheDocument();
+        expect(screen.getByText('LV')).toBeInTheDocument();
+    });
+});
+
 describe('LineupPanel best-available sheet', () => {
     it('shows the handle, filtered to the open slots, when there are open slots and a rank list', () => {
         renderLineup({ rankingPlayersIdsList: [rankEntry(FREE_AGENT_TE.id, 1)] });

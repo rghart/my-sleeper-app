@@ -46,6 +46,13 @@ const ListRow = ({
     leading,
     name,
     nameTone = 'default',
+    // Sits between the name and `flag`. Like `leading`, it is a slot rather
+    // than something the caller folds into `name`, because `name` is the
+    // truncating flex child: a badge in there would be clipped before the
+    // text it qualifies, which is backwards for a badge that exists to warn.
+    // Closer to the name than `flag` on purpose — this says something about
+    // the player, `flag` says something about your relationship to him.
+    nameAfter,
     flag,
     leadingDot,
     meta,
@@ -80,6 +87,7 @@ const ListRow = ({
                     >
                         {name}
                     </span>
+                    {nameAfter}
                     {flag && (
                         <span
                             className={`shrink-0 font-mono text-[9px] font-semibold tracking-[.1em] ${FLAG_TONE[flag.tone]}`}
