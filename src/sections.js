@@ -24,6 +24,9 @@ export const SECTIONS = [
     // lists - so hiding the league switcher would leave the numbers
     // depending on a league you could neither see nor change.
     { id: 'movers', label: 'Movers', scope: 'league' },
+    // Trades is about these twelve rosters specifically, so 'league' is the
+    // obvious scope here rather than the argued one it is for Movers.
+    { id: 'trades', label: 'Trades', scope: 'league' },
 ];
 
 export const DEFAULT_SECTION_ID = 'draft';
@@ -32,10 +35,7 @@ export const DEFAULT_SECTION_ID = 'draft';
 // SECTIONS, which drives routing and the tab bar - adding these to SECTIONS
 // would make useHashRoute treat their ids as valid routes with nothing to
 // render for them.
-export const PLANNED_SECTIONS = [
-    { id: 'league-history', label: 'League history' },
-    { id: 'trade-finder', label: 'Trade finder' },
-];
+export const PLANNED_SECTIONS = [{ id: 'league-history', label: 'League history' }];
 
 // Which section a fresh load should open on, based on where the current
 // league's draft stands. A completed draft has nothing left to do on the

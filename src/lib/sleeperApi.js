@@ -2,7 +2,8 @@ import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { ACTIVE_PLAYERS, AVAILABILITY, DYNASTY_VALUES, LEAGUE_INTEL, MANAGER_ACTIVITY, MARKET_VALUES } = APP_DB_URLS;
+const { ACTIVE_PLAYERS, AVAILABILITY, DYNASTY_VALUES, LEAGUE_INTEL, LEAGUE_TRADES, MANAGER_ACTIVITY, MARKET_VALUES } =
+    APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } =
     SLEEPER_API_URLS;
 
@@ -229,6 +230,29 @@ export async function fetchDynastyValues({ superflex = true, window } = {}) {
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error fetching dynasty values:', error);
+        });
+}
+
+/**
+ * Trades this manager and their leaguemates might both want.
+ *
+ * The response carries `rosterShape` alongside the suggestions, and it is not
+ * decoration: a suggestion claims "you are deep here and thin there", and
+ * rendering that without the counts behind it asks to be trusted rather than
+ * showing its working. `leagueAverage` is the yardstick depth is measured
+ * against - `starters` is for display only.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchLeagueTrades({ leagueId, userId, superflex = true }) {
+    const params = new URLSearchParams({ user_id: String(userId) });
+    if (!superflex) params.set('superflex', 'false');
+
+    return await fetch(`${LEAGUE_TRADES(leagueId)}?${params}`)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching trade suggestions:', error);
         });
 }
 
