@@ -58,7 +58,13 @@ const Shape = ({ shape }) => {
     );
 };
 
-const Side = ({ label, ids, playerInfo, tone }) => (
+// "2027 2nd". The tier is not shown: every pick the finder offers is priced
+// at mid, because a Sleeper pick knows its season and round and nothing else,
+// and printing "2027 Mid 2nd" would present an assumption as a fact.
+const ORDINALS = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
+const pickLabel = (pick) => `${pick.season} ${ORDINALS[pick.round] || `R${pick.round}`}`;
+
+const Side = ({ label, ids, picks = [], playerInfo, tone }) => (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="text-ink-dim font-mono text-[9px] tracking-[.08em] uppercase">{label}</span>
         {ids.map((id) => {
@@ -75,6 +81,17 @@ const Side = ({ label, ids, playerInfo, tone }) => (
                 </span>
             );
         })}
+        {picks.map((pick) => (
+            <span key={`${pick.season}-${pick.round}`} className="flex min-w-0 items-center gap-2">
+                {/* A pick gets the same 24px lead as a player so the two
+                    columns stay aligned, but carries a mark rather than a
+                    face - there is nobody to show yet. */}
+                <span className="bg-raised-2 text-ink-dim flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[9px]">
+                    PK
+                </span>
+                <span className={`min-w-0 truncate text-[13px] font-semibold ${tone}`}>{pickLabel(pick)}</span>
+            </span>
+        ))}
     </div>
 );
 
@@ -98,9 +115,21 @@ const Suggestion = ({ suggestion, playerInfo }) => {
             </div>
 
             <div className="flex items-start gap-3">
-                <Side label="You send" ids={suggestion.give} playerInfo={playerInfo} tone="text-ink-quiet" />
+                <Side
+                    label="You send"
+                    ids={suggestion.give}
+                    picks={suggestion.givePicks}
+                    playerInfo={playerInfo}
+                    tone="text-ink-quiet"
+                />
                 <span className="text-ink-dim shrink-0 self-center text-[13px]">→</span>
-                <Side label="You get" ids={suggestion.get} playerInfo={playerInfo} tone="text-ink" />
+                <Side
+                    label="You get"
+                    ids={suggestion.get}
+                    picks={suggestion.getPicks}
+                    playerInfo={playerInfo}
+                    tone="text-ink"
+                />
             </div>
 
             {/* Both numbers, because on a package trade the interesting thing
