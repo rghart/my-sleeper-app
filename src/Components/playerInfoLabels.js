@@ -29,6 +29,11 @@ export const playerAccessibleName = ({
     isMine = false,
     lowConfidenceMatch = false,
     started = false,
+    // The long form of the injury badge — "questionable, hamstring, back
+    // Aug 22". The badge itself is two or three letters chosen to fit a row
+    // with no room, and "Q" read aloud is not a word, so the meaning goes in
+    // the name the same way the colour-only states above do.
+    injury = null,
 }) => {
     let availability = 'free agent';
     if (taken) {
@@ -40,6 +45,9 @@ export const playerAccessibleName = ({
     }
     if (started) {
         nameParts.push('already started');
+    }
+    if (injury) {
+        nameParts.push(injury);
     }
     return nameParts.join(', ');
 };

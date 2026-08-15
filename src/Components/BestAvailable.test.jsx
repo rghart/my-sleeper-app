@@ -64,6 +64,41 @@ const renderBestAvailable = (overrides = {}) =>
         />,
     );
 
+describe('BestAvailable injury', () => {
+    // The sheet you pick a starter from, so an injury belongs on it. The badge
+    // is the plain variant here: this row is sometimes a button itself, and the
+    // Ranks row's tappable one cannot nest inside that.
+    const hurt = (attrs) => ({
+        ...playerInfo,
+        [FREE_AGENT.id]: { ...playerInfo[FREE_AGENT.id], ...attrs },
+    });
+
+    it('badges an injured player and puts the detail on the meta line', () => {
+        renderBestAvailable({
+            ownership: SHOW_EVERYONE,
+            playerInfo: hurt({ injury_status: 'Questionable', injury_body_part: 'Hamstring' }),
+        });
+
+        expect(screen.getByTestId('injury-tag')).toHaveTextContent('Q');
+        expect(screen.getByText('Q · Hamstring')).toBeInTheDocument();
+    });
+
+    it('renders the badge as text, never as a nested button', () => {
+        renderBestAvailable({
+            ownership: SHOW_EVERYONE,
+            playerInfo: hurt({ injury_status: 'IR' }),
+        });
+
+        expect(screen.getByTestId('injury-tag').tagName).toBe('SPAN');
+    });
+
+    it('leaves healthy rows alone', () => {
+        renderBestAvailable({ ownership: SHOW_EVERYONE });
+
+        expect(screen.queryByTestId('injury-tag')).not.toBeInTheDocument();
+    });
+});
+
 describe('BestAvailable', () => {
     it('lists players in ranking order', () => {
         renderBestAvailable({ ownership: SHOW_EVERYONE });

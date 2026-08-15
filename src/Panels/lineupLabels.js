@@ -1,3 +1,5 @@
+import { injuryAccessibleText } from '../Components/injuryLabels.js';
+
 // Builds the accessible name shared by SlotRow's filled and empty renders, so
 // the visible text and the name cannot drift the way pickLabels.js does for
 // the feed: "FLX, Colston Loveland, WR" for a filled slot, "WR, empty" for an
@@ -17,6 +19,14 @@ export const slotAccessibleName = ({ slot, player }) => {
     const nameParts = [slot.label, slotOccupantLabel({ slot, player })];
     if (player) {
         nameParts.push(player.position);
+        // The injury badge is a colour and two letters, neither of which a
+        // screen reader conveys — same reason `playerAccessibleName` spells
+        // its colour-only states out. No return date here: this panel has no
+        // values to read one from.
+        const injury = injuryAccessibleText(player, null);
+        if (injury) {
+            nameParts.push(injury);
+        }
     }
     return nameParts.join(', ');
 };

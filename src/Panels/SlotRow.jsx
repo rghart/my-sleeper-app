@@ -1,6 +1,8 @@
 import { slotAccessibleName, slotOccupantLabel } from './lineupLabels.js';
 import ListRow from '../Components/ListRow';
 import PositionTag from '../Components/PositionTag';
+import InjuryTag from '../Components/InjuryTag';
+import { injuryDetail } from '../Components/injuryLabels.js';
 
 const SlotRow = ({ slot, index, playerInfo, onOpen }) => {
     // A slot is occupied whenever it holds a player id, even if that id is
@@ -48,10 +50,15 @@ const SlotRow = ({ slot, index, playerInfo, onOpen }) => {
                 ordinalWidth="44px"
                 ordinalClassName="text-[10px] font-semibold tracking-[.08em] text-ink-muted"
                 name={occupantName}
+                nameAfter={<InjuryTag player={player} />}
                 // No opponent/schedule data is available here, so only the
                 // team renders on the meta line - inventing an opponent would
                 // be worse than leaving the line short.
-                meta={player?.team}
+                //
+                // No expected return date either: that lives on the value row
+                // and this panel does not fetch values. Status and body part
+                // are the parts a lineup decision actually turns on.
+                meta={[player?.team, injuryDetail(player, null)].filter(Boolean).join(' · ')}
                 trailing={player && <PositionTag position={player.position} />}
             />
         </li>
