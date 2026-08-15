@@ -8,6 +8,7 @@ const ftaAvailability = (draftId) => `api/v1/drafts/${draftId}/availability`;
 const ftaMarketValues = 'api/v1/values';
 const ftaDynastyValues = 'api/v1/dynasty-values';
 const ftaLeagueIntel = (leagueId) => `api/v1/leagues/${leagueId}/intel`;
+const ftaLeagueTrades = (leagueId) => `api/v1/leagues/${leagueId}/trades`;
 const ftaManagerActivity = (userId) => `api/v1/users/${userId}/activity`;
 const latestUpdateAttempt = 'latest_update_attempt/';
 const dlfADP = 'dlf_adp/';
@@ -50,6 +51,11 @@ const APP_DB_URLS = {
     // "cross-league" view - the cross-league part is what the managers do
     // elsewhere, not what the request spans.
     LEAGUE_INTEL: (leagueId) => fta + ftaLeagueIntel(leagueId),
+    // Trades the asking manager and each leaguemate might both want. Keyed
+    // by league because it is about these twelve rosters, and read live -
+    // a suggestion built on last night's roster is about a team that no
+    // longer exists.
+    LEAGUE_TRADES: (leagueId) => fta + ftaLeagueTrades(leagueId),
     // One leaguemate's recent trades, waivers and free-agent adds, across
     // every league they are in. Not nested under a league on purpose - the
     // data spans all of theirs, so a league in the path would imply a filter

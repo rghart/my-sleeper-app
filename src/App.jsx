@@ -6,6 +6,7 @@ import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import LeaguemateIntelPanel from './Panels/LeaguemateIntelPanel';
 import MoversPanel from './Panels/MoversPanel';
+import TradesPanel from './Panels/TradesPanel';
 import Spinner from './Components/Spinner';
 import { SyncStatusProvider } from './SyncStatus.jsx';
 import { RankListProvider, useRankList } from './RankList.jsx';
@@ -808,6 +809,16 @@ class App extends React.Component {
                                     }
                                     if (activeId === 'leaguemates') {
                                         return <LeaguemateIntelPanel leagueID={leagueID} season={season} />;
+                                    }
+                                    if (activeId === 'trades') {
+                                        return (
+                                            <TradesPanel
+                                                leagueID={leagueID}
+                                                sleeperUserId={sleeperAccount?.userId}
+                                                marketSettings={leagueMarketSettings(leagueData.currentLeague)}
+                                                playerInfo={playerInfo}
+                                            />
+                                        );
                                     }
                                     if (activeId === 'movers') {
                                         return (
