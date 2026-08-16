@@ -57,6 +57,68 @@ function renderItem(playerId, { lineupSet = new Set(), ...overrides } = {}) {
     return props;
 }
 
+describe('PlayerInfoItem FAAB', () => {
+    const price = (attrs) => ({ median: 12, low: 0, high: 40, claims: 8, leagues: 7, failed: 3, ...attrs });
+
+    // The availability words are the trigger — the meta line has no room for
+    // a chip, measured at 155px with 145 already spent.
+    it('makes a gettable player price tappable, and opens the distribution', async () => {
+        const user = userEvent.setup();
+        renderItem(FREE_AGENT_ID, { faabPrice: price(), faabWindow: 'Dec 2025 – Aug 2026' });
+
+        await user.click(screen.getByTestId('faab-tip'));
+
+        expect(screen.getByText('Typically 12% of budget')).toBeInTheDocument();
+        expect(screen.getByText('0% to 40%')).toBeInTheDocument();
+        expect(screen.getByText('8 claims in 7 leagues')).toBeInTheDocument();
+        expect(screen.getByText('3 more claims did not go through')).toBeInTheDocument();
+        expect(screen.getByText(/Offseason claims, Dec 2025 – Aug 2026/)).toBeInTheDocument();
+    });
+
+    // A price on a player locked up on someone else's roster is trivia.
+    it('offers nothing on a player who is already taken', () => {
+        renderItem(OTHERS_PLAYER_ID, { faabPrice: price() });
+
+        expect(screen.queryByTestId('faab-tip')).not.toBeInTheDocument();
+    });
+
+    it('leaves the row alone when nobody in the corpus has claimed him', () => {
+        renderItem(FREE_AGENT_ID, { faabPrice: undefined });
+
+        expect(screen.queryByTestId('faab-tip')).not.toBeInTheDocument();
+        expect(screen.getByText('Free agent')).toBeInTheDocument();
+    });
+
+    // The trigger lived on the meta line first and was unreachable there: on
+    // any row carrying a value *and* a change it ellipsised away. It belongs
+    // beside the name, where the width is measured and available.
+    it('keeps the trigger off the meta line, which cannot hold it', () => {
+        renderItem(FREE_AGENT_ID, { faabPrice: price() });
+
+        const availability = screen.getByText('Free agent');
+        expect(availability.closest('[data-testid="faab-tip"]')).toBeNull();
+    });
+
+    it('sits alongside an injury badge rather than replacing it', () => {
+        renderItem(FREE_AGENT_ID, {
+            player: { ...playerInfo[FREE_AGENT_ID], injury_status: 'Questionable' },
+            faabPrice: price(),
+        });
+
+        expect(screen.getByTestId('injury-tag')).toBeInTheDocument();
+        expect(screen.getByTestId('faab-tip')).toBeInTheDocument();
+    });
+
+    it('weakens the claim when the sample is thin', async () => {
+        const user = userEvent.setup();
+        renderItem(FREE_AGENT_ID, { faabPrice: price({ claims: 1, leagues: 1 }) });
+
+        await user.click(screen.getByTestId('faab-tip'));
+
+        expect(screen.getByText('Went for 12% of budget, once')).toBeInTheDocument();
+    });
+});
+
 describe('PlayerInfoItem injury', () => {
     // Injury status and body part come from Sleeper's player dump; the
     // expected return date rides on the value row, because only KeepTradeCut

@@ -7,6 +7,7 @@ const ftaLegacy = 'api/legacy/players';
 const ftaAvailability = (draftId) => `api/v1/drafts/${draftId}/availability`;
 const ftaMarketValues = 'api/v1/values';
 const ftaDynastyValues = 'api/v1/dynasty-values';
+const ftaFaab = 'api/v1/faab';
 const ftaLeagueIntel = (leagueId) => `api/v1/leagues/${leagueId}/intel`;
 const ftaLeagueTrades = (leagueId) => `api/v1/leagues/${leagueId}/trades`;
 const ftaManagerActivity = (userId) => `api/v1/users/${userId}/activity`;
@@ -46,6 +47,7 @@ const APP_DB_URLS = {
     // and *decorates* rows that already exist. It is also the only source
     // that can price a draft pick.
     DYNASTY_VALUES: fta + ftaDynastyValues,
+    FAAB: fta + ftaFaab,
     // The leaguemates of one league, and what they do in their other ones
     // (docs/leaguemate-intel.md §3e). Keyed by league despite being the
     // "cross-league" view - the cross-league part is what the managers do

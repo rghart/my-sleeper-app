@@ -5,6 +5,7 @@ import PositionTag from './PositionTag';
 import PlayerSearch from './PlayerSearch';
 import ValueChip from './ValueChip';
 import InjuryTag from './InjuryTag';
+import FaabTip from './FaabTip';
 import { injuryAccessibleText } from './injuryLabels.js';
 import { playerAccessibleName, playerAvailabilityText } from './playerInfoLabels.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
@@ -24,6 +25,11 @@ const PlayerInfoItem = ({
     // fetch failed or the market has never seen him. Undefined renders
     // nothing at all rather than a placeholder - see ValueChip.
     marketValue,
+    // `{ median, low, high, claims, leagues, failed }` for this player, or
+    // undefined when nobody in the corpus has claimed him. Undefined renders
+    // the plain availability text, exactly as before this existed.
+    faabPrice,
+    faabWindow,
 }) => {
     const [editingPlayer, setEditingPlayer] = useState(false);
     const taken = isTaken(rosterInfo, player.player_id);
@@ -135,7 +141,18 @@ const PlayerInfoItem = ({
                     <div className="text-ink-muted flex flex-wrap items-center gap-x-2 text-xs">
                         <span>Rank: {searchData.ranking}</span>
                         <span>{player.team ? player.team : 'FA'}</span>
-                        <span>{playerAvailabilityText({ taken, rosteredByName })}</span>
+                        {/* The availability words double as the FAAB trigger
+                        when he is gettable — see FaabTip for why this reuses
+                        text already on the row rather than adding a chip. */}
+                        <span>
+                            {taken ? (
+                                playerAvailabilityText({ taken, rosteredByName })
+                            ) : (
+                                <FaabTip price={faabPrice} windowText={faabWindow}>
+                                    {playerAvailabilityText({ taken, rosteredByName })}
+                                </FaabTip>
+                            )}
+                        </span>
                     </div>
                     {adpData && (
                         <div className="text-ink-muted flex items-center gap-2 text-xs">
@@ -200,7 +217,15 @@ const PlayerInfoItem = ({
                 </button>
             }
             nameTone={taken ? 'muted' : 'default'}
-            nameAfter={<InjuryTag player={player} injuryReturn={injuryReturn} detail />}
+            nameAfter={
+                <>
+                    <InjuryTag player={player} injuryReturn={injuryReturn} detail />
+                    {/* Only for a player you could actually add — see FaabTip.
+                        The meta line cannot host this; it was tried and the
+                        trigger truncated away on any row with a value change. */}
+                    {!taken && <FaabTip price={faabPrice} windowText={faabWindow} />}
+                </>
+            }
             flag={isMine ? { text: 'YOU', tone: 'mine' } : undefined}
             leadingDot={lowConfidenceMatch ? 'warn' : undefined}
             meta={

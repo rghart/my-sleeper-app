@@ -14,8 +14,9 @@ import APP_DB_URLS from '../urls.js';
 import Spinner from '../Components/Spinner';
 import { isTaken, rosteredBy } from '../lib/rosterInfo.js';
 import { fetchRequest } from '../lib/http.js';
-import { fetchDynastyValues, fetchMarketValues } from '../lib/sleeperApi.js';
+import { fetchDynastyValues, fetchFaabPrices, fetchMarketValues } from '../lib/sleeperApi.js';
 import { usesSuperflexValues, valuesByPlayerId } from '../lib/dynastyValues.js';
+import { faabWindowText, pricesByPlayerId } from '../lib/faab.js';
 import { asOfMillis, settingsLabel, toRankList } from '../lib/marketValues.js';
 import { agoLabel } from '../lib/relativeTime.js';
 import { positionClass } from './pickLabels.js';
@@ -111,6 +112,8 @@ const RanksPanel = ({
     // absent entry is exactly how a player the market has never priced — or a
     // failed fetch — renders. Values are additive decoration.
     const [dynastyValues, setDynastyValues] = useState({});
+    const [faabPrices, setFaabPrices] = useState({});
+    const [faabWindow, setFaabWindow] = useState(null);
     const [adpType, setADPType] = useState();
     const [filters, setFilters] = useState({
         showTaken: false,
@@ -387,6 +390,24 @@ const RanksPanel = ({
         };
     }, [superflex]);
 
+    // Separate from the values effect and deliberately not keyed to the
+    // league: FAAB prices are corpus-wide and the same whichever league is
+    // selected, so re-fetching on a league switch would be work for an
+    // identical answer.
+    useEffect(() => {
+        let cancelled = false;
+
+        fetchFaabPrices().then((response) => {
+            if (cancelled) return;
+            setFaabPrices(pricesByPlayerId(response));
+            setFaabWindow(faabWindowText(response));
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     // The saved-lists fetch itself now lives in App (loadSavedRankLists) - it
     // resets isNewRankList/currentListVal back to the default whenever
     // signedIn goes false, which App's version of this effect can't reach
@@ -446,6 +467,8 @@ const RanksPanel = ({
             searchData={results}
             adpData={adp?.[results.match_results[0][0]]?.[adpType] ?? null}
             marketValue={dynastyValues[results.match_results[0][0]]}
+            faabPrice={faabPrices[results.match_results[0][0]]}
+            faabWindow={faabWindow}
             myDisplayName={myDisplayName}
         />
     );
