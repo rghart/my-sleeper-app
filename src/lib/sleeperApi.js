@@ -2,8 +2,16 @@ import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
-const { ACTIVE_PLAYERS, AVAILABILITY, DYNASTY_VALUES, LEAGUE_INTEL, LEAGUE_TRADES, MANAGER_ACTIVITY, MARKET_VALUES } =
-    APP_DB_URLS;
+const {
+    ACTIVE_PLAYERS,
+    AVAILABILITY,
+    DYNASTY_VALUES,
+    FAAB,
+    LEAGUE_INTEL,
+    LEAGUE_TRADES,
+    MANAGER_ACTIVITY,
+    MARKET_VALUES,
+} = APP_DB_URLS;
 const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } =
     SLEEPER_API_URLS;
 
@@ -216,6 +224,27 @@ export async function fetchManagerActivity({ userId, season, limit, types }) {
  * additive decoration: a rank list without them is exactly the list this app
  * rendered before, so callers drop the column rather than failing the screen.
  */
+/**
+ * What players actually went for in FAAB across the observed leagues.
+ *
+ * Resolves to `undefined` on failure, per this module's contract. Prices are
+ * additive decoration in exactly the way values are: a row with no entry
+ * renders as it did before this existed.
+ *
+ * `minClaims` is left alone on purpose. The response carries `claims` on
+ * every entry and `lib/faab.js` decides what a given sample may say, so
+ * filtering server-side would hand back a list the UI could not tell from a
+ * complete one.
+ */
+export async function fetchFaabPrices() {
+    return await fetch(FAAB)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching FAAB prices:', error);
+        });
+}
+
 export async function fetchDynastyValues({ superflex = true, window } = {}) {
     const params = new URLSearchParams();
     // Sent only when false: the API defaults to superflex, and an absent
