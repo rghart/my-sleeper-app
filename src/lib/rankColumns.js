@@ -86,20 +86,33 @@ export function toRows(text, delimiter = detectDelimiter(text)) {
 }
 
 const HEADER_WORDS = {
-    name: ['player', 'name', 'players'],
-    first: ['first', 'firstname', 'first name'],
+    name: ['player', 'name', 'players', 'player name', 'players name', 'full name', 'player full name'],
+    first: ['first', 'firstname', 'first name', 'first names'],
     last: ['last', 'lastname', 'last name', 'surname'],
     team: ['team', 'tm', 'nfl', 'club'],
     position: ['pos', 'position', 'posn'],
     rank: ['rank', 'rk', '#', 'no', 'ovr', 'overall'],
 };
 
+const ROLES = ['name', 'first', 'last', 'team', 'position', 'rank'];
+
+const emptyMapping = () => ({ name: null, first: null, last: null, team: null, position: null, rank: null });
+
 const isPosition = (value) => POSITIONS.includes(value.toUpperCase());
 const looksNumeric = (value) => /^\d+$/.test(value.trim());
 const wordCount = (value) => value.trim().split(/\s+/).filter(Boolean).length;
 
+/**
+ * The role a heading names, matched on the whole heading rather than a word
+ * inside it - `Last` is a surname and `Last Season` is not.
+ *
+ * Separators are flattened first so the three ways a real export writes the
+ * same heading (`PLAYER NAME`, `Player_Name`, `player-name`) are one string.
+ * An unrecognised heading is not a problem to solve here: `detectColumns`
+ * falls back to the shape of the column beneath it.
+ */
 function headerRole(cell) {
-    const normalized = cell.trim().toLowerCase();
+    const normalized = cell.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
     for (const [role, words] of Object.entries(HEADER_WORDS)) {
         if (words.includes(normalized)) return role;
     }
@@ -107,47 +120,55 @@ function headerRole(cell) {
 }
 
 /**
- * Which column is which, guessed from a header row when there is one and from
- * the shape of the data when there is not.
+ * The roles a header row names, or null when the first row is not headings.
  *
- * Every field is nullable and the guess is only a default - the user confirms
- * it before anything is matched, because a wrong guess here mislabels the
- * whole list rather than one line. `hasHeader` tells the caller whether to
- * drop the first row.
+ * A header row is one where at least two cells name a role and no cell holds a
+ * player name - "Rank,Player,Team,Pos" rather than a first player.
  */
-export function detectColumns(rows) {
-    if (!rows || rows.length === 0) return null;
+function fromHeader(row) {
+    const roles = row.map(headerRole);
+    if (roles.filter(Boolean).length < 2) return null;
 
-    const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
-    const mapping = { name: null, first: null, last: null, team: null, position: null, rank: null };
+    const mapping = emptyMapping();
+    roles.forEach((role, index) => {
+        if (role && mapping[role] === null) mapping[role] = index;
+    });
+    return mapping;
+}
 
-    // A header row is one where at least two cells name a role and no cell
-    // holds a player name - "Rank,Player,Team,Pos" rather than a first player.
-    const roles = rows[0].map(headerRole);
-    const hasHeader = roles.filter(Boolean).length >= 2;
-
-    if (hasHeader) {
-        roles.forEach((role, index) => {
-            if (role && mapping[role] === null) mapping[role] = index;
-        });
-        return { ...mapping, hasHeader, width };
-    }
-
-    // No header: read the body. A column that is entirely positions is the
-    // position column, one that is entirely digits is the rank, and the
-    // widest text column is the name.
-    const body = rows.slice(0, 20);
-    const columnValues = (index) => body.map((row) => row[index] ?? '').filter((value) => value.trim());
+/**
+ * Fills the roles still unknown from the shape of the data: a column that is
+ * entirely positions is the position column, one that is entirely digits is
+ * the rank, and the widest text column is the name.
+ *
+ * This runs for a headed table too, not just an unheaded one, and that is the
+ * point of it. A heading this module has never seen - `PLAYER NAME` was the
+ * one that shipped broken - used to leave `name` null, and a null name means
+ * `rowToParsed` reads every row as "not a player": the whole file matched
+ * nothing *and* reported no misses, because a row with no name never spends a
+ * rank. A guess that can be corrected in the mapper beats no guess at all.
+ */
+function inferFromBody(mapping, body, width) {
+    const rows = body.slice(0, 20);
+    const taken = (index) => ROLES.some((role) => mapping[role] === index);
+    const columnValues = (index) => rows.map((row) => row[index] ?? '').filter((value) => value.trim());
 
     for (let index = 0; index < width; index += 1) {
+        if (taken(index)) continue;
         const values = columnValues(index);
         if (values.length === 0) continue;
         if (mapping.position === null && values.every(isPosition)) mapping.position = index;
         else if (mapping.rank === null && values.every(looksNumeric)) mapping.rank = index;
     }
 
+    // The name is the only role worth guessing at once a header has spoken: a
+    // heading that named the team named it correctly, whereas a column picked
+    // by shape is picked from whatever the header left over, and `Bye` or
+    // `Notes` are the wrong answer more often than they are the right one.
+    if (mapping.name !== null || mapping.first !== null) return mapping;
+
     for (let index = 0; index < width; index += 1) {
-        if (index === mapping.position || index === mapping.rank) continue;
+        if (taken(index)) continue;
         const values = columnValues(index);
         if (values.length === 0) continue;
         // Two words on average is a full name; one short token is a team code.
@@ -161,7 +182,7 @@ export function detectColumns(rows) {
     if (mapping.name === null) {
         const leftover = [];
         for (let index = 0; index < width; index += 1) {
-            if (index !== mapping.position && index !== mapping.rank && index !== mapping.team) leftover.push(index);
+            if (!taken(index)) leftover.push(index);
         }
         if (leftover.length >= 2) {
             mapping.first = leftover[0];
@@ -171,8 +192,44 @@ export function detectColumns(rows) {
         }
     }
 
-    return { ...mapping, hasHeader, width };
+    return mapping;
 }
+
+/**
+ * Which column is which: read from a header row where the headings are ones
+ * this module knows, and from the shape of the data for everything they leave
+ * unanswered.
+ *
+ * Both, rather than one or the other. A header row used to end the guessing
+ * outright, so a single unfamiliar heading in an otherwise obvious file left
+ * that role null - and a null name column matches nothing at all.
+ *
+ * Every field is nullable and the guess is only a default - the user confirms
+ * it before anything is matched, because a wrong guess here mislabels the
+ * whole list rather than one line. `hasHeader` tells the caller whether to
+ * drop the first row.
+ */
+export function detectColumns(rows) {
+    if (!rows || rows.length === 0) return null;
+
+    const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
+    const headed = fromHeader(rows[0]);
+    const mapping = inferFromBody(headed ?? emptyMapping(), headed ? rows.slice(1) : rows, width);
+
+    return { ...mapping, hasHeader: headed !== null, width };
+}
+
+/**
+ * Whether a mapping names the one column without which nothing can be matched.
+ *
+ * Exported because two callers need the same answer: the mapper shows the name
+ * select as unset rather than pointing at column one, and the paste sheet
+ * refuses to run. Before this, a mapping with no name column ran happily and
+ * produced an empty list with an empty miss list - the failure the user sees
+ * as "it found none of my players".
+ */
+export const hasNameColumn = (mapping) =>
+    Boolean(mapping) && ((mapping.name ?? null) !== null || (mapping.first ?? null) !== null);
 
 // Generational suffixes are part of how a list writes a name and never part of
 // how the player pool stores it, so they are dropped rather than matched on.
