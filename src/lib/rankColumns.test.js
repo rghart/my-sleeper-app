@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectColumns, detectDelimiter, rowToParsed, splitName, toRows } from './rankColumns.js';
+import { detectColumns, detectDelimiter, hasNameColumn, rowToParsed, splitName, toRows } from './rankColumns.js';
 
 const csv = `Rank,Player,Team,Pos
 1,Ja'Marr Chase,CIN,WR
@@ -100,8 +100,73 @@ describe('detectColumns', () => {
         expect(detectColumns(toRows("1,Ja'Marr Chase,CIN,WR\n2,Bijan Robinson,ATL,RB")).hasHeader).toBe(false);
     });
 
+    // The heading a real export actually writes. This shipped broken: `PLAYER
+    // NAME` is not `player`, so the name column came back null and the file
+    // matched nothing at all - with no misses reported either, because a row
+    // with no name never spends a rank.
+    it('reads a multi-word name heading', () => {
+        const rows = toRows("RK,TIERS,PLAYER NAME,TEAM,POS\n1,1,Ja'Marr Chase,CIN,WR1\n2,1,Puka Nacua,LAR,WR2");
+        expect(detectColumns(rows)).toMatchObject({ hasHeader: true, rank: 0, name: 2, team: 3, position: 4 });
+    });
+
+    it('reads a heading written with separators', () => {
+        const rows = toRows("Rank,Player_Name,Team,Pos\n1,Ja'Marr Chase,CIN,WR\n2,Puka Nacua,LAR,WR");
+        expect(detectColumns(rows)).toMatchObject({ hasHeader: true, name: 1 });
+    });
+
+    // The general answer to an unknown heading, and the reason the list of
+    // known ones does not have to be complete: a header row no longer ends the
+    // guessing, it only goes first.
+    it('falls back to the shape of the data when a heading is unfamiliar', () => {
+        const rows = toRows("Rank,Athlete,Team,Pos\n1,Ja'Marr Chase,CIN,WR\n2,Puka Nacua,LAR,WR");
+        expect(detectColumns(rows)).toMatchObject({ hasHeader: true, rank: 0, name: 1, team: 2, position: 3 });
+    });
+
+    // A heading is matched whole, not by the words inside it - `Last` is a
+    // surname and `Last Season` is a statistic.
+    it('does not read a heading that merely contains a role word', () => {
+        const rows = toRows("Last Season,Player,Team,Pos\n1,Ja'Marr Chase,CIN,WR\n2,Puka Nacua,LAR,WR");
+        expect(detectColumns(rows)).toMatchObject({ hasHeader: true, last: null, name: 1 });
+    });
+
+    // The columns the header did name are trusted: only the name is guessed
+    // from the body, because a column picked by shape is picked from whatever
+    // is left over and `Bye` is the wrong answer more often than the right one.
+    it('does not overwrite a column the header named', () => {
+        const rows = toRows("Rank,Athlete,Team,Pos,Bye\n1,Ja'Marr Chase,CIN,WR,10\n2,Puka Nacua,LAR,WR,6");
+        expect(detectColumns(rows)).toMatchObject({ name: 1, team: 2, position: 3 });
+    });
+
+    // The guess is allowed to come back with no name - a table of numbers has
+    // none to find. What must not happen is the mapper then pointing at a
+    // column anyway: see `hasNameColumn`, which is what stops the paste.
+    it('leaves the name unknown when nothing in the table looks like one', () => {
+        expect(detectColumns(toRows('Rank,Pos,Bye\n1,WR,10\n2,RB,6'))).toMatchObject({ name: null, first: null });
+    });
+
     it('returns null for no rows', () => {
         expect(detectColumns([])).toBeNull();
+    });
+});
+
+// The check both the mapper and the paste sheet ask, because a mapping with no
+// name column is the one that fails invisibly: every row reads as "not a
+// player", so the rank list and the miss list both come back empty.
+describe('hasNameColumn', () => {
+    it('accepts a full-name column', () => {
+        expect(hasNameColumn({ name: 1, first: null })).toBe(true);
+    });
+
+    it('accepts a split first-name column', () => {
+        expect(hasNameColumn({ name: null, first: 0, last: 1 })).toBe(true);
+    });
+
+    it('rejects a mapping with neither', () => {
+        expect(hasNameColumn({ name: null, first: null, team: 1 })).toBe(false);
+    });
+
+    it('rejects nothing at all', () => {
+        expect(hasNameColumn(null)).toBe(false);
     });
 });
 

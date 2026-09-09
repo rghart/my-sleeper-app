@@ -552,6 +552,55 @@ describe('RanksPanel column mapping', () => {
         expect(startLoad).toHaveBeenCalledWith("Ja'Marr Chase\nBijan Robinson\nPuka Nacua", null);
     });
 
+    // The shape a real export arrives in, end to end. The heading `PLAYER NAME`
+    // used to leave the name column unmapped, and an unmapped name column reads
+    // every row as "not a player" - the list came back empty with nothing in
+    // the miss list to explain it.
+    it('maps the name column of a table whose heading it has never seen', async () => {
+        const { startLoad } = renderPanel();
+        const user = userEvent.setup();
+        const csv = "RK,TIERS,PLAYER NAME,TEAM,POS\n1,1,Ja'Marr Chase,CIN,WR1\n2,1,Bijan Robinson,ATL,RB1";
+        await pasteIntoSheet(user, csv);
+
+        expect(screen.getByRole('combobox', { name: 'NAME' })).toHaveValue('2');
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+        expect(startLoad).toHaveBeenCalledWith(csv, expect.objectContaining({ name: 2, team: 3, position: 4 }));
+    });
+
+    // A select whose value matches no option shows its first option, so a null
+    // name rendered as "1 · RK" - the mapper claiming a column it did not have,
+    // on the one field that decides whether anything matches at all.
+    it('shows the name column as unset rather than pointing at column one', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        await pasteIntoSheet(user, 'Rank,Pos,Bye\n1,WR,10\n2,RB,6');
+
+        expect(screen.getByRole('combobox', { name: 'NAME' })).toHaveValue('');
+        expect(screen.getByRole('alert')).toHaveTextContent(/column with the player names/i);
+    });
+
+    it('refuses to run a mapped list with no name column', async () => {
+        const { startLoad } = renderPanel();
+        const user = userEvent.setup();
+        await pasteIntoSheet(user, 'Rank,Pos,Bye\n1,WR,10\n2,RB,6');
+
+        expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+        expect(startLoad).not.toHaveBeenCalled();
+    });
+
+    // And the mapper is a way out of it, not just a warning about it.
+    it('runs once the name column is picked by hand', async () => {
+        const { startLoad } = renderPanel();
+        const user = userEvent.setup();
+        const csv = "Rank,Pos,Player\n1,WR,Ja'Marr Chase\n2,RB,Bijan Robinson";
+        await pasteIntoSheet(user, csv);
+        await user.selectOptions(screen.getByRole('combobox', { name: 'NAME' }), '2');
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        expect(startLoad).toHaveBeenCalledWith(csv, expect.objectContaining({ name: 2 }));
+    });
+
     it('offers a file picker beside the paste box', async () => {
         const user = userEvent.setup();
         renderPanel();

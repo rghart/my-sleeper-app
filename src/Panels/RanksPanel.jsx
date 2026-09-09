@@ -7,7 +7,7 @@ import SegmentedControl from '../Components/SegmentedControl';
 import Sheet from '../Components/Sheet';
 import ColumnMapper from '../Components/ColumnMapper';
 import PlayerSearch from '../Components/PlayerSearch';
-import { detectColumns, detectDelimiter, toRows } from '../lib/rankColumns.js';
+import { detectColumns, detectDelimiter, hasNameColumn, toRows } from '../lib/rankColumns.js';
 import { groupByTier } from '../lib/rankTiers.js';
 import { auth } from '../firebase.js';
 import APP_DB_URLS from '../urls.js';
@@ -713,10 +713,30 @@ const RanksPanel = ({
                                     the primary action disappearing the moment
                                     you paste a CSV is not a thing to leave to
                                     a scroll gesture. */}
-                                <div className="bg-raised sticky bottom-0 -mx-4 -mb-4 px-4 pt-3 pb-4">
+                                <div className="bg-raised sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-2 px-4 pt-3 pb-4">
+                                    {/* Beside the button rather than up in the
+                                        mapper, which is where it started: the
+                                        mapper is tall enough that its own
+                                        fields scroll out of the sheet, so the
+                                        one thing standing between a paste and
+                                        a rank list would have been explained
+                                        off-screen while the disabled button
+                                        sat here saying nothing. */}
+                                    {columnMap !== null && !hasNameColumn(columnMap) && (
+                                        <p role="alert" className="text-warn m-0 text-[13px]">
+                                            Pick the column with the player names above - without it there is nothing to
+                                            match.
+                                        </p>
+                                    )}
                                     <button
                                         type="button"
-                                        disabled={searchText.length < 6}
+                                        // A mapped list with no name column
+                                        // matches every row to nothing and
+                                        // reports no misses either, so it
+                                        // cannot be submitted.
+                                        disabled={
+                                            searchText.length < 6 || (columnMap !== null && !hasNameColumn(columnMap))
+                                        }
                                         onClick={startSearch}
                                         className="bg-mine text-ground w-full rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"
                                     >

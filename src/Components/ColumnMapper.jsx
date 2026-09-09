@@ -48,30 +48,45 @@ const ColumnMapper = ({ rows, mapping, onChange }) => {
     return (
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2">
-                {fields.map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-2">
-                        <span className="text-ink-dim w-24 shrink-0 font-mono text-[11px] tracking-[.08em]">
-                            {label.toUpperCase()}
-                        </span>
-                        <select
-                            className={selectClass}
-                            value={mapping[key] === null || mapping[key] === undefined ? '' : String(mapping[key])}
-                            onChange={(event) =>
-                                set(key, event.target.value === '' ? null : Number(event.target.value))
-                            }
-                        >
-                            {/* Team and position are genuinely optional - a
+                {fields.map(({ key, label }) => {
+                    const required = key === 'name' || key === 'first';
+                    return (
+                        <label key={key} className="flex items-center gap-2">
+                            <span className="text-ink-dim w-24 shrink-0 font-mono text-[11px] tracking-[.08em]">
+                                {label.toUpperCase()}
+                            </span>
+                            <select
+                                className={selectClass}
+                                value={mapping[key] === null || mapping[key] === undefined ? '' : String(mapping[key])}
+                                onChange={(event) =>
+                                    set(key, event.target.value === '' ? null : Number(event.target.value))
+                                }
+                            >
+                                {/* Team and position are genuinely optional - a
                                 list of names alone is a normal thing to paste.
-                                A name is not, so it has no empty option. */}
-                            {key !== 'name' && key !== 'first' && <option value="">Not in this list</option>}
-                            {Array.from({ length: width }, (_, index) => (
-                                <option key={index} value={String(index)}>
-                                    {columnLabel(index, header)}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                ))}
+                                A name is not, so its empty option is only
+                                there while it is unset, and says so.
+
+                                It has to exist at all, though: a controlled
+                                select whose value matches no option shows
+                                whichever option is first, so a null name used
+                                to render as "1 · RK" - the mapper claiming a
+                                mapping it did not have, on the one field that
+                                decides whether anything matches. */}
+                                {required ? (
+                                    mapping[key] === null && <option value="">Which column has the names?</option>
+                                ) : (
+                                    <option value="">Not in this list</option>
+                                )}
+                                {Array.from({ length: width }, (_, index) => (
+                                    <option key={index} value={String(index)}>
+                                        {columnLabel(index, header)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    );
+                })}
             </div>
 
             {/* Three rows, because the mapping is only checkable against the
