@@ -27,9 +27,19 @@ const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, ROSTERS, SLEEPER_U
 
 /**
  * The whole player database, keyed by player id.
+ *
+ * `checkErrors` is not optional here, though it was missing for a long time
+ * and every other request in this file had it. The API answers a bad path or
+ * a failing backend with a JSON error body - `{"errors":{"detail":"Not
+ * Found"}}` - and `response.json()` parses that perfectly happily. So a 404 or
+ * a 504 became a *player database with one junk key in it*: every roster
+ * player unknown, and every line of a pasted rank list reported as unmatched,
+ * which reads as "none of my players were found" and blames the file. The
+ * status is the only thing that tells those apart from a real payload.
  */
 export async function fetchPlayerData() {
     return await fetch(ACTIVE_PLAYERS)
+        .then(checkErrors)
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error:', error);

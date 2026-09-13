@@ -89,6 +89,8 @@ const RanksPanel = ({
     isLoading,
     signedIn,
     playerInfo,
+    playerInfoFailed,
+    retryPlayerInfo,
     rosterInfo,
     lineupSet,
     updateRankingPlayersIdsList,
@@ -140,6 +142,7 @@ const RanksPanel = ({
     // the timestamp are only ever shown next to the import control, and
     // fetching 31KB of values to label a button nobody has pressed is work for
     // nothing.
+    const [retryingPlayerInfo, setRetryingPlayerInfo] = useState(false);
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState(null);
     const [marketSettings, setMarketSettings] = useState(null);
@@ -148,6 +151,11 @@ const RanksPanel = ({
     const saveButtonRef = useRef(null);
     const filtersChipRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    // Whether there is a player database to match a paste against. Derived
+    // from the payload rather than passed as a flag, so "empty" and "not here
+    // yet" cannot disagree. `playerInfoFailed` only says *why* it is empty.
+    const playerDbReady = Object.keys(playerInfo).length > 0;
 
     // Text arriving from anywhere - typed, pasted, or read out of a file -
     // goes through here, so a dropped CSV and a spreadsheet paste get the same
@@ -714,6 +722,47 @@ const RanksPanel = ({
                                     you paste a CSV is not a thing to leave to
                                     a scroll gesture. */}
                                 <div className="bg-raised sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-2 px-4 pt-3 pb-4">
+                                    {/* Every line of a paste is matched against
+                                        the player database and nothing else, so
+                                        pasting without it reports the whole list
+                                        as unmatched - which reads as "none of my
+                                        players were found" and blames the file.
+                                        It is a 3.5MB request that has been
+                                        measured at 14s cold, so the window where
+                                        this sheet is open and the database is
+                                        not here yet is real, not theoretical. */}
+                                    {!playerDbReady && (
+                                        <p
+                                            role="status"
+                                            className="text-ink-muted m-0 flex items-center gap-2 text-[13px]"
+                                        >
+                                            {playerInfoFailed ? (
+                                                <>
+                                                    <span className="text-warn">
+                                                        Couldn&rsquo;t load the player database, so there is nothing to
+                                                        match against.
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        disabled={retryingPlayerInfo}
+                                                        onClick={async () => {
+                                                            setRetryingPlayerInfo(true);
+                                                            await retryPlayerInfo();
+                                                            setRetryingPlayerInfo(false);
+                                                        }}
+                                                        className="border-line text-ink shrink-0 rounded-full border px-3 py-1 text-[13px] font-semibold disabled:opacity-50"
+                                                    >
+                                                        {retryingPlayerInfo ? 'Retrying…' : 'Retry'}
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Spinner />
+                                                    Loading the player database&hellip;
+                                                </>
+                                            )}
+                                        </p>
+                                    )}
                                     {/* Beside the button rather than up in the
                                         mapper, which is where it started: the
                                         mapper is tall enough that its own
@@ -735,7 +784,9 @@ const RanksPanel = ({
                                         // reports no misses either, so it
                                         // cannot be submitted.
                                         disabled={
-                                            searchText.length < 6 || (columnMap !== null && !hasNameColumn(columnMap))
+                                            searchText.length < 6 ||
+                                            !playerDbReady ||
+                                            (columnMap !== null && !hasNameColumn(columnMap))
                                         }
                                         onClick={startSearch}
                                         className="bg-mine text-ground w-full rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:opacity-50"

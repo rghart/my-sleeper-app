@@ -62,6 +62,8 @@ function renderPanel(overrides = {}) {
         addToRoster: vi.fn(),
         updatePlayerId: vi.fn(),
         notFoundPlayers: [],
+        playerInfoFailed: false,
+        retryPlayerInfo: vi.fn().mockResolvedValue(true),
         resolveMissingPlayer: vi.fn(),
         myDisplayName: MY_DISPLAY_NAME,
         // savedRankLists/updateSavedRankLists are lifted to App (see
@@ -599,6 +601,46 @@ describe('RanksPanel column mapping', () => {
         await user.click(screen.getByRole('button', { name: 'Submit' }));
 
         expect(startLoad).toHaveBeenCalledWith(csv, expect.objectContaining({ name: 2 }));
+    });
+
+    // Every line of a paste is matched against the player database and nothing
+    // else. Pasting before it lands puts the whole list in the miss list, which
+    // reads as "none of my players were found" - the file blamed for a request
+    // that had not finished. It is a 3.5MB fetch, measured at 14s against the
+    // live API when cold, so this window is real.
+    it('will not match a paste before the player database has arrived', async () => {
+        const { startLoad } = renderPanel({ playerInfo: {} });
+        const user = userEvent.setup();
+        await pasteIntoSheet(user, CSV);
+
+        expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
+        expect(screen.getByRole('status')).toHaveTextContent(/Loading the player database/i);
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+        expect(startLoad).not.toHaveBeenCalled();
+    });
+
+    // "Still coming" and "never coming" are different things to be told, and
+    // the second one needs a way out.
+    it('says so when the player database failed, and offers a retry', async () => {
+        const retryPlayerInfo = vi.fn().mockResolvedValue(true);
+        renderPanel({ playerInfo: {}, playerInfoFailed: true, retryPlayerInfo });
+        const user = userEvent.setup();
+        await pasteIntoSheet(user, CSV);
+
+        expect(screen.getByRole('status')).toHaveTextContent(/Couldn.t load the player database/i);
+        expect(screen.queryByText(/Loading the player database/i)).toBeNull();
+
+        await user.click(screen.getByRole('button', { name: 'Retry' }));
+        expect(retryPlayerInfo).toHaveBeenCalled();
+    });
+
+    it('says nothing about the database once it is loaded', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+        await pasteIntoSheet(user, CSV);
+
+        expect(screen.queryByRole('status')).toBeNull();
+        expect(screen.getByRole('button', { name: 'Submit' })).not.toBeDisabled();
     });
 
     it('offers a file picker beside the paste box', async () => {

@@ -162,6 +162,13 @@ describe('App', () => {
     // one opening on the other league.
     afterEach(() => {
         window.localStorage.clear();
+        // The hash is the active section and jsdom keeps it for the whole
+        // file, so a test that navigates leaves every later one starting on
+        // the wrong section - where `ryangh` is not on screen and they all
+        // time out looking for it. Individual tests reset it at the end, but
+        // a *failing* one never gets there, which turns one red test into a
+        // dozen unrelated timeouts. Doing it here cannot be skipped.
+        window.location.hash = '';
     });
 
     it('renders a manager display name resolved from managerData on the draft board', async () => {
@@ -630,6 +637,35 @@ describe('App', () => {
     // ran and the app sat on the LEAGUE_PANEL spinner forever. These assert on
     // what reaches the screen, since "it threw" and "it hung" look identical
     // from a unit test of the builder alone.
+    // The player database is the only thing a pasted rank list is matched
+    // against, and `fetchPlayerData` resolves to undefined on failure rather
+    // than rejecting. That used to be swallowed by a bare `if (playerInfo)`:
+    // the board still rendered, so it looked like a clean degrade, but every
+    // line of a paste then came back unmatched and the miss list blamed the
+    // file. This is the wiring that tells the panel otherwise.
+    it('says the player database failed rather than letting a paste blame the file', async () => {
+        global.fetch = vi.fn((url) => {
+            if (url.includes('legacy/players')) {
+                return Promise.reject(new Error('Player database unavailable'));
+            }
+            return mockFetch(url);
+        });
+
+        const user = userEvent.setup();
+        render(<App />);
+        await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+
+        await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
+        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+
+        expect(screen.getByRole('status')).toHaveTextContent(/Couldn.t load the player database/i);
+        expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
+
+        // Every later test in this file assumes it starts on the default
+        // section unless it resets the hash itself.
+        window.location.hash = '';
+    });
+
     describe('a draft response the board cannot be built from', () => {
         const without = (key) => (draft) => {
             const copy = { ...draft };

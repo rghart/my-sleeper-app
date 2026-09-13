@@ -117,6 +117,31 @@ describe('sleeperApi', () => {
         }
     });
 
+    // The failure this file's own convention was protecting against, on the one
+    // request that had opted out of it. The API answers a bad path or a failing
+    // backend with a JSON error body, and `response.json()` parses that just
+    // fine - so without a status check the app adopts `{errors: ...}` as its
+    // player database. Nothing then matches, and a pasted rank list reports
+    // every line as unfound, which reads as a problem with the file.
+    it('fetchPlayerData resolves to undefined for an error body served with an error status', async () => {
+        global.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: false,
+                status: 404,
+                statusText: 'Not Found',
+                json: () => Promise.resolve({ errors: { detail: 'Not Found' } }),
+            }),
+        );
+
+        await expect(fetchPlayerData()).resolves.toBeUndefined();
+    });
+
+    it('fetchPlayerData returns the player database on success', async () => {
+        global.fetch = vi.fn(() => jsonResponse({ 4046: { player_id: '4046', search_last_name: 'mahomes' } }));
+
+        expect(await fetchPlayerData()).toMatchObject({ 4046: { search_last_name: 'mahomes' } });
+    });
+
     it('fetchDraft returns the draft settings on success', async () => {
         global.fetch = vi.fn(() => jsonResponse({ draft_id: 'draft123', draft_order: {} }));
         expect(await fetchDraft('draft123')).toEqual({ draft_id: 'draft123', draft_order: {} });
