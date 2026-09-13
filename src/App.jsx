@@ -120,6 +120,7 @@ class App extends React.Component {
         leagueID: null,
         rosterSlots: [],
         notFoundPlayers: [],
+        playerInfoFailed: false,
         signedIn: false,
         signedInEmail: null,
         // The Sleeper account the app is pointed at, `{ userId, username }`,
@@ -298,9 +299,28 @@ class App extends React.Component {
     loadEverything = async (sleeperAccount) => {
         const playerInfo = await fetchPlayerData();
         if (playerInfo) {
-            this.setState({ playerInfo });
+            this.setState({ playerInfo, playerInfoFailed: false });
+        } else {
+            // Recorded rather than shrugged off. The board does degrade
+            // cleanly without the player database, which is why this used to
+            // be a bare `if`, but a pasted rank list is matched against this
+            // and nothing else: without it every line comes back unmatched,
+            // and the miss list says the file is at fault when the truth is
+            // that a request failed. The panel cannot tell the difference
+            // unless it is told.
+            this.setState({ playerInfoFailed: true });
         }
         await this.loadLeague(playerInfo || this.state.playerInfo, sleeperAccount);
+    };
+
+    // The player database on its own. `retryLeagueLoad` deliberately does not
+    // refetch it - there it is in memory and is not what failed - and this is
+    // the opposite case, where it is the only thing that failed. Resolves to
+    // whether it worked so the caller can say so.
+    retryPlayerInfo = async () => {
+        const playerInfo = await fetchPlayerData();
+        this.setState(playerInfo ? { playerInfo, playerInfoFailed: false } : { playerInfoFailed: true });
+        return Boolean(playerInfo);
     };
 
     // `playerInfo` is a parameter rather than a state read for the same
@@ -683,6 +703,7 @@ class App extends React.Component {
             sleeperAccount,
             accountResolved,
             accountSyncFailed,
+            playerInfoFailed,
         } = this.state;
         if (loading === LOADING.INITIAL) {
             return <Spinner size="page" />;
@@ -722,6 +743,8 @@ class App extends React.Component {
                 isLoading={loading === LOADING.RANKS_PANEL}
                 signedIn={signedIn}
                 playerInfo={playerInfo}
+                playerInfoFailed={playerInfoFailed}
+                retryPlayerInfo={this.retryPlayerInfo}
                 rosterInfo={rosterInfo}
                 updateRankingPlayersIdsList={this.updateRankingPlayersIdsList}
                 startLoad={this.startLoad}
