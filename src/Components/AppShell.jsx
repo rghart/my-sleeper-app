@@ -4,6 +4,7 @@ import { DEFAULT_SECTION_ID, groupLabelFor, groupSectionsFor } from '../sections
 import AppBar from './AppBar';
 import NavMenu from './NavMenu';
 import SectionIcon from './SectionIcon';
+import { useMyLeagueTiers } from '../useMyLeagueTiers.js';
 
 // Sections that share the main column with a Ranks aside on wide screens.
 // 'ranks' itself is excluded on purpose: when it is active, Ranks already IS
@@ -21,6 +22,8 @@ const AppShell = ({
     leagueIds,
     updateLeagueID,
     defaultSectionId = DEFAULT_SECTION_ID,
+    sleeperUserId,
+    playerInfo,
 }) => {
     // Memoised because the hook subscribes to `hashchange` against these: a
     // fresh array every render would tear the listener down and rebuild it on
@@ -48,6 +51,8 @@ const AppShell = ({
     const groupSections = groupSectionsFor(sections, activeId);
     const showTabBar = groupSections.length > 1;
 
+    const leagueTiers = useMyLeagueTiers({ leagues: leagueIds, userId: sleeperUserId, playerInfo });
+
     return (
         // With no tab bar the shared bar height drops to zero on this subtree,
         // so everything anchored above the bar - sheets, the best-available
@@ -69,6 +74,10 @@ const AppShell = ({
                     onSignIn={identity.onSignIn}
                     onSignOut={identity.onSignOut}
                     onDisconnectSleeper={identity.onDisconnectSleeper}
+                    leagues={leagueIds ?? []}
+                    activeLeagueId={leagueID}
+                    onSelectLeague={updateLeagueID}
+                    leagueTiers={leagueTiers}
                 />
             </aside>
             <div className="flex min-w-0 flex-1 flex-col">
@@ -86,6 +95,7 @@ const AppShell = ({
                     leagueID={showLeaguePill ? leagueID : undefined}
                     leagueIds={showLeaguePill ? leagueIds : undefined}
                     updateLeagueID={updateLeagueID}
+                    leagueTiers={leagueTiers}
                 />
                 <div className="flex flex-1 flex-col md:gap-4 md:p-4">
                     {/* Above `main` rather than inside it: `main` turns into a

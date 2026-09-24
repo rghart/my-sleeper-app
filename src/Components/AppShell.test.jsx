@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AppShell from './AppShell';
 import { SECTIONS } from '../sections.js';
+import { clearRankingCache } from '../lib/leagueRankings.js';
 
 const LEAGUE_ID = '1312088290526003200';
 const OTHER_LEAGUE_ID = '9999999999999999999';
@@ -231,6 +232,90 @@ describe('AppShell', () => {
                 ['Market', ['Movers', 'Trades']],
                 ['League', ['Leaguemates', 'Power rankings']],
             ]);
+        });
+    });
+
+    describe('your leagues', () => {
+        const yourLeagues = () => screen.getAllByRole('navigation', { name: 'Your leagues' })[0];
+
+        it('lists every league in the sidebar, and switches league from it', async () => {
+            const user = userEvent.setup();
+            const updateLeagueID = vi.fn();
+            renderShell({ updateLeagueID });
+
+            const list = yourLeagues();
+            expect(within(list).getByRole('button', { name: /Test League/ })).toHaveAttribute('aria-current', 'true');
+
+            await user.click(within(list).getByRole('button', { name: /4 QB Madness/ }));
+
+            expect(updateLeagueID).toHaveBeenCalledWith(OTHER_LEAGUE_ID);
+        });
+
+        describe('with tiers', () => {
+            let originalFetch;
+            beforeEach(() => {
+                originalFetch = global.fetch;
+                clearRankingCache();
+            });
+            afterEach(() => {
+                global.fetch = originalFetch;
+            });
+
+            const json = (data) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
+            const leagueObject = (league_id, name, status) => ({
+                league_id,
+                name,
+                status,
+                season: '2026',
+                roster_positions: ['QB', 'BN'],
+                settings: { type: 2, draft_rounds: 1 },
+                scoring_settings: { rec: 1 },
+            });
+
+            it('shows your tier beside each league once it is known', async () => {
+                // In the first league you field the better quarterback and
+                // hold the only bench player; the second has not drafted.
+                global.fetch = vi.fn((url) => {
+                    if (url.includes('dynasty-values'))
+                        return json({
+                            values: [
+                                { playerId: 'q1', value: 9000 },
+                                { playerId: 'q2', value: 500 },
+                                { playerId: 'q3', value: 1000 },
+                            ],
+                            picks: [],
+                        });
+                    if (url.includes(`league/${LEAGUE_ID}/rosters`))
+                        return json([
+                            { roster_id: 1, owner_id: 'me', players: ['q1', 'q2'] },
+                            { roster_id: 2, owner_id: 'them', players: ['q3'] },
+                        ]);
+                    return json([]);
+                });
+
+                renderShell({
+                    leagueIds: [
+                        leagueObject(LEAGUE_ID, 'Test League', 'in_season'),
+                        leagueObject(OTHER_LEAGUE_ID, '4 QB Madness', 'pre_draft'),
+                    ],
+                    updateLeagueID: vi.fn(),
+                    sleeperUserId: 'me',
+                    playerInfo: {
+                        q1: { fantasy_positions: ['QB'] },
+                        q2: { fantasy_positions: ['QB'] },
+                        q3: { fantasy_positions: ['QB'] },
+                    },
+                });
+
+                const first = await within(yourLeagues()).findByRole('button', { name: /Test League.*Contender/ });
+                expect(first).toBeInTheDocument();
+                // No tier for a league that has not drafted - an empty board
+                // would tie every team at Middle and say nothing.
+                expect(within(yourLeagues()).getByRole('button', { name: '4 QB Madness' })).toBeInTheDocument();
+                expect(global.fetch.mock.calls.some(([url]) => url.includes(`league/${OTHER_LEAGUE_ID}/rosters`))).toBe(
+                    false,
+                );
+            });
         });
     });
 });

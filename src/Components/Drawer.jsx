@@ -25,6 +25,10 @@ const Drawer = ({
     onSignIn,
     onSignOut,
     onDisconnectSleeper,
+    leagues,
+    activeLeagueId,
+    onSelectLeague,
+    leagueTiers,
 }) => {
     const panelRef = useRef(null);
 
@@ -78,6 +82,10 @@ const Drawer = ({
                     onSignIn={onSignIn}
                     onSignOut={onSignOut}
                     onDisconnectSleeper={onDisconnectSleeper}
+                    leagues={leagues}
+                    activeLeagueId={activeLeagueId}
+                    onSelectLeague={onSelectLeague}
+                    leagueTiers={leagueTiers}
                 />
             </div>
         </div>

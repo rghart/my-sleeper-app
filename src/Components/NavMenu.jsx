@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SECTIONS, PLANNED_SECTIONS, SECTION_GROUPS } from '../sections.js';
 import { avatarInitials } from './avatarInitials.js';
 import SectionIcon from './SectionIcon';
+import { TierChip } from './TierIcon';
 
 // Everything the side menu holds: the app's name, every section under its
 // group heading, and the two identities at the foot. Rendered by the phone
@@ -26,6 +27,10 @@ const NavMenu = ({
     onSignIn,
     onSignOut,
     onDisconnectSleeper,
+    leagues = [],
+    activeLeagueId,
+    onSelectLeague,
+    leagueTiers = {},
 }) => {
     const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
 
@@ -109,6 +114,42 @@ const NavMenu = ({
                     );
                 })}
             </nav>
+
+            {/* Every league you are in, with your tier in each - the one place
+                that answers "am I contending or rebuilding" across all of
+                them at once. Doubles as a league switcher, which is why it
+                is a list of buttons rather than a summary. */}
+            {leagues.length > 1 && onSelectLeague ? (
+                <nav aria-label="Your leagues" className="flex flex-col gap-0.5">
+                    <p className="text-ink-dim m-0 px-3 pb-1.5 font-mono text-[10px] font-semibold tracking-[.1em] uppercase">
+                        Your leagues
+                    </p>
+                    {leagues.map((league) => {
+                        const isActive = league.league_id === activeLeagueId;
+                        return (
+                            <button
+                                key={league.league_id}
+                                type="button"
+                                aria-current={isActive ? 'true' : undefined}
+                                onClick={() => {
+                                    onSelectLeague(league.league_id);
+                                    onDone?.();
+                                }}
+                                className={`rounded-row flex min-h-11 items-center gap-3 px-3 text-left ${
+                                    isActive ? 'bg-raised text-ink' : 'text-ink-muted'
+                                }`}
+                            >
+                                <span
+                                    className={`min-w-0 flex-1 truncate text-sm ${isActive ? 'font-semibold' : 'font-medium'}`}
+                                >
+                                    {league.name}
+                                </span>
+                                <TierChip tier={leagueTiers[league.league_id]} />
+                            </button>
+                        );
+                    })}
+                </nav>
+            ) : null}
 
             <div className="mt-auto flex flex-col gap-3 px-1.5">
                 <div className="bg-line-mid h-px w-full" />
