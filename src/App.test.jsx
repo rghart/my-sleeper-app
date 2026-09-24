@@ -379,8 +379,12 @@ describe('App', () => {
             releaseSecondLeague = resolve;
         });
         let gated = false;
+        // Armed only once the switch starts: the menu's tier lookup also reads
+        // every league's rosters at startup, and must not be the request that
+        // gets held.
+        let switching = false;
         global.fetch = vi.fn((url) => {
-            if (url.includes(`league/${OTHER_LEAGUE_ID}/rosters/`) && !gated) {
+            if (switching && url.includes(`league/${OTHER_LEAGUE_ID}/rosters/`) && !gated) {
                 gated = true;
                 return gate.then(() => mockFetch(url));
             }
@@ -390,6 +394,7 @@ describe('App', () => {
         const user = userEvent.setup();
         render(<App />);
         await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
+        switching = true;
         // LeaguePanel and RanksPanel are the only two panels that render a
         // panel-sized Spinner (labelled "Loading", as opposed to the
         // full-page one labelled "Loading your leagues"), and their loading

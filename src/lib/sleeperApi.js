@@ -177,6 +177,22 @@ export async function fetchSeasonProjections(season) {
 }
 
 /**
+ * One league's rosters, undecorated - for ranking a league that is not the
+ * one on screen, where the full five-request bundle would be four requests
+ * too many.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchLeagueRosters(leagueId) {
+    return await fetch(LEAGUE + leagueId + '/' + ROSTERS)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching rosters:', error);
+        });
+}
+
+/**
  * Every rookie pick in the league that has changed hands, across every future
  * season Sleeper tracks - unlike `fetchTradedDraftPicks` below, which only
  * knows the one draft it is asked about. `roster_id` is the pick's original

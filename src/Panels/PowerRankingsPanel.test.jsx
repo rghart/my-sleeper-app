@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PowerRankingsPanel from './PowerRankingsPanel';
+import { clearRankingCache } from '../lib/leagueRankings.js';
 
 // The panel owns its fetches, so these drive the real effect through a
 // URL-routed fetch rather than passing data in - the wiring is the part a
@@ -44,6 +45,7 @@ const ROSTERS = [
 ];
 
 const LEAGUE = {
+    league_id: 'L1',
     season: '2026',
     total_rosters: 4,
     roster_positions: ['QB', 'RB', 'BN', 'BN'],
@@ -108,7 +110,7 @@ const routeFetch = ({ ktc = KTC, fc = FC, traded = TRADED, projections = PROJECT
         if (url.includes('projections')) return projections ? jsonResponse(projections) : failure();
         if (url.includes('dynasty-values')) return ktc ? jsonResponse(ktc) : failure();
         if (url.includes('/values')) return fc ? jsonResponse(fc) : failure();
-        if (url.includes('traded_picks')) return traded ? jsonResponse(traded) : failure();
+        if (url.includes('league/L1/traded_picks')) return traded ? jsonResponse(traded) : failure();
         return failure();
     });
 
@@ -135,6 +137,9 @@ describe('PowerRankingsPanel', () => {
     let originalFetch;
     beforeEach(() => {
         originalFetch = global.fetch;
+        // The value lists are cached per session; a test that fails KTC must
+        // not be handed the previous test's copy.
+        clearRankingCache();
         vi.spyOn(console, 'error').mockImplementation(() => {});
     });
     afterEach(() => {

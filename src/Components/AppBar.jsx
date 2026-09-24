@@ -35,6 +35,7 @@ const AppBar = ({
     leagueID,
     leagueIds,
     updateLeagueID,
+    leagueTiers = {},
 }) => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const hamburgerRef = useRef(null);
@@ -93,7 +94,12 @@ const AppBar = ({
                         options={rankList.options}
                     />
                 ) : showLeaguePill ? (
-                    <LeaguePill leagueID={leagueID} leagueIds={leagueIds} updateLeagueID={updateLeagueID} />
+                    <LeaguePill
+                        leagueID={leagueID}
+                        leagueIds={leagueIds}
+                        updateLeagueID={updateLeagueID}
+                        tier={leagueTiers[leagueID]}
+                    />
                 ) : null}
 
                 {showSectionPills ? (
@@ -149,6 +155,10 @@ const AppBar = ({
                     onSignIn={onSignIn}
                     onSignOut={onSignOut}
                     onDisconnectSleeper={onDisconnectSleeper}
+                    leagues={leagueIds ?? []}
+                    activeLeagueId={leagueID}
+                    onSelectLeague={updateLeagueID}
+                    leagueTiers={leagueTiers}
                 />
             ) : null}
         </>

@@ -3,13 +3,24 @@
 // native arrow (`appearance-none` drops that). LeaguePill and the top bar's
 // rank-list pill (see RankList.jsx/AppBar.jsx) both wrap a plain `<select>`
 // in exactly this shape, so it lives here once rather than twice.
-const SelectPill = ({ ariaLabel, value, onChange, options }) => (
+//
+// `leading` is an optional decorative glyph drawn inside the pill before the
+// text - the league switcher's tier icon. A native `<option>` cannot hold an
+// icon, so it sits over the select instead, and the select makes room for it.
+const SelectPill = ({ ariaLabel, value, onChange, options, leading = null }) => (
     <span className="relative inline-flex items-center">
+        {leading && (
+            <span aria-hidden="true" className="text-ink-muted pointer-events-none absolute left-2.5 flex">
+                {leading}
+            </span>
+        )}
         <select
             aria-label={ariaLabel}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="border-line text-ink max-w-[150px] appearance-none truncate rounded-full border bg-transparent py-1 pr-5 pl-2.5 text-[13px] font-semibold tracking-[-0.01em] md:max-w-none"
+            className={`border-line text-ink max-w-[150px] appearance-none truncate rounded-full border bg-transparent py-1 pr-5 text-[13px] font-semibold tracking-[-0.01em] md:max-w-none ${
+                leading ? 'pl-7' : 'pl-2.5'
+            }`}
         >
             {options.map((option) => (
                 <option key={option.value} value={option.value}>

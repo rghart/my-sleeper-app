@@ -798,6 +798,8 @@ class App extends React.Component {
                                 leagueID={leagueID}
                                 leagueIds={leagueData.leagueIds}
                                 updateLeagueID={this.updateLeagueID}
+                                sleeperUserId={sleeperAccount?.userId}
+                                playerInfo={playerInfo}
                                 // Inside the shell rather than above it: the
                                 // shell owns the top bar now, so a banner
                                 // rendered as a sibling would sit above the bar

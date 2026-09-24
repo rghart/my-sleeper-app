@@ -4,16 +4,9 @@ import Sheet from '../Components/Sheet';
 import Spinner from '../Components/Spinner';
 import { TierChip, TierIcon, tierLabel } from '../Components/TierIcon';
 import { agoLabel } from '../lib/relativeTime.js';
-import { asOfMillis, pickValue, usesSuperflexValues, valuesByPlayerId } from '../lib/dynastyValues.js';
-import { leagueMarketSettings } from '../lib/marketValues.js';
-import { pickSeasonsInScope, rankTeams, ranksBy, THRESHOLDS, TIERS } from '../lib/powerRankings.js';
-import { adpValues, projectionValues } from '../lib/projections.js';
-import {
-    fetchDynastyValues,
-    fetchLeagueTradedPicks,
-    fetchMarketValues,
-    fetchSeasonProjections,
-} from '../lib/sleeperApi.js';
+import { asOfMillis } from '../lib/dynastyValues.js';
+import { fetchRankingInputs, isMyRoster, rankLeague } from '../lib/leagueRankings.js';
+import { ranksBy, THRESHOLDS, TIERS } from '../lib/powerRankings.js';
 
 // Where every team in the league stands: now, for the future, and the tier
 // the two put it in. The maths lives in lib/powerRankings.js; this screen
@@ -60,9 +53,6 @@ const ordinal = (n) => {
     const tail = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th');
     return `${n}${tail}`;
 };
-
-const isMine = (roster, userId) =>
-    userId != null && (roster.owner_id === userId || (roster.co_owners ?? []).includes(userId));
 
 // The two scores as a picture: Future across, Now up. The tier lines are
 // drawn where the tier rules actually cut - the Middle band between the two
@@ -214,75 +204,28 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
     const [tiersOpen, setTiersOpen] = useState(false);
     const tiersButtonRef = useRef(null);
 
-    const settings = leagueMarketSettings(league);
-    const superflex = usesSuperflexValues(settings);
-    // A string so the effect re-runs when the league's shape changes, not on
-    // every render's fresh settings object.
-    const settingsKey = JSON.stringify(settings);
-    const season = league?.season;
-
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
 
-        Promise.all([
-            fetchDynastyValues({ superflex }),
-            fetchMarketValues(JSON.parse(settingsKey)),
-            fetchLeagueTradedPicks(leagueID),
-            season ? fetchSeasonProjections(season) : Promise.resolve(undefined),
-        ]).then(([ktc, fc, tradedPicks, projections]) => {
+        fetchRankingInputs(league).then((inputs) => {
             if (cancelled) return;
-            // An empty array is a failure in all but name - a season with no
-            // projections cannot rank anyone - so it is dropped like one.
-            setData({ ktc, fc, tradedPicks, projections: projections?.length ? projections : undefined });
+            setData(inputs);
             setLoading(false);
         });
 
         return () => {
             cancelled = true;
         };
-    }, [leagueID, superflex, settingsKey, season]);
+        // Keyed on the league's identity, not the object: App rebuilds it on
+        // every load, and refetching values on a re-render is waste.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [leagueID, league?.season]);
 
-    const teams = useMemo(() => {
-        if (!data?.ktc || !rosterData?.length || !league) return null;
-
-        const ktcById = valuesByPlayerId(data.ktc);
-        const fcById = valuesByPlayerId(data.fc);
-        const ktcValue = (id) => ktcById[id]?.value;
-
-        const sources = {};
-        if (data.projections) {
-            const points = projectionValues(data.projections, league.scoring_settings);
-            const adp = adpValues(data.projections, { superflex, ppr: league.scoring_settings?.rec });
-            sources.proj = { valueOf: (id) => points[id] };
-            sources.adp = { valueOf: (id) => adp[id] };
-        }
-        sources.ktc = { valueOf: ktcValue };
-        if (data.fc) sources.fc = { valueOf: (id) => fcById[id]?.value };
-
-        return rankTeams({
-            rosters: rosterData,
-            rosterPositions: league.roster_positions,
-            playerInfo,
-            sources,
-            future: { valueOf: ktcValue },
-            // Without the traded-picks list every team would be credited with
-            // its own picks - a claim this screen cannot back - so picks are
-            // left out entirely instead, and the header says so.
-            picks: data.tradedPicks
-                ? {
-                      seasons: pickSeasonsInScope({
-                          pricedSeasons: (data.ktc.picks ?? []).map((pick) => pick.season),
-                          leagueSeason: league.season,
-                          currentDraftComplete,
-                      }),
-                      rounds: league.settings?.draft_rounds ?? 0,
-                      tradedPicks: data.tradedPicks,
-                      valueOf: (pick) => pickValue(data.ktc, pick)?.value,
-                  }
-                : null,
-        });
-    }, [data, rosterData, league, playerInfo, currentDraftComplete, superflex]);
+    const teams = useMemo(
+        () => rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete }),
+        [data, rosterData, league, playerInfo, currentDraftComplete],
+    );
 
     if (loading) {
         return (
@@ -308,7 +251,7 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
     const unavailable = [!data.projections && 'projections', !data.fc && 'FantasyCalc'].filter(Boolean);
     const activeSource = sourceOptions.some((option) => option.value === source) ? source : 'blend';
 
-    const myRosterId = rosterData.find((roster) => isMine(roster, sleeperUserId))?.roster_id;
+    const myRosterId = rosterData.find((roster) => isMyRoster(roster, sleeperUserId))?.roster_id;
     const nowRanks = ranksBy(teams, (team) => team.now[activeSource]);
     const futureRanks = ranksBy(teams, (team) => team.future);
     const ordered = [...teams].sort((a, b) => nowRanks.get(a.rosterId) - nowRanks.get(b.rosterId));
