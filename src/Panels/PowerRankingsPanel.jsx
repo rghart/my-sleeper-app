@@ -54,10 +54,13 @@ const ordinal = (n) => {
     return `${n}${tail}`;
 };
 
-// The two scores as a picture: Future across, Now up. The tier lines are
-// drawn where the tier rules actually cut - the Middle band between the two
-// Now thresholds, and a Future split that sits at a different place above the
-// band (All-in) than below it (Rebuilding), because the rules differ.
+// The two scores as a picture: Future across, Now up. The Middle band is
+// drawn where the Now thresholds cut; the vertical line is the league-average
+// Future, a reference rather than a tier line. It used to be two lines at
+// the two Future cutoffs (All-in's -0.5 above the band, Rebuilding's 0 below),
+// which read as a chart drawn out of alignment - and once bought picks could
+// make a team Rebuilding, the lower one was not even where the cut is. The
+// tier chip in the list is the authority on any one team.
 const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
     const y = (now) => 100 - toPercent(now);
     const bandTop = y(THRESHOLDS.strongNow);
@@ -71,14 +74,7 @@ const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
                 className="bg-empty absolute inset-x-0"
                 style={{ top: `${bandTop}%`, height: `${bandBottom - bandTop}%` }}
             />
-            <div
-                className="border-mark absolute top-0 border-l border-dashed"
-                style={{ left: `${toPercent(THRESHOLDS.allInFuture)}%`, height: `${bandTop}%` }}
-            />
-            <div
-                className="border-mark absolute bottom-0 border-l border-dashed"
-                style={{ left: `${toPercent(THRESHOLDS.rebuildingFuture)}%`, top: `${bandBottom}%` }}
-            />
+            <div className="border-mark absolute inset-y-0 left-1/2 border-l border-dashed" />
 
             {/* Quadrant names sit in the corners, clear of where teams land
                 most often (the middle). */}
@@ -148,12 +144,16 @@ const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
                 </span>
             ))}
 
-            <span className="text-ink-quiet absolute inset-x-0 bottom-1.5 text-center font-mono text-[10px]">
+            {/* Both captions sit on the centre line, backed with the chart's own
+                surface so the dashes stop short of the text. */}
+            <span className="bg-raised text-ink-quiet absolute bottom-1.5 left-1/2 -translate-x-1/2 px-1 font-mono text-[10px]">
                 FUTURE →
             </span>
             {/* Top centre rather than rotated down the left edge, where it
                 sat on the Middle label and on any team pinned to that edge. */}
-            <span className="text-ink-quiet absolute inset-x-0 top-1.5 text-center font-mono text-[10px]">↑ NOW</span>
+            <span className="bg-raised text-ink-quiet absolute top-1.5 left-1/2 -translate-x-1/2 px-1 font-mono text-[10px]">
+                ↑ NOW
+            </span>
         </div>
     );
 };
