@@ -231,3 +231,27 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
         };
     });
 }
+
+/**
+ * The rookie-draft seasons whose picks still count as future assets.
+ *
+ * A season's picks stop being picks once its draft has run - they are
+ * players on a roster by then. So this season counts only while its draft is
+ * still to come, and only seasons the value source prices are kept: an
+ * unpriced 2029 pick would count as 0 for every team, and a guessed price
+ * would be a number made up for the screen.
+ */
+export function pickSeasonsInScope({ pricedSeasons, leagueSeason, currentDraftComplete }) {
+    const season = Number(leagueSeason);
+    return [...new Set((pricedSeasons ?? []).map(Number))]
+        .filter((priced) => priced > season || (priced === season && !currentDraftComplete))
+        .sort((a, b) => a - b);
+}
+
+/**
+ * 1-based rank of each team by a score, best first, keyed by roster id.
+ */
+export function ranksBy(teams, score) {
+    const ordered = [...teams].sort((a, b) => (score(b) ?? -Infinity) - (score(a) ?? -Infinity));
+    return new Map(ordered.map((team, i) => [team.rosterId, i + 1]));
+}

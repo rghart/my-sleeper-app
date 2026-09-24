@@ -182,14 +182,25 @@ describe('AppShell', () => {
         });
 
         it('shows no tab bar for a group with a single live section', () => {
+            // No real group is down to one section any more, so the rule is
+            // pinned with a fixture group that is.
+            const withSolo = [...SECTIONS, { id: 'solo', label: 'Solo', scope: 'league', group: 'solo' }];
+            window.location.hash = '#/solo';
+
+            renderShell({ sections: withSolo });
+
+            expect(screen.getByTestId('section-content')).toHaveTextContent('solo');
+            expect(tabBar()).toBeNull();
+            // The pill row follows the same rule.
+            expect(screen.queryByRole('navigation', { name: 'Section switcher' })).toBeNull();
+        });
+
+        it('gives League a tab bar now it has two sections', () => {
             window.location.hash = '#/leaguemates';
 
             renderShell();
 
-            expect(screen.getByTestId('section-content')).toHaveTextContent('leaguemates');
-            expect(tabBar()).toBeNull();
-            // The pill row follows the same rule.
-            expect(screen.queryByRole('navigation', { name: 'Section switcher' })).toBeNull();
+            expect(tabNames()).toEqual(['Leaguemates', 'Power rankings']);
         });
 
         it('names the active group in the top bar', async () => {
@@ -218,7 +229,7 @@ describe('AppShell', () => {
             expect(listing).toEqual([
                 ['Your team', ['Draft', 'Lineup', 'Ranks']],
                 ['Market', ['Movers', 'Trades']],
-                ['League', ['Leaguemates']],
+                ['League', ['Leaguemates', 'Power rankings']],
             ]);
         });
     });
