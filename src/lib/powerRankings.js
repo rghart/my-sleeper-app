@@ -20,8 +20,8 @@ export const TIERS = [
     { id: 'contender', label: 'Contender', description: 'Strong now, future intact' },
     { id: 'all-in', label: 'All-in', description: 'Strong now, future spent to get there' },
     { id: 'middle', label: 'Middle', description: 'Close to the league average for now' },
-    { id: 'rebuilding', label: 'Rebuilding', description: 'Weak now, future above average' },
-    { id: 'stuck', label: 'Stuck', description: 'Weak now, and below average for the future too' },
+    { id: 'rebuilding', label: 'Rebuilding', description: 'Weak now, but has bought picks or has depth to build from' },
+    { id: 'stuck', label: 'Stuck', description: 'Weak now, with no extra picks and thin depth' },
 ];
 
 /**
@@ -38,12 +38,22 @@ export const THRESHOLDS = {
     // A weak team is Rebuilding when its future is at least average; below
     // that it is weak on both counts.
     rebuildingFuture: 0,
+    // ...or when it holds more pick value than the league average, whatever
+    // its bench looks like. Every team starts with the same picks, so above
+    // average means it has bought picks on net: a team that has taken on
+    // picks is rebuilding by definition, which was Ryan's call. The margin is
+    // above zero only so float noise in a league where no pick has moved
+    // (every team exactly average) cannot tip a team either way.
+    rebuildingPicks: 0.01,
 };
 
-export function tierFor(now, future) {
+export function tierFor(now, future, picks = null) {
     if (now == null || future == null) return null;
     if (now >= THRESHOLDS.strongNow) return future >= THRESHOLDS.allInFuture ? 'contender' : 'all-in';
-    if (now <= THRESHOLDS.weakNow) return future >= THRESHOLDS.rebuildingFuture ? 'rebuilding' : 'stuck';
+    if (now <= THRESHOLDS.weakNow) {
+        const boughtPicks = picks != null && picks > THRESHOLDS.rebuildingPicks;
+        return future >= THRESHOLDS.rebuildingFuture || boughtPicks ? 'rebuilding' : 'stuck';
+    }
     return 'middle';
 }
 
@@ -208,6 +218,9 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
         sourceIds.map((sourceId) => [sourceId, zScores(lineups.map((lineup) => lineup[sourceId].total))]),
     );
     const futureZ = zScores(futureTotals.map((f) => f.total));
+    // Only meaningful when picks were counted at all; without them there is
+    // nothing to have bought.
+    const picksZ = picks ? zScores(futureTotals.map((f) => f.pickValue)) : rosters.map(() => null);
 
     return rosters.map((roster, i) => {
         const now = Object.fromEntries(sourceIds.map((sourceId) => [sourceId, nowZ[sourceId][i]]));
@@ -217,7 +230,7 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
         // the biggest scale decide.
         now.blend = sourceIds.length ? sourceIds.reduce((sum, id) => sum + now[id], 0) / sourceIds.length : null;
 
-        const tiers = Object.fromEntries(Object.entries(now).map(([id, z]) => [id, tierFor(z, futureZ[i])]));
+        const tiers = Object.fromEntries(Object.entries(now).map(([id, z]) => [id, tierFor(z, futureZ[i], picksZ[i])]));
 
         return {
             rosterId: roster.roster_id,
@@ -225,6 +238,7 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
             name: roster.manager_display_name,
             now,
             future: futureZ[i],
+            picks: picksZ[i],
             tiers,
             lineups: lineups[i],
             futureDetail: futureTotals[i],

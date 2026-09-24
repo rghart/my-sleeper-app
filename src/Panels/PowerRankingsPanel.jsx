@@ -204,30 +204,45 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
     const [tiersOpen, setTiersOpen] = useState(false);
     const tiersButtonRef = useRef(null);
 
+    // Keyed on the league OBJECT's id, not the `leagueID` prop. On a league
+    // switch App updates the id first and the league object a beat later, so
+    // an effect keyed on the prop fetched the new league's inputs with the old
+    // league's object - the previous league's traded picks - and never ran
+    // again once the right object arrived. That showed kpresley, holding most
+    // of TBD's 2027 firsts, as Stuck: his picks had been credited from
+    // another league's trades.
+    const inputsLeagueId = league?.league_id;
     useEffect(() => {
+        if (!inputsLeagueId) return undefined;
         let cancelled = false;
         setLoading(true);
 
         fetchRankingInputs(league).then((inputs) => {
             if (cancelled) return;
-            setData(inputs);
+            setData({ ...inputs, leagueId: inputsLeagueId });
             setLoading(false);
         });
 
         return () => {
             cancelled = true;
         };
-        // Keyed on the league's identity, not the object: App rebuilds it on
-        // every load, and refetching values on a re-render is waste.
+        // App rebuilds the league object on every load; refetching on a new
+        // object with the same id would be waste.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [leagueID, league?.season]);
+    }, [inputsLeagueId, league?.season]);
+
+    // Everything on screen has to be about one league. Until the fetched
+    // inputs, the league object and the prop all agree, this is mid-switch,
+    // and the honest thing to show is the spinner.
+    const inSync = data?.leagueId === inputsLeagueId && inputsLeagueId === leagueID;
 
     const teams = useMemo(
-        () => rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete }),
-        [data, rosterData, league, playerInfo, currentDraftComplete],
+        () =>
+            inSync ? rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete }) : null,
+        [inSync, data, rosterData, league, playerInfo, currentDraftComplete],
     );
 
-    if (loading) {
+    if (loading || !inSync) {
         return (
             <div className="flex min-h-40 items-center justify-center">
                 <Spinner />

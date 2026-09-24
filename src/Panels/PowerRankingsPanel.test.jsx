@@ -111,6 +111,13 @@ const routeFetch = ({ ktc = KTC, fc = FC, traded = TRADED, projections = PROJECT
         if (url.includes('dynasty-values')) return ktc ? jsonResponse(ktc) : failure();
         if (url.includes('/values')) return fc ? jsonResponse(fc) : failure();
         if (url.includes('league/L1/traded_picks')) return traded ? jsonResponse(traded) : failure();
+        // A second league whose trades went the other way: delta bought the
+        // firsts that charlie holds in L1.
+        if (url.includes('league/L2/traded_picks'))
+            return jsonResponse([
+                { season: '2027', round: 1, roster_id: 2, owner_id: 4 },
+                { season: '2027', round: 1, roster_id: 3, owner_id: 4 },
+            ]);
         return failure();
     });
 
@@ -216,6 +223,33 @@ describe('PowerRankingsPanel', () => {
         expect(screen.queryByRole('button', { name: 'Projections' })).toBeNull();
         expect(screen.queryByRole('button', { name: 'ADP' })).toBeNull();
         expect(screen.getByText(/projections unavailable/)).toBeInTheDocument();
+    });
+
+    it("ranks a switched-to league with its own traded picks, not the last league's", async () => {
+        // App updates the league id first and the league object a beat later.
+        // The panel must not fetch with the stale object and then stop.
+        global.fetch = routeFetch();
+        const user = userEvent.setup();
+        const props = {
+            playerInfo: PLAYER_INFO,
+            sleeperUserId: 'uA',
+            currentDraftComplete: true,
+            rosterData: ROSTERS,
+        };
+        const { rerender } = render(<PowerRankingsPanel {...props} leagueID="L1" league={LEAGUE} />);
+        await screen.findByRole('list', { name: 'Teams by Now score' });
+
+        const L2 = { ...LEAGUE, league_id: 'L2' };
+        rerender(<PowerRankingsPanel {...props} leagueID="L2" league={LEAGUE} />);
+        // Mid-switch: nothing about either league should be claimed.
+        expect(screen.queryByRole('list', { name: 'Teams by Now score' })).toBeNull();
+
+        rerender(<PowerRankingsPanel {...props} leagueID="L2" league={L2} />);
+        await user.click(await screen.findByRole('button', { name: 'KTC' }));
+
+        const delta = (await rowNames()).find((row) => row.startsWith('delta'));
+        expect(delta).toMatch(/Rebuilding, 4th for Now, 1st for Future$/);
+        expect(global.fetch.mock.calls.some(([url]) => url.includes('league/L2/traded_picks'))).toBe(true);
     });
 
     it('drops FantasyCalc, and says so, when it fails to load', async () => {
