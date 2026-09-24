@@ -12,8 +12,18 @@ const {
     MANAGER_ACTIVITY,
     MARKET_VALUES,
 } = APP_DB_URLS;
-const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } =
-    SLEEPER_API_URLS;
+const {
+    LEAGUE,
+    USER_LEAGUES,
+    USER_BY_NAME,
+    NFL_STATE,
+    DRAFT,
+    SEASON_PROJECTIONS,
+    ROSTERS,
+    SLEEPER_USERS,
+    TRADED_PICKS,
+    DRAFTS,
+} = SLEEPER_API_URLS;
 
 // Every function here returns its data instead of writing it to state. That is
 // the point of the module, not a stylistic preference: the two bugs in #96 and
@@ -143,6 +153,26 @@ export async function fetchLeagueBundle({ leagueID, season, userId }) {
         }))
         .catch((error) => {
             console.error('Error:', error);
+        });
+}
+
+/**
+ * Sleeper's season-long projection for every skill player, kicker and
+ * defence: one row per player, `stats` holding raw projected stat totals
+ * plus that player's redraft ADP in each format (`adp_ppr`, `adp_2qb`, ...).
+ *
+ * The stats are raw on purpose - `pts_ppr` and friends are there too, but
+ * only for three stock formats, and a league with TE premium or six-point
+ * passing touchdowns is none of them. See lib/projections.js.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchSeasonProjections(season) {
+    return await fetch(SEASON_PROJECTIONS(season))
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching projections:', error);
         });
 }
 

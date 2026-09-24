@@ -7,7 +7,13 @@ import { agoLabel } from '../lib/relativeTime.js';
 import { asOfMillis, pickValue, usesSuperflexValues, valuesByPlayerId } from '../lib/dynastyValues.js';
 import { leagueMarketSettings } from '../lib/marketValues.js';
 import { pickSeasonsInScope, rankTeams, ranksBy, THRESHOLDS, TIERS } from '../lib/powerRankings.js';
-import { fetchDynastyValues, fetchLeagueTradedPicks, fetchMarketValues } from '../lib/sleeperApi.js';
+import { adpValues, projectionValues } from '../lib/projections.js';
+import {
+    fetchDynastyValues,
+    fetchLeagueTradedPicks,
+    fetchMarketValues,
+    fetchSeasonProjections,
+} from '../lib/sleeperApi.js';
 
 // Where every team in the league stands: now, for the future, and the tier
 // the two put it in. The maths lives in lib/powerRankings.js; this screen
@@ -17,9 +23,21 @@ import { fetchDynastyValues, fetchLeagueTradedPicks, fetchMarketValues } from '.
 // depends on whether this league can start a second quarterback.
 
 // Future is always KTC - it is the source that prices picks and discounts
-// age - so KTC is required and FantasyCalc is additive. Losing FantasyCalc
-// costs one Now source; losing KTC costs the screen.
-const SOURCE_LABELS = { blend: 'Blend', ktc: 'KTC', fc: 'FantasyCalc' };
+// age - so KTC is required and every other source is additive. Losing one of
+// those costs a Now source; losing KTC costs the screen.
+const SOURCE_ORDER = ['blend', 'proj', 'adp', 'ktc', 'fc'];
+const SOURCE_LABELS = { blend: 'Blend', proj: 'Projections', adp: 'ADP', ktc: 'KTC', fc: 'FantasyCalc' };
+
+// What each source is actually measuring, shown under the switch. Two of
+// them are dynasty values, which is worth saying: they price a 22-year-old on
+// his next five years, not on this season.
+const SOURCE_NOTES = {
+    blend: 'The average of every source below. Where they disagree, a team lands in between.',
+    proj: 'Sleeper’s season-long projection for the best lineup, scored with this league’s settings.',
+    adp: 'Redraft ADP of the best lineup: how early this season’s drafts take those players.',
+    ktc: 'KeepTradeCut dynasty value of the best lineup. Flatters young players who aren’t producing yet.',
+    fc: 'FantasyCalc dynasty value of the best lineup. Flatters young players who aren’t producing yet.',
+};
 
 // The chart's reach, in standard deviations either side of average. Wide
 // enough that a genuine outlier in a 12-team league still lands inside;
@@ -201,6 +219,7 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
     // A string so the effect re-runs when the league's shape changes, not on
     // every render's fresh settings object.
     const settingsKey = JSON.stringify(settings);
+    const season = league?.season;
 
     useEffect(() => {
         let cancelled = false;
@@ -210,16 +229,19 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
             fetchDynastyValues({ superflex }),
             fetchMarketValues(JSON.parse(settingsKey)),
             fetchLeagueTradedPicks(leagueID),
-        ]).then(([ktc, fc, tradedPicks]) => {
+            season ? fetchSeasonProjections(season) : Promise.resolve(undefined),
+        ]).then(([ktc, fc, tradedPicks, projections]) => {
             if (cancelled) return;
-            setData({ ktc, fc, tradedPicks });
+            // An empty array is a failure in all but name - a season with no
+            // projections cannot rank anyone - so it is dropped like one.
+            setData({ ktc, fc, tradedPicks, projections: projections?.length ? projections : undefined });
             setLoading(false);
         });
 
         return () => {
             cancelled = true;
         };
-    }, [leagueID, superflex, settingsKey]);
+    }, [leagueID, superflex, settingsKey, season]);
 
     const teams = useMemo(() => {
         if (!data?.ktc || !rosterData?.length || !league) return null;
@@ -228,7 +250,14 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
         const fcById = valuesByPlayerId(data.fc);
         const ktcValue = (id) => ktcById[id]?.value;
 
-        const sources = { ktc: { valueOf: ktcValue } };
+        const sources = {};
+        if (data.projections) {
+            const points = projectionValues(data.projections, league.scoring_settings);
+            const adp = adpValues(data.projections, { superflex, ppr: league.scoring_settings?.rec });
+            sources.proj = { valueOf: (id) => points[id] };
+            sources.adp = { valueOf: (id) => adp[id] };
+        }
+        sources.ktc = { valueOf: ktcValue };
         if (data.fc) sources.fc = { valueOf: (id) => fcById[id]?.value };
 
         return rankTeams({
@@ -253,7 +282,7 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
                   }
                 : null,
         });
-    }, [data, rosterData, league, playerInfo, currentDraftComplete]);
+    }, [data, rosterData, league, playerInfo, currentDraftComplete, superflex]);
 
     if (loading) {
         return (
@@ -271,10 +300,12 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
         );
     }
 
-    const sourceOptions = ['blend', 'ktc', ...(data.fc ? ['fc'] : [])].map((value) => ({
+    const available = { blend: true, proj: !!data.projections, adp: !!data.projections, ktc: true, fc: !!data.fc };
+    const sourceOptions = SOURCE_ORDER.filter((id) => available[id]).map((value) => ({
         value,
         label: SOURCE_LABELS[value],
     }));
+    const unavailable = [!data.projections && 'projections', !data.fc && 'FantasyCalc'].filter(Boolean);
     const activeSource = sourceOptions.some((option) => option.value === source) ? source : 'blend';
 
     const myRosterId = rosterData.find((roster) => isMine(roster, sleeperUserId))?.roster_id;
@@ -294,7 +325,8 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
                         own, so a stale KTC list is worth being able to see. */}
                     <p className="text-ink-dim m-0 font-mono text-[11px]">
                         {teams.length} teams{ktcAge && ` · KTC ${ktcAge}`}
-                        {data.fc ? fcAge && ` · FantasyCalc ${fcAge}` : ' · FantasyCalc unavailable'}
+                        {fcAge && ` · FantasyCalc ${fcAge}`}
+                        {unavailable.length > 0 && ` · ${unavailable.join(' and ')} unavailable`}
                         {!data.tradedPicks && ' · picks not counted'}
                     </p>
                 </div>
@@ -308,13 +340,19 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
                 </button>
             </div>
 
-            <div className="px-4">
-                <SegmentedControl
-                    label="Now scored by"
-                    options={sourceOptions}
-                    value={activeSource}
-                    onChange={setSource}
-                />
+            <div className="flex flex-col gap-1.5">
+                {/* Scrolls sideways rather than wrapping: five sources do not
+                    fit across a phone, and a second row of segments would
+                    read as a second control. */}
+                <div className="[scrollbar-width:none] overflow-x-auto px-4 [&::-webkit-scrollbar]:hidden">
+                    <SegmentedControl
+                        label="Now scored by"
+                        options={sourceOptions}
+                        value={activeSource}
+                        onChange={setSource}
+                    />
+                </div>
+                <p className="text-ink-quiet m-0 px-4 text-xs">{SOURCE_NOTES[activeSource]}</p>
             </div>
 
             <div className="flex flex-col gap-4 px-4 md:flex-row md:items-start">

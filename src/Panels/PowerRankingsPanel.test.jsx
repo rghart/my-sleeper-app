@@ -48,7 +48,7 @@ const LEAGUE = {
     total_rosters: 4,
     roster_positions: ['QB', 'RB', 'BN', 'BN'],
     settings: { type: 2, draft_rounds: 1 },
-    scoring_settings: { rec: 1 },
+    scoring_settings: { rec: 1, pass_td: 4 },
 };
 
 const values = (table) => Object.entries(table).map(([playerId, value]) => ({ playerId, value }));
@@ -81,6 +81,21 @@ const FC = {
     values: values({ qa: 5000, ra: 5000, qb: 5000, rb: 5000, qc: 9000, rc: 9000, qd: 1000, rd: 1000 }),
 };
 
+// Sleeper's season projections. `pts_ppr` is deliberately in the opposite
+// order to what this league's own scoring gives, so a test can only pass if
+// the panel scores the raw stats itself.
+const projection = (player_id, stats, ptsPpr) => ({ player_id, stats: { ...stats, pts_ppr: ptsPpr } });
+const PROJECTIONS = [
+    projection('qa', { pass_td: 10, adp_ppr: 10 }, 400),
+    projection('ra', { rec: 50, adp_ppr: 20 }, 400),
+    projection('qb', { pass_td: 30, adp_ppr: 200 }, 100),
+    projection('rb', { rec: 10, adp_ppr: 250 }, 100),
+    projection('qc', { pass_td: 20, adp_ppr: 100 }, 1),
+    projection('rc', { rec: 60, adp_ppr: 90 }, 1),
+    projection('qd', { pass_td: 5, adp_ppr: 280 }, 900),
+    projection('rd', { rec: 5, adp_ppr: 290 }, 900),
+];
+
 const TRADED = [
     { season: '2027', round: 1, roster_id: 2, owner_id: 3, previous_owner_id: 2 },
     { season: '2027', round: 1, roster_id: 4, owner_id: 3, previous_owner_id: 4 },
@@ -88,8 +103,9 @@ const TRADED = [
     { season: '2026', round: 1, roster_id: 1, owner_id: 4, previous_owner_id: 1 },
 ];
 
-const routeFetch = ({ ktc = KTC, fc = FC, traded = TRADED } = {}) =>
+const routeFetch = ({ ktc = KTC, fc = FC, traded = TRADED, projections = PROJECTIONS } = {}) =>
     vi.fn((url) => {
+        if (url.includes('projections')) return projections ? jsonResponse(projections) : failure();
         if (url.includes('dynasty-values')) return ktc ? jsonResponse(ktc) : failure();
         if (url.includes('/values')) return fc ? jsonResponse(fc) : failure();
         if (url.includes('traded_picks')) return traded ? jsonResponse(traded) : failure();
@@ -161,6 +177,40 @@ describe('PowerRankingsPanel', () => {
         expect(await screen.findAllByRole('button', { name: /^alpha, you, / })).toHaveLength(2);
         // Four dots on the chart, four rows in the list.
         expect(screen.getAllByRole('button', { name: /^(alpha|bravo|charlie|delta)\b/ })).toHaveLength(8);
+    });
+
+    it("ranks by projections scored with this league's settings, not Sleeper's stock points", async () => {
+        global.fetch = routeFetch();
+        const user = userEvent.setup();
+        renderPanel();
+
+        await user.click(await screen.findByRole('button', { name: 'Projections' }));
+
+        // pass_td x4 + rec x1: charlie 140, bravo 130, alpha 90, delta 25.
+        const rows = await rowNames();
+        expect(rows.map((row) => row.split(',')[0])).toEqual(['charlie', 'bravo', 'alpha', 'delta']);
+        expect(screen.getByText(/scored with this league’s settings/)).toBeInTheDocument();
+    });
+
+    it("ranks by the league's redraft ADP column, earliest picks best", async () => {
+        global.fetch = routeFetch();
+        const user = userEvent.setup();
+        renderPanel();
+
+        await user.click(await screen.findByRole('button', { name: 'ADP' }));
+
+        const rows = await rowNames();
+        expect(rows.map((row) => row.split(',')[0])).toEqual(['alpha', 'charlie', 'bravo', 'delta']);
+    });
+
+    it('drops projections and ADP, and says so, when projections fail to load', async () => {
+        global.fetch = routeFetch({ projections: null });
+        renderPanel();
+
+        await screen.findByRole('list', { name: 'Teams by Now score' });
+        expect(screen.queryByRole('button', { name: 'Projections' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'ADP' })).toBeNull();
+        expect(screen.getByText(/projections unavailable/)).toBeInTheDocument();
     });
 
     it('drops FantasyCalc, and says so, when it fails to load', async () => {
