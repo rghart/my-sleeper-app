@@ -98,6 +98,32 @@ describe('myTierIn', () => {
     });
 });
 
+describe('myTierIn when it cannot tell', () => {
+    let originalFetch;
+    beforeEach(() => {
+        originalFetch = global.fetch;
+        clearRankingCache();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+    afterEach(() => {
+        global.fetch = originalFetch;
+        vi.restoreAllMocks();
+    });
+
+    it('says nothing when KTC fails, and asks again next time instead of remembering', async () => {
+        const rosters = [{ roster_id: 1, owner_id: 'me', players: [] }];
+        let ktcCalls = 0;
+        global.fetch = vi.fn((url) => {
+            if (url.includes('dynasty-values')) return ++ktcCalls === 1 ? failure() : jsonResponse(KTC);
+            if (url.includes('/rosters')) return jsonResponse(rosters);
+            return jsonResponse([]);
+        });
+
+        expect(await myTierIn(league('A'), { userId: 'me', playerInfo: {} })).toBeUndefined();
+        expect(await myTierIn(league('A'), { userId: 'me', playerInfo: {} })).toBe('middle');
+    });
+});
+
 describe('isMyRoster', () => {
     it('counts a co-owner as an owner', () => {
         expect(isMyRoster({ owner_id: 'a', co_owners: ['b'] }, 'b')).toBe(true);

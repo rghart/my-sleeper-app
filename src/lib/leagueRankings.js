@@ -132,14 +132,27 @@ export const isMyRoster = (roster, userId) =>
  * no roster of theirs, no KTC, or a league that has not drafted yet (every
  * roster empty, so every team would tie at "Middle" and mean nothing).
  */
-export async function myTierIn(league, { userId, playerInfo, rosters }) {
-    if (!league || league.status === 'pre_draft') return null;
+//
+// Cached per league and user for the session, like the value lists: the menu
+// asks again whenever it re-renders, and a tier does not move between two
+// renders.
+export function myTierIn(league, { userId, playerInfo, rosters }) {
+    if (!league || league.status === 'pre_draft') return Promise.resolve(null);
+    return cached(`tier:${league.league_id}:${userId}`, () => loadMyTier(league, { userId, playerInfo, rosters }));
+}
+
+async function loadMyTier(league, { userId, playerInfo, rosters }) {
     const [roster, inputs] = await Promise.all([
         rosters ? Promise.resolve(rosters) : fetchLeagueRosters(league.league_id),
         fetchRankingInputs(league),
     ]);
+    // `undefined` for "could not work it out" (rosters or KTC failed) so the
+    // cache drops it and the next ask retries; `null` for "worked it out, and
+    // you have no team here", which is worth remembering.
+    if (!roster) return undefined;
+    const mine = roster.find((candidate) => isMyRoster(candidate, userId));
+    if (!mine) return null;
     const teams = rankLeague({ league, rosters: roster, playerInfo, inputs });
-    const mine = roster?.find((candidate) => isMyRoster(candidate, userId));
-    const team = mine && teams?.find((candidate) => candidate.rosterId === mine.roster_id);
-    return team?.tiers.blend ?? null;
+    if (!teams) return undefined;
+    return teams.find((candidate) => candidate.rosterId === mine.roster_id)?.tiers.blend ?? null;
 }
