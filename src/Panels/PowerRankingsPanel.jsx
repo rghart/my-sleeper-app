@@ -25,9 +25,18 @@ const SOURCE_LABELS = { blend: 'Blend', ktc: 'KTC', fc: 'FantasyCalc' };
 // enough that a genuine outlier in a 12-team league still lands inside;
 // anything further out is pinned to the edge rather than lost.
 const REACH = 2.2;
-const toPercent = (z) => 50 + (Math.max(-REACH, Math.min(REACH, z)) / REACH) * 50;
+// Kept 7% in from each edge, so a team pinned at the reach still shows a
+// whole dot rather than half of one clipped by the frame.
+const INSET = 7;
+const toPercent = (z) => 50 + (Math.max(-REACH, Math.min(REACH, z)) / REACH) * (50 - INSET);
 
-const fmtZ = (z) => `${z >= 0 ? '+' : '−'}${Math.abs(z).toFixed(1)}`;
+// Signed to one decimal. Rounded before the sign is chosen, so a score of
+// -0.04 reads as 0.0 rather than as a negative zero.
+const fmtZ = (z) => {
+    const rounded = Math.round(z * 10) / 10;
+    if (rounded === 0) return '0.0';
+    return `${rounded > 0 ? '+' : '−'}${Math.abs(rounded).toFixed(1)}`;
+};
 
 const ordinal = (n) => {
     const tail = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th');
@@ -72,7 +81,9 @@ const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
                 Contender
             </span>
             <span
-                className="text-ink-dim absolute left-3 -translate-y-1/2 font-mono text-[10px] font-semibold tracking-[.1em] uppercase"
+                // Right, not left: a team far enough out to be pinned to the
+                // chart's edge is almost always pinned to the left one.
+                className="text-ink-dim absolute right-3 -translate-y-1/2 font-mono text-[10px] font-semibold tracking-[.1em] uppercase"
                 style={{ top: `${(bandTop + bandBottom) / 2}%` }}
             >
                 Middle
@@ -132,9 +143,9 @@ const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
             <span className="text-ink-quiet absolute inset-x-0 bottom-1.5 text-center font-mono text-[10px]">
                 FUTURE →
             </span>
-            <span className="text-ink-quiet absolute top-1/2 -left-2 -translate-y-1/2 -rotate-90 font-mono text-[10px]">
-                NOW →
-            </span>
+            {/* Top centre rather than rotated down the left edge, where it
+                sat on the Middle label and on any team pinned to that edge. */}
+            <span className="text-ink-quiet absolute inset-x-0 top-1.5 text-center font-mono text-[10px]">↑ NOW</span>
         </div>
     );
 };
