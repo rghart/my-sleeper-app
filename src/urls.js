@@ -29,6 +29,15 @@ const PICKS = 'picks/';
 const DRAFTS = 'drafts/';
 const STATE = 'state/nfl';
 
+// Sleeper's own projections service. Unofficial and keyless like the rest of
+// Sleeper's API, but on a different host (`api.sleeper.com`, not `.app`) and
+// not under /v1. Positions are asked for explicitly - without them the
+// response includes every IDP too, several times the size.
+const sleeperProjections = (season) =>
+    'https://api.sleeper.com/projections/nfl/' +
+    season +
+    '?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF';
+
 const APP_DB_URLS = {
     APP_DB: appDB,
     LATEST_UPDATE_ATTEMPT: appDB + latestUpdateAttempt + typeParams,
@@ -80,6 +89,7 @@ const SLEEPER_API_URLS = {
     USER_BY_NAME: (username) => sleeperAPI + V1 + USER + encodeURIComponent(username),
     NFL_STATE: sleeperAPI + V1 + STATE,
     DRAFT: sleeperAPI + V1 + DRAFT,
+    SEASON_PROJECTIONS: sleeperProjections,
     ROSTERS: ROSTERS,
     SLEEPER_USERS: SLEEPER_USERS,
     TRADED_PICKS: TRADED_PICKS,
