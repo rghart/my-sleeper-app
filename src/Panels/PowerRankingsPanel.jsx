@@ -344,7 +344,7 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
                 {/* Scrolls sideways rather than wrapping: five sources do not
                     fit across a phone, and a second row of segments would
                     read as a second control. */}
-                <div className="overflow-x-auto px-4">
+                <div className="[scrollbar-width:none] overflow-x-auto px-4 [&::-webkit-scrollbar]:hidden">
                     <SegmentedControl
                         label="Now scored by"
                         options={sourceOptions}
