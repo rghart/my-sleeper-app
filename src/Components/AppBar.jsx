@@ -11,6 +11,12 @@ import { useRankList } from '../RankList.jsx';
 // league pill to show); and by AppShell, with the nav and league-pill props
 // filled in, once a shell actually exists to navigate.
 //
+// Inside the shell it names the active section's group beside the
+// hamburger, and from md up carries that group's sections as pills - the
+// same set the phone tab bar shows. From lg up AppShell renders a permanent
+// sidebar holding the whole menu, so `hasSidebar` retires the hamburger and
+// the pills there rather than offering the same navigation twice.
+//
 // The hamburger's drawer lives here too, since the hamburger is what opens
 // it - see Drawer.jsx for why it is mounted only while open.
 const AppBar = ({
@@ -21,7 +27,9 @@ const AppBar = ({
     onSignIn,
     onSignOut,
     onDisconnectSleeper,
-    sections,
+    groupLabel,
+    groupSections,
+    hasSidebar = false,
     activeId,
     onNavigate,
     leagueID,
@@ -35,7 +43,9 @@ const AppBar = ({
     const rankList = useRankList();
 
     const showLeaguePill = Boolean(leagueIds && leagueIds.length);
-    const showSectionPills = Boolean(sections && sections.length);
+    // One section is not a choice, so a lone section gets no pill row - the
+    // same rule the phone tab bar follows.
+    const showSectionPills = Boolean(groupSections && groupSections.length > 1);
     const initials = avatarInitials(myDisplayName);
 
     return (
@@ -48,18 +58,26 @@ const AppBar = ({
                     aria-controls={drawerId}
                     ref={hamburgerRef}
                     onClick={() => setDrawerOpen(true)}
-                    className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 py-1.5"
+                    className={`flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 py-1.5 ${
+                        hasSidebar ? 'lg:hidden' : ''
+                    }`}
                 >
                     <span className="bg-ink-muted block h-[1.5px] w-[18px] rounded-[2px]" />
                     <span className="bg-ink-muted block h-[1.5px] w-[18px] rounded-[2px]" />
                     <span className="bg-ink-muted block h-[1.5px] w-[18px] rounded-[2px]" />
                 </button>
 
-                <span className="text-ink hidden text-[15px] font-bold tracking-[-0.02em] md:block">
-                    Team Assistant
-                </span>
+                {groupLabel ? (
+                    <span className="text-ink -ml-1 shrink-0 text-[17px] font-bold tracking-[-0.02em] lg:hidden">
+                        {groupLabel}
+                    </span>
+                ) : (
+                    <span className="text-ink hidden text-[15px] font-bold tracking-[-0.02em] md:block">
+                        Team Assistant
+                    </span>
+                )}
 
-                <span className="bg-line-mid hidden h-[22px] w-px md:block" />
+                <span className="bg-line-mid hidden h-[22px] w-px md:block lg:hidden" />
 
                 {/* On the Ranks section, RanksPanel publishes a rank list -
                     see RankList.jsx - and that replaces the league pill
@@ -79,8 +97,8 @@ const AppBar = ({
                 ) : null}
 
                 {showSectionPills ? (
-                    <nav aria-label="Section switcher" className="ml-5 hidden items-center gap-0.5 md:flex">
-                        {sections.map((section) => {
+                    <nav aria-label="Section switcher" className="ml-5 hidden items-center gap-0.5 md:flex lg:hidden">
+                        {groupSections.map((section) => {
                             const isActive = section.id === activeId;
                             return (
                                 <button
