@@ -32,6 +32,17 @@ describe('tierFor', () => {
         expect(tierFor(now, future)).toBe(tier);
     });
 
+    it('makes a weak team that has bought picks Rebuilding, however thin its depth', () => {
+        expect(tierFor(-1.4, -1.2, 0.8)).toBe('rebuilding');
+        // Only its own picks (league average) or fewer: depth decides.
+        expect(tierFor(-1.4, -1.2, 0)).toBe('stuck');
+        expect(tierFor(-1.4, -1.2, -0.6)).toBe('stuck');
+        expect(tierFor(-1.4, 0.2, -0.6)).toBe('rebuilding');
+        // Picks say nothing about a strong or middling team's tier.
+        expect(tierFor(1.2, -0.9, 2)).toBe('all-in');
+        expect(tierFor(0, -2, 2)).toBe('middle');
+    });
+
     it('has no tier without both scores', () => {
         expect(tierFor(null, 1)).toBeNull();
         expect(tierFor(1, undefined)).toBeNull();
@@ -198,6 +209,36 @@ describe('rankTeams', () => {
         teams.forEach((team) => expect(team.tiers.ktc).toBe(tierFor(team.now.ktc, team.future)));
         // Roster 1 is strong now with one pick and no bench: All-in.
         expect(teams.map((t) => t.tiers.ktc)).toEqual(['all-in', 'stuck', 'rebuilding']);
+    });
+});
+
+describe('rankTeams and bought picks', () => {
+    it('keeps a weak team that bought a first Rebuilding even when its Future is below average', () => {
+        const info = { qa: player('QB'), qb: player('QB'), qc: player('QB'), big: player('RB') };
+        const values = valuesFrom({ qa: 9000, qb: 1000, qc: 1000, big: 20000 });
+        const teams = rankTeams({
+            rosters: [
+                { roster_id: 1, manager_display_name: 'strong', players: ['qa'] },
+                { roster_id: 2, manager_display_name: 'buyer', players: ['qb'] },
+                // A huge bench drags everyone else's Future below average.
+                { roster_id: 3, manager_display_name: 'deep', players: ['qc', 'big'] },
+            ],
+            rosterPositions: ['QB'],
+            playerInfo: info,
+            sources: { ktc: { valueOf: values } },
+            future: { valueOf: values },
+            picks: {
+                seasons: [2027],
+                rounds: 1,
+                tradedPicks: [{ season: '2027', round: 1, roster_id: 1, owner_id: 2 }],
+                valueOf: () => 3000,
+            },
+        });
+
+        const buyer = teams[1];
+        expect(buyer.future).toBeLessThan(0);
+        expect(buyer.picks).toBeGreaterThan(0);
+        expect(buyer.tiers.ktc).toBe('rebuilding');
     });
 });
 

@@ -54,10 +54,13 @@ const ordinal = (n) => {
     return `${n}${tail}`;
 };
 
-// The two scores as a picture: Future across, Now up. The tier lines are
-// drawn where the tier rules actually cut - the Middle band between the two
-// Now thresholds, and a Future split that sits at a different place above the
-// band (All-in) than below it (Rebuilding), because the rules differ.
+// The two scores as a picture: Future across, Now up. The Middle band is
+// drawn where the Now thresholds cut; the vertical line is the league-average
+// Future, a reference rather than a tier line. It used to be two lines at
+// the two Future cutoffs (All-in's -0.5 above the band, Rebuilding's 0 below),
+// which read as a chart drawn out of alignment - and once bought picks could
+// make a team Rebuilding, the lower one was not even where the cut is. The
+// tier chip in the list is the authority on any one team.
 const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
     const y = (now) => 100 - toPercent(now);
     const bandTop = y(THRESHOLDS.strongNow);
@@ -71,14 +74,7 @@ const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
                 className="bg-empty absolute inset-x-0"
                 style={{ top: `${bandTop}%`, height: `${bandBottom - bandTop}%` }}
             />
-            <div
-                className="border-mark absolute top-0 border-l border-dashed"
-                style={{ left: `${toPercent(THRESHOLDS.allInFuture)}%`, height: `${bandTop}%` }}
-            />
-            <div
-                className="border-mark absolute bottom-0 border-l border-dashed"
-                style={{ left: `${toPercent(THRESHOLDS.rebuildingFuture)}%`, top: `${bandBottom}%` }}
-            />
+            <div className="border-mark absolute inset-y-0 left-1/2 border-l border-dashed" />
 
             {/* Quadrant names sit in the corners, clear of where teams land
                 most often (the middle). */}
@@ -148,12 +144,16 @@ const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
                 </span>
             ))}
 
-            <span className="text-ink-quiet absolute inset-x-0 bottom-1.5 text-center font-mono text-[10px]">
+            {/* Both captions sit on the centre line, backed with the chart's own
+                surface so the dashes stop short of the text. */}
+            <span className="bg-raised text-ink-quiet absolute bottom-1.5 left-1/2 -translate-x-1/2 px-1 font-mono text-[10px]">
                 FUTURE →
             </span>
             {/* Top centre rather than rotated down the left edge, where it
                 sat on the Middle label and on any team pinned to that edge. */}
-            <span className="text-ink-quiet absolute inset-x-0 top-1.5 text-center font-mono text-[10px]">↑ NOW</span>
+            <span className="bg-raised text-ink-quiet absolute top-1.5 left-1/2 -translate-x-1/2 px-1 font-mono text-[10px]">
+                ↑ NOW
+            </span>
         </div>
     );
 };
@@ -204,30 +204,45 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
     const [tiersOpen, setTiersOpen] = useState(false);
     const tiersButtonRef = useRef(null);
 
+    // Keyed on the league OBJECT's id, not the `leagueID` prop. On a league
+    // switch App updates the id first and the league object a beat later, so
+    // an effect keyed on the prop fetched the new league's inputs with the old
+    // league's object - the previous league's traded picks - and never ran
+    // again once the right object arrived. That showed kpresley, holding most
+    // of TBD's 2027 firsts, as Stuck: his picks had been credited from
+    // another league's trades.
+    const inputsLeagueId = league?.league_id;
     useEffect(() => {
+        if (!inputsLeagueId) return undefined;
         let cancelled = false;
         setLoading(true);
 
         fetchRankingInputs(league).then((inputs) => {
             if (cancelled) return;
-            setData(inputs);
+            setData({ ...inputs, leagueId: inputsLeagueId });
             setLoading(false);
         });
 
         return () => {
             cancelled = true;
         };
-        // Keyed on the league's identity, not the object: App rebuilds it on
-        // every load, and refetching values on a re-render is waste.
+        // App rebuilds the league object on every load; refetching on a new
+        // object with the same id would be waste.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [leagueID, league?.season]);
+    }, [inputsLeagueId, league?.season]);
+
+    // Everything on screen has to be about one league. Until the fetched
+    // inputs, the league object and the prop all agree, this is mid-switch,
+    // and the honest thing to show is the spinner.
+    const inSync = data?.leagueId === inputsLeagueId && inputsLeagueId === leagueID;
 
     const teams = useMemo(
-        () => rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete }),
-        [data, rosterData, league, playerInfo, currentDraftComplete],
+        () =>
+            inSync ? rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete }) : null,
+        [inSync, data, rosterData, league, playerInfo, currentDraftComplete],
     );
 
-    if (loading) {
+    if (loading || !inSync) {
         return (
             <div className="flex min-h-40 items-center justify-center">
                 <Spinner />
