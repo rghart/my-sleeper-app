@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AppShell from './AppShell';
 import { SECTIONS } from '../sections.js';
@@ -29,6 +29,12 @@ const renderShell = (overrides = {}) =>
 // one of them shares the same accessible name and aria-current, so any of
 // them answers "which section is active" equally well.
 const sectionButtons = (name) => screen.getAllByRole('button', { name });
+
+const sidebar = () => screen.getByRole('navigation', { name: 'All sections' });
+
+// The group name sits in the top bar as plain text; the sidebar's group
+// heading carries the same words, so exclude anything inside the sidebar.
+const topBarGroupName = (label) => screen.getAllByText(label).find((element) => !sidebar().contains(element));
 
 describe('AppShell', () => {
     beforeEach(() => {
@@ -140,9 +146,80 @@ describe('AppShell', () => {
         expect(screen.queryByRole('combobox', { name: 'League' })).toBeNull();
     });
 
-    it('passes identity through to the top bar', () => {
+    it('passes identity through to the top bar and the sidebar', () => {
         renderShell({ identity: { signedIn: true, signedInEmail: 'someone@example.test', myDisplayName: 'a b' } });
 
-        expect(screen.getByText('AB')).toBeTruthy();
+        // The top bar's avatar, and the sidebar's signed-in row.
+        expect(screen.getAllByText('AB')).toHaveLength(2);
+        expect(screen.getByText('someone@example.test')).toBeInTheDocument();
+    });
+
+    describe('grouped navigation', () => {
+        const tabBar = () => screen.queryByRole('navigation', { name: 'Sections' });
+        const tabNames = () =>
+            within(tabBar())
+                .getAllByRole('button')
+                .map((button) => button.textContent);
+
+        it("shows only the active section's group in the tab bar", () => {
+            window.location.hash = '#/lineup';
+
+            renderShell();
+
+            expect(tabNames()).toEqual(['Draft', 'Lineup', 'Ranks']);
+        });
+
+        it('swaps the tab bar to the new group when navigating across groups', async () => {
+            const user = userEvent.setup();
+            window.location.hash = '#/draft';
+            renderShell();
+
+            await user.click(within(sidebar()).getByRole('button', { name: 'Trades' }));
+
+            expect(screen.getByTestId('section-content')).toHaveTextContent('trades');
+            expect(tabNames()).toEqual(['Movers', 'Trades']);
+            expect(within(tabBar()).getByRole('button', { name: 'Trades' })).toHaveAttribute('aria-current', 'page');
+        });
+
+        it('shows no tab bar for a group with a single live section', () => {
+            window.location.hash = '#/leaguemates';
+
+            renderShell();
+
+            expect(screen.getByTestId('section-content')).toHaveTextContent('leaguemates');
+            expect(tabBar()).toBeNull();
+            // The pill row follows the same rule.
+            expect(screen.queryByRole('navigation', { name: 'Section switcher' })).toBeNull();
+        });
+
+        it('names the active group in the top bar', async () => {
+            const user = userEvent.setup();
+            window.location.hash = '#/ranks';
+            renderShell();
+
+            expect(topBarGroupName('Your team')).toBeInTheDocument();
+
+            await user.click(within(sidebar()).getByRole('button', { name: 'Movers' }));
+
+            expect(topBarGroupName('Market')).toBeInTheDocument();
+        });
+
+        it('lists every section under its group heading in the sidebar', () => {
+            renderShell();
+
+            const groups = within(sidebar()).getAllByRole('group');
+            const listing = groups.map((group) => [
+                group.getAttribute('aria-labelledby') &&
+                    document.getElementById(group.getAttribute('aria-labelledby')).textContent,
+                within(group)
+                    .queryAllByRole('button')
+                    .map((button) => button.getAttribute('aria-label')),
+            ]);
+            expect(listing).toEqual([
+                ['Your team', ['Draft', 'Lineup', 'Ranks']],
+                ['Market', ['Movers', 'Trades']],
+                ['League', ['Leaguemates']],
+            ]);
+        });
     });
 });
