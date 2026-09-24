@@ -32,6 +32,15 @@ export const SECTIONS = [
         group: 'league',
         description: 'How they draft elsewhere',
     },
+    // How every team in the league stands, now and for the future. About
+    // these twelve rosters specifically, so 'league' scope needs no argument.
+    {
+        id: 'power',
+        label: 'Power rankings',
+        scope: 'league',
+        group: 'league',
+        description: 'Contenders, rebuilders and the rest',
+    },
     // Movers is 'league' scope for the same reason, and it is the less
     // obvious case: the values are market-wide, so this looks like the
     // 'global' section the docstring above imagines. But *which* set of

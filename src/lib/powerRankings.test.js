@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestLineup, ownedPicks, rankTeams, tierFor, zScores } from './powerRankings.js';
+import { bestLineup, ownedPicks, pickSeasonsInScope, rankTeams, ranksBy, tierFor, zScores } from './powerRankings.js';
 
 const player = (position, extra = {}) => ({ position, fantasy_positions: [position], ...extra });
 
@@ -198,5 +198,34 @@ describe('rankTeams', () => {
         teams.forEach((team) => expect(team.tiers.ktc).toBe(tierFor(team.now.ktc, team.future)));
         // Roster 1 is strong now with one pick and no bench: All-in.
         expect(teams.map((t) => t.tiers.ktc)).toEqual(['all-in', 'stuck', 'rebuilding']);
+    });
+});
+
+describe('pickSeasonsInScope', () => {
+    it('drops this season once its draft has run, and seasons nobody prices', () => {
+        expect(
+            pickSeasonsInScope({ pricedSeasons: [2027, 2026, 2028], leagueSeason: '2026', currentDraftComplete: true }),
+        ).toEqual([2027, 2028]);
+    });
+
+    it('keeps this season while its draft is still to come', () => {
+        expect(
+            pickSeasonsInScope({ pricedSeasons: [2026, 2027], leagueSeason: '2026', currentDraftComplete: false }),
+        ).toEqual([2026, 2027]);
+    });
+});
+
+describe('ranksBy', () => {
+    it('ranks best first and puts a missing score last', () => {
+        const teams = [
+            { rosterId: 1, s: 0.2 },
+            { rosterId: 2, s: null },
+            { rosterId: 3, s: 1.4 },
+        ];
+        expect([...ranksBy(teams, (t) => t.s)]).toEqual([
+            [3, 1],
+            [1, 2],
+            [2, 3],
+        ]);
     });
 });

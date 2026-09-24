@@ -147,6 +147,23 @@ export async function fetchLeagueBundle({ leagueID, season, userId }) {
 }
 
 /**
+ * Every rookie pick in the league that has changed hands, across every future
+ * season Sleeper tracks - unlike `fetchTradedDraftPicks` below, which only
+ * knows the one draft it is asked about. `roster_id` is the pick's original
+ * team and `owner_id` its current one; both are roster ids.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchLeagueTradedPicks(leagueId) {
+    return await fetch(LEAGUE + leagueId + '/' + TRADED_PICKS)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching traded picks:', error);
+        });
+}
+
+/**
  * Picks that have changed hands. Returned rather than stored: threading this
  * value into the draft build as an argument is the fix from #98, where
  * round-tripping it through state meant the build read the previous value and

@@ -32,6 +32,7 @@ const PATHS = {
             <path d="M16 4.5a3.5 3.5 0 010 7M18 14.8c1.9.8 3.1 2.6 3.5 5.2" />
         </>
     ),
+    power: <path d="M5 20V10M12 20V4M19 20v-7" />,
     'league-history': (
         <>
             <circle cx="12" cy="12" r="8.5" />

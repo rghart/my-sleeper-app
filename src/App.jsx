@@ -5,6 +5,7 @@ import ErrorBanner from './Components/ErrorBanner';
 import LeaguePanel from './Panels/LeaguePanel';
 import RanksPanel from './Panels/RanksPanel';
 import LeaguemateIntelPanel from './Panels/LeaguemateIntelPanel';
+import PowerRankingsPanel from './Panels/PowerRankingsPanel';
 import MoversPanel from './Panels/MoversPanel';
 import TradesPanel from './Panels/TradesPanel';
 import Spinner from './Components/Spinner';
@@ -840,6 +841,20 @@ class App extends React.Component {
                                                 sleeperUserId={sleeperAccount?.userId}
                                                 marketSettings={leagueMarketSettings(leagueData.currentLeague)}
                                                 playerInfo={playerInfo}
+                                            />
+                                        );
+                                    }
+                                    if (activeId === 'power') {
+                                        return (
+                                            <PowerRankingsPanel
+                                                leagueID={leagueID}
+                                                league={leagueData.currentLeague}
+                                                rosterData={leagueData.rosterData}
+                                                playerInfo={playerInfo}
+                                                sleeperUserId={sleeperAccount?.userId}
+                                                currentDraftComplete={
+                                                    leagueData.currentLeagueDrafts?.[0]?.status === 'complete'
+                                                }
                                             />
                                         );
                                     }
