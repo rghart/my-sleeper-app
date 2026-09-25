@@ -209,8 +209,16 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
         const playerValue = (roster.players ?? [])
             .filter((id) => !starters.has(id))
             .reduce((sum, id) => sum + (future.valueOf(id) ?? 0), 0);
-        const held = pickHoldings.get(roster.roster_id) ?? [];
-        const pickValue = held.reduce((sum, pick) => sum + (picks.valueOf(pick) ?? 0), 0);
+        // `valueOf` may answer a number or `{ value, basis, tier }` (see
+        // lib/pickSlots.js); either way each pick keeps its price, so a screen
+        // can say what a team's picks are worth and why.
+        const held = (pickHoldings.get(roster.roster_id) ?? []).map((pick) => {
+            const priced = picks.valueOf(pick);
+            return typeof priced === 'object' && priced !== null
+                ? { ...pick, ...priced, value: priced.value ?? 0 }
+                : { ...pick, value: priced ?? 0 };
+        });
+        const pickValue = held.reduce((sum, pick) => sum + pick.value, 0);
         return { total: playerValue + pickValue, playerValue, pickValue, picks: held };
     });
 

@@ -196,7 +196,17 @@ const TiersSheet = ({ onClose, triggerRef }) => (
     </Sheet>
 );
 
-const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperUserId, currentDraftComplete }) => {
+// `draft` is the league's own rookie draft. Once its order is set, picks in it
+// are priced at their exact slot rather than estimated - see lib/pickSlots.js.
+const PowerRankingsPanel = ({
+    leagueID,
+    league,
+    rosterData,
+    playerInfo,
+    sleeperUserId,
+    currentDraftComplete,
+    draft,
+}) => {
     const [data, setData] = useState(undefined);
     const [loading, setLoading] = useState(true);
     const [source, setSource] = useState('blend');
@@ -238,8 +248,10 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
 
     const teams = useMemo(
         () =>
-            inSync ? rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete }) : null,
-        [inSync, data, rosterData, league, playerInfo, currentDraftComplete],
+            inSync
+                ? rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete, draft })
+                : null,
+        [inSync, data, rosterData, league, playerInfo, currentDraftComplete, draft],
     );
 
     if (loading || !inSync) {

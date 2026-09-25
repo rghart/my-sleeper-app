@@ -10,6 +10,7 @@
 import { pickValue, usesSuperflexValues, valuesByPlayerId } from './dynastyValues.js';
 import { leagueMarketSettings } from './marketValues.js';
 import { pickSeasonsInScope, rankTeams } from './powerRankings.js';
+import { draftSlots, pricePick, projectedFinish, seasonProgress } from './pickSlots.js';
 import { adpValues, projectionValues } from './projections.js';
 import {
     fetchDynastyValues,
@@ -73,7 +74,7 @@ export async function fetchRankingInputs(league) {
  * Future score cannot do without; every other input only removes a source
  * (or, for traded picks, the picks) when missing.
  */
-export function rankLeague({ league, rosters, playerInfo, inputs, currentDraftComplete }) {
+export function rankLeague({ league, rosters, playerInfo, inputs, currentDraftComplete, draft }) {
     if (!inputs?.ktc || !rosters?.length || !league) return null;
 
     // The caller may know the draft's own status; failing that, Sleeper's
@@ -96,27 +97,50 @@ export function rankLeague({ league, rosters, playerInfo, inputs, currentDraftCo
     sources.ktc = { valueOf: ktcValue };
     if (inputs.fc) sources.fc = { valueOf: (id) => fcById[id]?.value };
 
-    return rankTeams({
+    const base = {
         rosters,
         rosterPositions: league.roster_positions,
         playerInfo,
         sources,
         future: { valueOf: ktcValue },
-        // Without the traded-picks list every team would be credited with its
-        // own picks - a claim nothing here can back - so picks are left out
-        // entirely instead.
-        picks: inputs.tradedPicks
-            ? {
-                  seasons: pickSeasonsInScope({
-                      pricedSeasons: (inputs.ktc.picks ?? []).map((pick) => pick.season),
-                      leagueSeason: league.season,
-                      currentDraftComplete: draftDone,
-                  }),
-                  rounds: league.settings?.draft_rounds ?? 0,
-                  tradedPicks: inputs.tradedPicks,
-                  valueOf: (pick) => pickValue(inputs.ktc, pick)?.value,
-              }
-            : null,
+    };
+
+    // Without the traded-picks list every team would be credited with its own
+    // picks - a claim nothing here can back - so picks are left out entirely
+    // instead.
+    if (!inputs.tradedPicks) return rankTeams({ ...base, picks: null });
+
+    const seasons = pickSeasonsInScope({
+        pricedSeasons: (inputs.ktc.picks ?? []).map((pick) => pick.season),
+        leagueSeason: league.season,
+        currentDraftComplete: draftDone,
+    });
+    const picksBase = { seasons, rounds: league.settings?.draft_rounds ?? 0, tradedPicks: inputs.tradedPicks };
+    const priceOf = (pick) => (tier) =>
+        pickValue(inputs.ktc, { season: pick.season, round: pick.round, tier })?.value ?? null;
+
+    // Two passes. A pick's price depends on where its original team finishes,
+    // which depends on that team's Now score - but Now never depends on
+    // picks, so a first pass with every pick at "mid" gets Now exactly, and
+    // the second prices each pick from it. See lib/pickSlots.js.
+    const firstPass = rankTeams({ ...base, picks: { ...picksBase, valueOf: (pick) => priceOf(pick)('mid') } });
+
+    const nextSeason = seasons[0];
+    // A draft order counts only for the draft it belongs to, and only before
+    // that draft has run.
+    const upcoming = draft && Number(draft.season) === nextSeason && draft.status !== 'complete' ? draft : null;
+    const context = {
+        nextSeason,
+        finish: projectedFinish({ teams: firstPass, rosters, league }),
+        teamCount: rosters.length,
+        slots: draftSlots({ draft: upcoming, rosters }),
+        draft: upcoming,
+        seasonOver: seasonProgress({ rosters, league }) >= 1,
+    };
+
+    return rankTeams({
+        ...base,
+        picks: { ...picksBase, valueOf: (pick) => pricePick({ pick, ...context, priceOf: priceOf(pick) }) },
     });
 }
 
