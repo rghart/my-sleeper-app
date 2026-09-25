@@ -199,4 +199,33 @@ describe('rankLeague pricing picks by where they will land', () => {
 
         expect(picksOf(teams, 1)).toContainEqual([2027, 3, 'early', 'projected', 7000]);
     });
+
+    it('keeps a weak team holding only its own picks Stuck, even though they now price early', () => {
+        // Found on real data: pricing picks by projected finish made every bad
+        // team's own picks worth more than average, and an average-based
+        // "bought picks" test called all of them Rebuilding.
+        const deeper = {
+            ...inputs,
+            ktc: {
+                ...inputs.ktc,
+                values: [...inputs.ktc.values, { playerId: 'a2', value: 2000 }, { playerId: 'b2', value: 2000 }],
+            },
+            tradedPicks: [],
+        };
+        const withBench = rosters.map((r) =>
+            r.roster_id === 1 ? { ...r, players: ['a', 'a2'] } : r.roster_id === 2 ? { ...r, players: ['b', 'b2'] } : r,
+        );
+        const teams = rankLeague({
+            league,
+            rosters: withBench,
+            playerInfo: { ...playerInfo, a2: qb, b2: qb },
+            inputs: deeper,
+            currentDraftComplete: true,
+        });
+        const weak = teams.find((t) => t.rosterId === 3);
+
+        expect(weak.futureDetail.picks.find((p) => p.season === 2027).tier).toBe('early');
+        expect(weak.futureDetail.netPickValue).toBe(0);
+        expect(weak.tiers.ktc).toBe('stuck');
+    });
 });
