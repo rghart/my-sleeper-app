@@ -33,6 +33,12 @@ export default defineConfig({
         },
     },
     test: {
+        // Tests live in src/ only. Scanning from the project root also walks
+        // `.claude/worktrees/*`, where background Claude sessions check out
+        // their own copy of the repo with their own node_modules - and a second
+        // React from there made every component test fail with "Cannot read
+        // properties of null (reading 'useState')" on a tree that was fine.
+        dir: 'src',
         globals: true,
         environment: 'jsdom',
         setupFiles: './src/setupTests.js',
