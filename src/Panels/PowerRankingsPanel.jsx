@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SegmentedControl from '../Components/SegmentedControl';
+import TeamDetail from './TeamDetail';
 import Sheet from '../Components/Sheet';
 import Spinner from '../Components/Spinner';
 import { TierChip, TierIcon, tierLabel } from '../Components/TierIcon';
@@ -212,6 +213,11 @@ const PowerRankingsPanel = ({
     const [source, setSource] = useState('blend');
     const [selectedId, setSelectedId] = useState(null);
     const [tiersOpen, setTiersOpen] = useState(false);
+    // The team whose detail is open, or null for the list. Cleared on a
+    // league switch: roster ids are per league, so a held id would open some
+    // other league's team 3 - or nothing.
+    const [detailId, setDetailId] = useState(null);
+    useEffect(() => setDetailId(null), [leagueID]);
     const tiersButtonRef = useRef(null);
 
     // Keyed on the league OBJECT's id, not the `leagueID` prop. On a league
@@ -286,6 +292,26 @@ const PowerRankingsPanel = ({
     const ktcAge = agoLabel(asOfMillis(data.ktc));
     const fcAge = data.fc ? agoLabel(asOfMillis(data.fc)) : null;
 
+    const detailTeam = detailId != null ? teams.find((team) => team.rosterId === detailId) : null;
+    if (detailTeam) {
+        return (
+            <TeamDetail
+                team={detailTeam}
+                you={teams.find((team) => team.rosterId === myRosterId) ?? null}
+                teams={teams}
+                source={activeSource}
+                rosters={rosterData}
+                playerInfo={playerInfo}
+                nowRanks={nowRanks}
+                futureRanks={futureRanks}
+                onBack={() => setDetailId(null)}
+                onOpenTrades={() => {
+                    window.location.hash = '#/trades';
+                }}
+            />
+        );
+    }
+
     return (
         <div className="flex flex-col gap-3 pb-4">
             <div className="flex items-end gap-3 px-4 pt-4">
@@ -353,11 +379,13 @@ const PowerRankingsPanel = ({
                                 <li key={team.rosterId}>
                                     <button
                                         type="button"
-                                        aria-pressed={team.rosterId === selectedId}
                                         aria-label={`${team.name}${mine ? ', you' : ''}, ${tierLabel(tier)}, ${ordinal(
                                             nowRank,
                                         )} for Now, ${ordinal(futureRank)} for Future`}
-                                        onClick={() => setSelectedId(team.rosterId)}
+                                        onClick={() => {
+                                            setSelectedId(team.rosterId);
+                                            setDetailId(team.rosterId);
+                                        }}
                                         className={`rounded-row flex min-h-14 w-full items-center gap-3 px-3 py-1.5 text-left ${
                                             mine ? 'bg-mine-row' : team.rosterId === selectedId ? 'bg-raised' : ''
                                         }`}

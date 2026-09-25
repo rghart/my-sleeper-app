@@ -298,4 +298,68 @@ describe('PowerRankingsPanel', () => {
         const ktcUrl = global.fetch.mock.calls.map(([url]) => url).find((url) => url.includes('dynasty-values'));
         expect(ktcUrl).toContain('superflex=false');
     });
+
+    describe('a team, opened', () => {
+        const openRow = async (user, name) => {
+            const list = await screen.findByRole('list', { name: 'Teams by Now score' });
+            await user.click(within(list).getByRole('button', { name: new RegExp(`^${name}\\b`) }));
+        };
+
+        it('compares a leaguemate with you, lists their picks, and goes back', async () => {
+            global.fetch = routeFetch();
+            const user = userEvent.setup();
+            renderPanel();
+            await user.click(await screen.findByRole('button', { name: 'KTC' }));
+
+            await openRow(user, 'charlie');
+
+            expect(screen.getByRole('heading', { name: 'charlie' })).toBeInTheDocument();
+            expect(screen.getByText('Rebuilding')).toBeInTheDocument();
+            expect(screen.getByRole('heading', { name: 'Starters vs you' })).toBeInTheDocument();
+            // One bar pair per position group the league starts.
+            expect(screen.getByRole('group', { name: /^QB: charlie [+−]\d\.\d, you [+−]\d\.\d$/ })).toBeInTheDocument();
+            expect(screen.getByRole('group', { name: /^RB: / })).toBeInTheDocument();
+
+            // Charlie holds their own 2027 first plus bravo's and delta's.
+            const picks = within(screen.getByRole('heading', { name: 'Their picks' }).closest('section')).getAllByRole(
+                'listitem',
+            );
+            expect(picks.map((item) => item.textContent)).toEqual([
+                expect.stringMatching(/^2027 1st · mid/),
+                expect.stringMatching(/^2027 1st · mid · via bravo/),
+                expect.stringMatching(/^2027 1st · mid · via delta/),
+            ]);
+
+            await user.click(screen.getByRole('button', { name: /Power rankings/ }));
+            expect(await screen.findByRole('list', { name: 'Teams by Now score' })).toBeInTheDocument();
+        });
+
+        it('shows your own team without comparing it to itself', async () => {
+            global.fetch = routeFetch();
+            const user = userEvent.setup();
+            renderPanel();
+
+            await openRow(user, 'alpha');
+
+            // Asserted on text, not the accessible name: the name calculation
+            // trims the " · you" span's leading space, which the page keeps.
+            expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('alpha · you');
+            expect(screen.getByRole('heading', { name: 'Starters' })).toBeInTheDocument();
+            expect(screen.queryByRole('heading', { name: 'Starters vs you' })).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Look for trades' })).toBeNull();
+        });
+
+        it('goes to Trades from a leaguemate', async () => {
+            global.fetch = routeFetch();
+            const user = userEvent.setup();
+            window.location.hash = '#/power';
+            renderPanel();
+
+            await openRow(user, 'bravo');
+            await user.click(screen.getByRole('button', { name: 'Look for trades' }));
+
+            expect(window.location.hash).toBe('#/trades');
+            window.location.hash = '';
+        });
+    });
 });
