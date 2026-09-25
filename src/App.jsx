@@ -857,6 +857,7 @@ class App extends React.Component {
                                                 currentDraftComplete={
                                                     leagueData.currentLeagueDrafts?.[0]?.status === 'complete'
                                                 }
+                                                draft={leagueData.currentLeagueDrafts?.[0]}
                                             />
                                         );
                                     }

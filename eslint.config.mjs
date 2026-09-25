@@ -7,7 +7,9 @@ import globals from 'globals';
 
 export default tseslint.config(
     {
-        ignores: ['build/**', 'node_modules/**', 'coverage/**'],
+        // .claude/ holds background sessions' worktrees - whole other checkouts
+        // of this repo, which are not this tree's code to lint.
+        ignores: ['build/**', 'node_modules/**', 'coverage/**', '.claude/**'],
     },
     {
         files: ['src/**/*.{js,jsx,ts,tsx}'],

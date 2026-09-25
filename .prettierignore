@@ -7,3 +7,7 @@ node_modules/
 # bytes are the record of what the pre-refactor code produced, so they are not
 # reformatted.
 src/lib/__fixtures__/
+
+# Background Claude sessions check out whole copies of this repo under
+# .claude/worktrees/; they are not this tree's files to format.
+.claude/

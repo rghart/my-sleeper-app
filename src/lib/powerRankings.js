@@ -38,13 +38,16 @@ export const THRESHOLDS = {
     // A weak team is Rebuilding when its future is at least average; below
     // that it is weak on both counts.
     rebuildingFuture: 0,
-    // ...or when it holds more pick value than the league average, whatever
-    // its bench looks like. Every team starts with the same picks, so above
-    // average means it has bought picks on net: a team that has taken on
-    // picks is rebuilding by definition, which was Ryan's call. The margin is
-    // above zero only so float noise in a league where no pick has moved
-    // (every team exactly average) cannot tip a team either way.
-    rebuildingPicks: 0.01,
+    // ...or when it has bought picks on net - holds more pick value than its
+    // own original picks are worth - whatever its bench looks like. A team
+    // that has taken on picks is rebuilding by definition; one holding just
+    // its own is not, however early they will land. Both were Ryan's calls.
+    //
+    // Measured against the team's OWN picks, not the league average: once
+    // next season's picks are priced by projected finish, a bad team's own
+    // picks are early and worth more than average, and an average-based test
+    // called every bad team a buyer.
+    rebuildingPicks: 0,
 };
 
 export function tierFor(now, future, picks = null) {
@@ -209,9 +212,37 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
         const playerValue = (roster.players ?? [])
             .filter((id) => !starters.has(id))
             .reduce((sum, id) => sum + (future.valueOf(id) ?? 0), 0);
-        const held = pickHoldings.get(roster.roster_id) ?? [];
-        const pickValue = held.reduce((sum, pick) => sum + (picks.valueOf(pick) ?? 0), 0);
-        return { total: playerValue + pickValue, playerValue, pickValue, picks: held };
+        // `valueOf` may answer a number or `{ value, basis, tier }` (see
+        // lib/pickSlots.js); either way each pick keeps its price, so a screen
+        // can say what a team's picks are worth and why.
+        const held = (pickHoldings.get(roster.roster_id) ?? []).map((pick) => {
+            const priced = picks.valueOf(pick);
+            return typeof priced === 'object' && priced !== null
+                ? { ...pick, ...priced, value: priced.value ?? 0 }
+                : { ...pick, value: priced ?? 0 };
+        });
+        const pickValue = held.reduce((sum, pick) => sum + pick.value, 0);
+        return { playerValue, pickValue, picks: held };
+    });
+
+    // What each team's OWN original picks are worth, wherever they now sit.
+    // Future counts pick capital beyond that allotment - picks bought minus
+    // picks sold - so holding your own picks is neutral. Under flat "mid"
+    // pricing every team's allotment is worth the same, so subtracting it
+    // moves nobody's z-score; under projected pricing it stops a bad team's
+    // own early picks from reading as a pick haul.
+    const ownPicksValue = new Map(rosters.map((roster) => [roster.roster_id, 0]));
+    for (const detail of futureTotals) {
+        for (const pick of detail.picks) {
+            if (ownPicksValue.has(pick.originalRosterId)) {
+                ownPicksValue.set(pick.originalRosterId, ownPicksValue.get(pick.originalRosterId) + pick.value);
+            }
+        }
+    }
+    rosters.forEach((roster, i) => {
+        const detail = futureTotals[i];
+        detail.netPickValue = picks ? detail.pickValue - ownPicksValue.get(roster.roster_id) : 0;
+        detail.total = detail.playerValue + detail.netPickValue;
     });
 
     const nowZ = Object.fromEntries(
@@ -220,7 +251,7 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
     const futureZ = zScores(futureTotals.map((f) => f.total));
     // Only meaningful when picks were counted at all; without them there is
     // nothing to have bought.
-    const picksZ = picks ? zScores(futureTotals.map((f) => f.pickValue)) : rosters.map(() => null);
+    const netPicks = picks ? futureTotals.map((f) => f.netPickValue) : rosters.map(() => null);
 
     return rosters.map((roster, i) => {
         const now = Object.fromEntries(sourceIds.map((sourceId) => [sourceId, nowZ[sourceId][i]]));
@@ -230,7 +261,9 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
         // the biggest scale decide.
         now.blend = sourceIds.length ? sourceIds.reduce((sum, id) => sum + now[id], 0) / sourceIds.length : null;
 
-        const tiers = Object.fromEntries(Object.entries(now).map(([id, z]) => [id, tierFor(z, futureZ[i], picksZ[i])]));
+        const tiers = Object.fromEntries(
+            Object.entries(now).map(([id, z]) => [id, tierFor(z, futureZ[i], netPicks[i])]),
+        );
 
         return {
             rosterId: roster.roster_id,
@@ -238,7 +271,7 @@ export function rankTeams({ rosters, rosterPositions, playerInfo, sources, futur
             name: roster.manager_display_name,
             now,
             future: futureZ[i],
-            picks: picksZ[i],
+            picks: netPicks[i],
             tiers,
             lineups: lineups[i],
             futureDetail: futureTotals[i],

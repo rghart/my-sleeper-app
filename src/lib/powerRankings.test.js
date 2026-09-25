@@ -204,7 +204,10 @@ describe('rankTeams', () => {
         expect(teams.map((t) => t.futureDetail.pickValue)).toEqual([1500, 1500, 3 * 5000 + 1500]);
         // Rosters 1 and 2 start everyone they have; roster 3 benches wr2.
         expect(teams.map((t) => t.futureDetail.playerValue)).toEqual([0, 0, 4000]);
-        expect(teams.map((t) => t.futureDetail.total)).toEqual([1500, 1500, 4000 + 16500]);
+        // Each team's own allotment (a 5000 first + a 1500 second) is the
+        // baseline: rosters 1 and 2 are down a first each, roster 3 up two.
+        expect(teams.map((t) => t.futureDetail.netPickValue)).toEqual([-5000, -5000, 10000]);
+        expect(teams.map((t) => t.futureDetail.total)).toEqual([-5000, -5000, 4000 + 10000]);
         expect(teams.map((t) => t.name)).toEqual(['m1', 'm2', 'm3']);
         teams.forEach((team) => expect(team.tiers.ktc).toBe(tierFor(team.now.ktc, team.future)));
         // Roster 1 is strong now with one pick and no bench: All-in.
