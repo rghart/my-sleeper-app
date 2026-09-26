@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AppShell from './AppShell';
 import { SECTIONS } from '../sections.js';
@@ -316,6 +316,47 @@ describe('AppShell', () => {
                     false,
                 );
             });
+        });
+    });
+
+    describe('stale market values', () => {
+        let originalFetch;
+        beforeEach(() => {
+            originalFetch = global.fetch;
+        });
+        afterEach(() => {
+            global.fetch = originalFetch;
+        });
+
+        const json = (data) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
+        const status = (stale) => ({
+            sources: [{ name: 'KeepTradeCut', asOf: '2026-09-08T05:15:01Z', maxAgeHours: 3, stale }],
+            unrecognizedPicks: { count: 0, examples: [] },
+        });
+
+        it('warns on every page while a source is stale, and clears on Retry once it is fixed', async () => {
+            const user = userEvent.setup();
+            let fixed = false;
+            global.fetch = vi.fn((url) => (url.includes('/status') ? json(status(!fixed)) : json([])));
+
+            renderShell();
+
+            const banner = await screen.findByRole('status');
+            expect(banner).toHaveTextContent(/KeepTradeCut values haven't updated in \d+ days \(last on Sep 8\)/);
+
+            fixed = true;
+            await user.click(within(banner).getByRole('button', { name: 'Retry' }));
+
+            await waitFor(() => expect(screen.queryByText(/KeepTradeCut values haven't updated/)).toBeNull());
+        });
+
+        it('shows nothing when every source is fresh', async () => {
+            global.fetch = vi.fn((url) => (url.includes('/status') ? json(status(false)) : json([])));
+
+            renderShell();
+
+            await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/status')));
+            expect(screen.queryByRole('status')).toBeNull();
         });
     });
 });
