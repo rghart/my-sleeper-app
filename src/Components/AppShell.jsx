@@ -5,6 +5,8 @@ import AppBar from './AppBar';
 import NavMenu from './NavMenu';
 import SectionIcon from './SectionIcon';
 import { useMyLeagueTiers } from '../useMyLeagueTiers.js';
+import { useValueStatus } from '../useValueStatus.js';
+import ErrorBanner from './ErrorBanner';
 
 // Sections that share the main column with a Ranks aside on wide screens.
 // 'ranks' itself is excluded on purpose: when it is active, Ranks already IS
@@ -52,6 +54,11 @@ const AppShell = ({
     const showTabBar = groupSections.length > 1;
 
     const leagueTiers = useMyLeagueTiers({ leagues: leagueIds, userId: sleeperUserId, playerInfo });
+
+    // Stale market values warn on every page: they feed Power rankings,
+    // Movers and every value chip, and a refresh once failed silently for 16
+    // days. See useValueStatus.
+    const { warning: valueWarning, recheck: recheckValues } = useValueStatus();
 
     return (
         // With no tab bar the shared bar height drops to zero on this subtree,
@@ -102,7 +109,12 @@ const AppShell = ({
                         row at md, and a banner in there would become a column
                         beside the section instead of a strip across the top
                         of it. */}
-                    <div className="px-3.5 pt-3.5 md:p-0">{banner}</div>
+                    <div className="flex flex-col gap-2 px-3.5 pt-3.5 md:p-0">
+                        {valueWarning && (
+                            <ErrorBanner variant="warning" message={valueWarning} onRetry={recheckValues} />
+                        )}
+                        {banner}
+                    </div>
                     {/* The tab bar is fixed, so the body has to end above it -
                         off the shared custom property, which is zero when
                         there is no bar. */}

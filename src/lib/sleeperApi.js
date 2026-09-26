@@ -11,6 +11,7 @@ const {
     LEAGUE_TRADES,
     MANAGER_ACTIVITY,
     MARKET_VALUES,
+    VALUE_STATUS,
 } = APP_DB_URLS;
 const {
     LEAGUE,
@@ -426,5 +427,21 @@ export async function fetchMarketValues(settings) {
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error fetching market values:', error);
+        });
+}
+
+/**
+ * Whether each market-value source is current, and whether KTC listed picks
+ * the backend could not read. Drives the app-wide warning banner.
+ *
+ * Resolves to `undefined` on failure, per this module's contract - and the
+ * banner then stays quiet rather than warning about a check it could not make.
+ */
+export async function fetchValueStatus() {
+    return await fetch(VALUE_STATUS)
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching value status:', error);
         });
 }
