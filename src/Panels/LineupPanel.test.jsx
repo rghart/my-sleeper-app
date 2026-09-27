@@ -58,6 +58,8 @@ function renderLineup(overrides = {}) {
     const removeFromLineup = vi.fn();
     const addToRoster = vi.fn();
     const fillSlot = vi.fn();
+    const autoSetLineup = vi.fn();
+    const clearLineup = vi.fn();
     const { unmount } = render(
         <LineupPanel
             playerInfo={PLAYER_INFO}
@@ -68,13 +70,15 @@ function renderLineup(overrides = {}) {
             myDisplayName={MY_DISPLAY_NAME}
             addToRoster={addToRoster}
             fillSlot={fillSlot}
+            autoSetLineup={autoSetLineup}
+            clearLineup={clearLineup}
             savedRankLists={SAVED_RANK_LISTS}
             savedRankListsLoading={false}
             signedIn={false}
             {...overrides}
         />,
     );
-    return { removeFromLineup, addToRoster, fillSlot, unmount };
+    return { removeFromLineup, addToRoster, fillSlot, autoSetLineup, clearLineup, unmount };
 }
 
 describe('LineupPanel', () => {
@@ -597,5 +601,123 @@ describe('LineupPanel handle placement', () => {
         expect(handle.className).toMatch(/fixed/);
         expect(handle.className).toMatch(/bottom-\[var\(--tab-bar-h\)\]/);
         expect(screen.getByRole('list').className).toMatch(/pb-\[var\(--handle-h\)\]/);
+    });
+});
+
+// Filling one slot moves the sheet on to the next open one, so a whole lineup
+// can be set from one open list without re-tapping each slot.
+describe('LineupPanel fill-and-advance', () => {
+    const MY_WR = { id: '13279', name: 'Carnell Tate' };
+    const MY_RB = { id: '11435', name: 'Emanuel Wilson' };
+    const SLOTS = [
+        { label: 'WR', playerId: null },
+        { label: 'TE', playerId: 'someone' },
+        { label: 'RB', playerId: null },
+    ];
+
+    it('retargets the next open slot after a fill, chip and title with it', async () => {
+        const user = userEvent.setup();
+        const { fillSlot } = renderLineup({
+            rosterSlots: SLOTS,
+            rankingPlayersIdsList: [rankEntry(MY_WR.id, 1), rankEntry(MY_RB.id, 2)],
+        });
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        const dialog = screen.getByRole('dialog', { name: 'Fill WR' });
+        await user.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+        expect(fillSlot).toHaveBeenCalledWith(0, expect.objectContaining({ player_id: MY_WR.id }));
+        // Skips the filled TE and lands on RB.
+        expect(dialog).toHaveAttribute('aria-label', 'Fill RB');
+        expect(within(dialog).getByText(MY_RB.name)).toBeInTheDocument();
+        expect(within(dialog).queryByText(MY_WR.name)).toBeNull();
+
+        await user.click(within(dialog).getByRole('button', { name: 'Add' }));
+        expect(fillSlot).toHaveBeenLastCalledWith(2, expect.objectContaining({ player_id: MY_RB.id }));
+    });
+
+    it('skips an open slot the list has nobody for', async () => {
+        const user = userEvent.setup();
+        const { fillSlot } = renderLineup({
+            rosterSlots: [
+                { label: 'WR', playerId: null },
+                { label: 'QB', playerId: null },
+                { label: 'RB', playerId: null },
+            ],
+            rankingPlayersIdsList: [rankEntry(MY_WR.id, 1), rankEntry(MY_RB.id, 2)],
+        });
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        const dialog = screen.getByRole('dialog', { name: 'Fill WR' });
+        await user.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+        expect(fillSlot).toHaveBeenCalledWith(0, expect.objectContaining({ player_id: MY_WR.id }));
+        expect(dialog).toHaveAttribute('aria-label', 'Fill RB');
+    });
+
+    it('closes the sheet once the last open slot is filled', async () => {
+        const user = userEvent.setup();
+        renderLineup({
+            rosterSlots: [{ label: 'WR', playerId: null }],
+            rankingPlayersIdsList: [rankEntry(MY_WR.id, 1)],
+        });
+
+        await user.click(screen.getByRole('button', { name: 'WR, empty' }));
+        await user.click(screen.getByRole('button', { name: 'Add' }));
+
+        expect(screen.queryByRole('dialog')).toBeNull();
+    });
+});
+
+describe('LineupPanel auto-set', () => {
+    const MY_WR = { id: '13279' };
+    const MY_RB = { id: '11435' };
+    const MY_TE = { id: '13421' };
+
+    it('hands auto-set only your own players, in rank order', async () => {
+        const user = userEvent.setup();
+        const { autoSetLineup } = renderLineup({
+            rosterSlots: [
+                { label: 'QB', playerId: 'kept' },
+                { label: 'WR', playerId: null },
+                { label: 'FLX', playerId: null },
+                { label: 'TE', playerId: null },
+            ],
+            // A free agent ranked first, then my players.
+            rankingPlayersIdsList: [
+                rankEntry(FREE_AGENT_TE.id, 1),
+                rankEntry(MY_TE.id, 2),
+                rankEntry(MY_WR.id, 3),
+                rankEntry(MY_RB.id, 4),
+            ],
+        });
+
+        await user.click(screen.getByRole('button', { name: 'Auto-set' }));
+
+        // The free agent ranked first is left out; the fill itself is
+        // autoFillLineup's, tested in roster.test.js.
+        expect(autoSetLineup.mock.calls[0][0].map((player) => player.player_id)).toEqual([
+            MY_TE.id,
+            MY_WR.id,
+            MY_RB.id,
+        ]);
+    });
+
+    it('is disabled when none of your players in the list fit an open slot', () => {
+        renderLineup({
+            rosterSlots: [{ label: 'QB', playerId: null }],
+            rankingPlayersIdsList: [rankEntry(MY_WR.id, 1), rankEntry(FREE_AGENT_QB.id, 2)],
+        });
+
+        expect(screen.getByRole('button', { name: 'Auto-set' })).toBeDisabled();
+    });
+
+    it('empties every slot on Clear', async () => {
+        const user = userEvent.setup();
+        const { clearLineup } = renderLineup();
+
+        await user.click(screen.getByRole('button', { name: 'Clear' }));
+
+        expect(clearLineup).toHaveBeenCalled();
     });
 });

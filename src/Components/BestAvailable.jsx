@@ -9,7 +9,7 @@ import IntelKey from './IntelTermTip';
 import IntelPickSelector from './IntelPickSelector';
 import { survivalBand, survivalTone } from './intelGlossary.js';
 import { playerAccessibleName } from './playerInfoLabels.js';
-import { eligiblePositionsForSlot } from '../lib/roster.js';
+import { slotAdmits } from '../lib/roster.js';
 import { isInLineup, isTaken, rosteredBy } from '../lib/rosterInfo.js';
 import { defaultAnalyzedPick, survivalAt } from '../lib/availability.js';
 
@@ -29,8 +29,7 @@ export const playerId = (entry) => entry.match_results[0][0];
 // entry without one is rare but real, and reading straight through it threw
 // out of the render and took the whole sheet down rather than dropping the one
 // player nothing can be said about.
-const eligibleForAny = (player, slots) =>
-    slots.some((slot) => eligiblePositionsForSlot(slot).some((pos) => (player.fantasy_positions || []).includes(pos)));
+const eligibleForAny = (player, slots) => slots.some((slot) => slotAdmits(slot, player));
 
 /**
  * `entries` narrowed down to the ones with a resolvable player and (when
@@ -97,6 +96,12 @@ const BestAvailable = ({
     eligibleSlots,
     defaultOwnership = DEFAULT_OWNERSHIP,
     initialActiveChip = null,
+    // Optional, like ownership below: LineupPanel controls the chip so it can
+    // move it on to the next open slot after each fill. Tested against
+    // undefined rather than with `??` as ownership is, because null is a real
+    // controlled value here - it means ALL.
+    activeChip: controlledActiveChip,
+    onActiveChipChange,
     ownership: controlledOwnership,
     onOwnershipChange,
     lineupSet,
@@ -107,7 +112,9 @@ const BestAvailable = ({
     // existed. Only the draft passes it.
     availability,
 }) => {
-    const [activeChip, setActiveChip] = useState(initialActiveChip);
+    const [localActiveChip, setLocalActiveChip] = useState(initialActiveChip);
+    const requestedChip = controlledActiveChip !== undefined ? controlledActiveChip : localActiveChip;
+    const setActiveChip = onActiveChipChange ?? setLocalActiveChip;
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [selectedTargetId, setSelectedTargetId] = useState(null);
     // null means "follow the default", so the analyzed pick keeps tracking my
@@ -159,6 +166,10 @@ const BestAvailable = ({
     }
 
     const chipLabels = eligibleSlots ? [...new Set(eligibleSlots)] : [];
+    // A chip whose last open slot was just filled drops out of the row; the
+    // list widens back to ALL rather than staying narrowed by a chip that is
+    // no longer there to un-press.
+    const activeChip = chipLabels.includes(requestedChip) ? requestedChip : null;
     const narrowedSlots = eligibleSlots && activeChip ? [activeChip] : eligibleSlots;
     // The ownership scope applies to both uses. It used to be lineup-only -
     // the draft sheet showed the whole ranked board with drafted players left

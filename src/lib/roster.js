@@ -103,6 +103,88 @@ export function addPlayerToRoster({ player, rosterSlots, slotIndex }) {
     return { rosterSlots };
 }
 
+// Sleeper statuses that rule a player out of this week's lineup however well
+// he ranks. Questionable is deliberately absent: most Q players play, and the
+// user can still bench one by hand.
+const CANNOT_START = new Set(['Out', 'IR', 'PUP', 'Sus']);
+
+/**
+ * Whether a slot admits a player, read from the slot's side - the same rule
+ * BestAvailable's eligibility filter uses, so a player the sheet offers for a
+ * slot is one auto-set would consider for it too.
+ */
+export const slotAdmits = (slotLabel, player) =>
+    eligiblePositionsForSlot(slotLabel).some((pos) => (player.fantasy_positions || []).includes(pos));
+
+/**
+ * Fills every open slot with the best-ranked eligible candidate, leaving
+ * filled slots alone - so a lineup half set from a QB-only list keeps its QBs
+ * when the rest is auto-set from a flex list.
+ *
+ * `candidates` is players in rank order, best first. Anyone Out, on IR or PUP,
+ * or suspended is passed over for the next one down. Slots are filled
+ * narrowest first (a QB or TE slot before FLX, FLX before SFLX), each taking
+ * the best candidate left that it admits: filling SFLX first would spend the
+ * top QB there, and filling FLX first could take the only TE the TE slot has.
+ * A player already in a slot is never used twice.
+ */
+export function autoFillLineup({ rosterSlots, candidates }) {
+    const used = new Set(rosterSlots.map((slot) => slot.playerId).filter(Boolean));
+    const startable = candidates.filter((player) => !CANNOT_START.has(player.injury_status));
+    const newSlots = [...rosterSlots];
+    const width = (index) => eligiblePositionsForSlot(rosterSlots[index].label).length;
+    // Array sort is stable, so slots of the same width keep lineup order.
+    const openIndexes = rosterSlots
+        .map((slot, index) => (slot.playerId ? null : index))
+        .filter((index) => index !== null)
+        .sort((a, b) => width(a) - width(b));
+
+    for (const index of openIndexes) {
+        const pick = startable.find(
+            (player) => !used.has(player.player_id) && slotAdmits(rosterSlots[index].label, player),
+        );
+        if (pick) {
+            used.add(pick.player_id);
+            newSlots[index] = { ...newSlots[index], playerId: pick.player_id };
+        }
+    }
+
+    return { rosterSlots: newSlots };
+}
+
+/**
+ * Where a sheet that just filled `fromIndex` moves on to: the next open slot
+ * in lineup order (wrapping round to the top) that at least one of
+ * `candidates` - the players the sheet can still add - fits. Landing on a slot
+ * the list has nobody for would only show an empty list, so those are passed
+ * over; if no open slot has anyone, the plain next open slot is used, and
+ * null means every slot is filled.
+ */
+export function nextOpenSlotIndex({ rosterSlots, fromIndex, candidates }) {
+    const lineup = new Set(rosterSlots.map((slot) => slot.playerId).filter(Boolean));
+    const addable = candidates.filter((player) => !lineup.has(player.player_id));
+    let firstOpen = null;
+    for (let step = 1; step <= rosterSlots.length; step++) {
+        const index = (fromIndex + step) % rosterSlots.length;
+        const slot = rosterSlots[index];
+        if (slot.playerId) {
+            continue;
+        }
+        if (addable.some((player) => slotAdmits(slot.label, player))) {
+            return index;
+        }
+        firstOpen ??= index;
+    }
+    return firstOpen;
+}
+
+/**
+ * Pure version of `App.clearLineup`. Empties every slot.
+ */
+export function clearLineup({ rosterSlots }) {
+    return { rosterSlots: rosterSlots.map((slot) => ({ ...slot, playerId: null })) };
+}
+
 /**
  * Pure version of `App.removeFromLineup`. Empties the slot at index `i`. It
  * needs neither the player id nor the player database: the slot already knows

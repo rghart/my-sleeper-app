@@ -36,7 +36,7 @@ import {
 } from './lib/sleeperIdentity.js';
 import { insertAtRank, resolvedEntry } from './lib/rankList.js';
 import { leagueMarketSettings } from './lib/marketValues.js';
-import { addPlayerToRoster, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
+import { addPlayerToRoster, autoFillLineup, clearLineup, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
 import { checkErrors } from './lib/http.js';
@@ -582,11 +582,20 @@ class App extends React.Component {
     };
 
     // The slot-scoped sheet's fill action: unlike addToRoster above, the
-    // target slot is already chosen (the user tapped it), so this always
-    // fills or replaces that exact index rather than searching for the first
-    // eligible open one.
+    // target slot is already chosen (the one tapped, or the one the sheet
+    // moved on to after the last fill), so this always fills or replaces that
+    // exact index rather than searching for the first eligible open one.
     fillSlot = (slotIndex, player) => {
         this.setState((prevState) => addPlayerToRoster({ player, rosterSlots: prevState.rosterSlots, slotIndex }));
+    };
+
+    // `candidates` is the user's own players in rank order - see LineupPanel.
+    autoSetLineup = (candidates) => {
+        this.setState((prevState) => autoFillLineup({ rosterSlots: prevState.rosterSlots, candidates }));
+    };
+
+    clearLineup = () => {
+        this.setState((prevState) => clearLineup({ rosterSlots: prevState.rosterSlots }));
     };
 
     removeFromLineup = (i) => {
@@ -886,6 +895,8 @@ class App extends React.Component {
                                             sleeperUserId={sleeperAccount?.userId}
                                             addToRoster={this.addToRoster}
                                             fillSlot={this.fillSlot}
+                                            autoSetLineup={this.autoSetLineup}
+                                            clearLineup={this.clearLineup}
                                             savedRankLists={savedRankLists}
                                             savedRankListsLoading={savedRankListsLoading}
                                             signedIn={signedIn}
