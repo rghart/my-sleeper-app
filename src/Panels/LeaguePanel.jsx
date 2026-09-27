@@ -15,6 +15,8 @@ const LeaguePanel = ({
     sleeperUserId,
     addToRoster,
     fillSlot,
+    autoSetLineup,
+    clearLineup,
     savedRankLists,
     savedRankListsLoading,
     signedIn,
@@ -42,6 +44,8 @@ const LeaguePanel = ({
                             myDisplayName={myDisplayName}
                             addToRoster={addToRoster}
                             fillSlot={fillSlot}
+                            autoSetLineup={autoSetLineup}
+                            clearLineup={clearLineup}
                             savedRankLists={savedRankLists}
                             savedRankListsLoading={savedRankListsLoading}
                             signedIn={signedIn}

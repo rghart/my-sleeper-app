@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
     addPlayerToRoster,
+    autoFillLineup,
+    clearLineup,
     eligiblePositionsForSlot,
     getEligiblePositions,
+    nextOpenSlotIndex,
     removePlayerFromLineup,
     toRosterSlots,
 } from './roster.js';
@@ -219,6 +222,118 @@ describe('addPlayerToRoster', () => {
         expect(addPlayerToRoster.length).toBe(1);
         expect(Object.keys(addPlayerToRoster({ player: makePlayer(), rosterSlots: slots('RB') }))).toEqual([
             'rosterSlots',
+        ]);
+    });
+});
+
+describe('autoFillLineup', () => {
+    const qb1 = makePlayer({ player_id: 'qb1', position: 'QB', fantasy_positions: ['QB'] });
+    const qb2 = makePlayer({ player_id: 'qb2', position: 'QB', fantasy_positions: ['QB'] });
+    const rb1 = makePlayer({ player_id: 'rb1' });
+    const rb2 = makePlayer({ player_id: 'rb2' });
+    const te1 = makePlayer({ player_id: 'te1', position: 'TE', fantasy_positions: ['TE'] });
+    const ids = (slots) => slots.map((slot) => slot.playerId);
+
+    it('gives the dedicated slot the top QB and SFLX the next, whatever order the slots are in', () => {
+        const rosterSlots = toRosterSlots(['SUPER_FLEX', 'QB']);
+        const { rosterSlots: result } = autoFillLineup({ rosterSlots, candidates: [qb1, qb2] });
+        expect(ids(result)).toEqual(['qb2', 'qb1']);
+    });
+
+    it('keeps the only TE for the TE slot rather than spending it on FLX', () => {
+        const rosterSlots = toRosterSlots(['FLEX', 'TE']);
+        const { rosterSlots: result } = autoFillLineup({ rosterSlots, candidates: [te1, rb1] });
+        expect(ids(result)).toEqual(['rb1', 'te1']);
+    });
+
+    it('leaves filled slots alone and never starts a player twice', () => {
+        const rosterSlots = [
+            { label: 'QB', playerId: 'qb1' },
+            { label: 'RB', playerId: null },
+            { label: 'SFLX', playerId: null },
+        ];
+        const { rosterSlots: result } = autoFillLineup({ rosterSlots, candidates: [qb1, rb1, rb2] });
+        expect(ids(result)).toEqual(['qb1', 'rb1', 'rb2']);
+    });
+
+    it('passes over players who are Out, on IR or PUP, or suspended - but still starts a Questionable one', () => {
+        const rosterSlots = toRosterSlots(['RB', 'RB']);
+        const candidates = [
+            makePlayer({ player_id: 'out', injury_status: 'Out' }),
+            makePlayer({ player_id: 'ir', injury_status: 'IR' }),
+            makePlayer({ player_id: 'pup', injury_status: 'PUP' }),
+            makePlayer({ player_id: 'sus', injury_status: 'Sus' }),
+            makePlayer({ player_id: 'q', injury_status: 'Questionable' }),
+            rb1,
+        ];
+        const { rosterSlots: result } = autoFillLineup({ rosterSlots, candidates });
+        expect(ids(result)).toEqual(['q', 'rb1']);
+    });
+
+    it('leaves a slot open when nothing in the list fits it', () => {
+        const rosterSlots = toRosterSlots(['QB', 'TE']);
+        const { rosterSlots: result } = autoFillLineup({ rosterSlots, candidates: [rb1, qb1] });
+        expect(ids(result)).toEqual(['qb1', null]);
+    });
+});
+
+describe('nextOpenSlotIndex', () => {
+    const qb = makePlayer({ player_id: 'qb', position: 'QB', fantasy_positions: ['QB'] });
+    const rb = makePlayer({ player_id: 'rb' });
+    const slots = [
+        { label: 'QB', playerId: null },
+        { label: 'RB', playerId: 'x' },
+        { label: 'WR', playerId: null },
+        { label: 'RB', playerId: null },
+    ];
+
+    it('moves forward past filled slots', () => {
+        expect(
+            nextOpenSlotIndex({
+                rosterSlots: slots,
+                fromIndex: 0,
+                candidates: [makePlayer({ fantasy_positions: ['WR'] })],
+            }),
+        ).toBe(2);
+    });
+
+    it('skips an open slot the list has nobody for', () => {
+        expect(nextOpenSlotIndex({ rosterSlots: slots, fromIndex: 0, candidates: [rb] })).toBe(3);
+    });
+
+    it('wraps round to the top', () => {
+        expect(nextOpenSlotIndex({ rosterSlots: slots, fromIndex: 3, candidates: [qb] })).toBe(0);
+    });
+
+    it('does not count a player already in the lineup', () => {
+        const filled = [
+            { label: 'QB', playerId: 'qb' },
+            { label: 'WR', playerId: null },
+            { label: 'QB', playerId: null },
+        ];
+        expect(nextOpenSlotIndex({ rosterSlots: filled, fromIndex: 0, candidates: [qb] })).toBe(1);
+    });
+
+    it('falls back to the next open slot when the list fits none of them', () => {
+        expect(nextOpenSlotIndex({ rosterSlots: slots, fromIndex: 0, candidates: [] })).toBe(2);
+    });
+
+    it('is null once every slot is filled', () => {
+        expect(
+            nextOpenSlotIndex({ rosterSlots: [{ label: 'QB', playerId: 'a' }], fromIndex: 0, candidates: [qb] }),
+        ).toBeNull();
+    });
+});
+
+describe('clearLineup', () => {
+    it('empties every slot and keeps the labels', () => {
+        const rosterSlots = [
+            { label: 'QB', playerId: 'a' },
+            { label: 'FLX', playerId: null },
+        ];
+        expect(clearLineup({ rosterSlots }).rosterSlots).toEqual([
+            { label: 'QB', playerId: null },
+            { label: 'FLX', playerId: null },
         ]);
     });
 });
