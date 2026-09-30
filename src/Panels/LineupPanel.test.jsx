@@ -223,7 +223,7 @@ describe('LineupPanel best-available sheet', () => {
         renderLineup({ rankingPlayersIdsList: [] });
 
         const handle = screen.getByRole('button', { name: /Best available/ });
-        expect(handle).toHaveTextContent('Paste a rank list');
+        expect(handle).toHaveTextContent('Add a rank list');
 
         await user.click(handle);
         const dialog = screen.getByRole('dialog', { name: 'Best available' });
@@ -399,7 +399,7 @@ describe('LineupPanel rank-list switcher', () => {
         await user.click(screen.getByRole('button', { name: /^Rank list/ }));
 
         expect(screen.queryByRole('button', { name: /^My Rankings/ })).toBeNull();
-        expect(screen.getByRole('button', { name: 'Paste a new list' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'New list' })).toBeInTheDocument();
     });
 });
 

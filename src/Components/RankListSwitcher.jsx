@@ -121,7 +121,7 @@ const RankListSwitcher = ({
                         }}
                         className="text-mine w-full rounded-lg p-2.5 text-left text-[13px] font-semibold"
                     >
-                        Paste a new list
+                        New list
                     </button>
                 </Popover>
             )}

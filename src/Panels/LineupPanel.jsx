@@ -236,7 +236,7 @@ const LineupPanel = ({
                     buttonRef={bestAvailableHandleRef}
                     isExpanded={isSheetOpen && !openedFromSlot}
                     onClick={openFromHandle}
-                    subtitle={entries.length > 0 ? `fills ${openSlotLabels.join(', ')}` : 'Paste a rank list'}
+                    subtitle={entries.length > 0 ? `fills ${openSlotLabels.join(', ')}` : 'Add a rank list'}
                 />
             )}
             {isSheetOpen && (

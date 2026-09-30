@@ -434,9 +434,9 @@ describe('App', () => {
         // rather than a second copy of Ranks (see App.renderBestAvailableRail).
         await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
 
-        // The paste box moved into a sheet opened by the "Paste list" pill
+        // The paste box moved into a sheet opened by the "New list" pill
         // (step 6d) - open it before reaching for the textarea.
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
         await user.type(screen.getByPlaceholderText('Copy + Paste rankings here...'), `1. ${SWAPPED_PLAYER.name}`);
         await user.click(screen.getByRole('button', { name: 'Submit' }));
 
@@ -661,7 +661,7 @@ describe('App', () => {
         await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
 
         await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
 
         expect(screen.getByRole('status')).toHaveTextContent(/Couldn.t load the player database/i);
         expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
@@ -1167,7 +1167,7 @@ describe('App, fixing an unmatched line', () => {
         render(<App />);
         await screen.findAllByText(/ryangh/, {}, { timeout: 5000 });
         await user.click(screen.getAllByRole('button', { name: 'Ranks' })[0]);
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
 
         const box = screen.getByPlaceholderText('Copy + Paste rankings here...');
         await user.click(box);
@@ -1242,7 +1242,7 @@ describe('App, importing market values', () => {
         const user = userEvent.setup();
         await openRanks(user);
 
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
         await user.click(screen.getByRole('button', { name: 'Import as a rank list' }));
 
         expect(await screen.findByRole('group', { name: /^Marlin Klein, / })).toBeTruthy();
@@ -1257,14 +1257,14 @@ describe('App, importing market values', () => {
         await openRanks(user);
 
         // A paste that misses, so there is something to leave behind.
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
         const box = screen.getByPlaceholderText('Copy + Paste rankings here...');
         await user.click(box);
         await user.paste('1. Zzzz Qqqqmore');
         await user.click(screen.getByRole('button', { name: 'Submit' }));
         expect(await screen.findByText(/matched nothing/)).toBeTruthy();
 
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
         await user.click(screen.getByRole('button', { name: 'Import as a rank list' }));
 
         await screen.findByRole('group', { name: /^Marlin Klein, / });

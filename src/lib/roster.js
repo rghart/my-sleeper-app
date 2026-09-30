@@ -179,6 +179,46 @@ export function nextOpenSlotIndex({ rosterSlots, fromIndex, candidates }) {
 }
 
 /**
+ * Puts back every starter Sleeper has already locked: `sleeperStarters` is
+ * the roster's `starters` from Sleeper, one id per starting slot in the same
+ * order as `rosterSlots` (both are `roster_positions` without the bench), with
+ * `'0'` for an empty slot. A starter whose game has kicked off
+ * (`hasPlayed(id)`) goes back in that exact slot whatever the app had there,
+ * and is taken out of any other slot the app had him in. Every other slot is
+ * left as it was.
+ */
+export function lockPlayedStarters({ rosterSlots, sleeperStarters, hasPlayed }) {
+    const locked = new Map();
+    (sleeperStarters || []).forEach((id, index) => {
+        if (id && id !== '0' && index < rosterSlots.length && hasPlayed(id)) {
+            locked.set(index, id);
+        }
+    });
+    const lockedIds = new Set(locked.values());
+    const newSlots = rosterSlots.map((slot, index) => {
+        if (locked.has(index)) {
+            return { ...slot, playerId: locked.get(index) };
+        }
+        return lockedIds.has(slot.playerId) ? { ...slot, playerId: null } : slot;
+    });
+    return { rosterSlots: newSlots };
+}
+
+/**
+ * Pure version of `App.autoSetLineup`: Sleeper's locked starters first, then
+ * the best-ranked of `candidates` in every slot still open. A candidate whose
+ * game has kicked off is left out - if Sleeper had him benched he is locked
+ * on the bench, and if Sleeper had him starting he is already placed above.
+ */
+export function autoSetLineup({ rosterSlots, candidates, sleeperStarters, hasPlayed }) {
+    const { rosterSlots: lockedSlots } = lockPlayedStarters({ rosterSlots, sleeperStarters, hasPlayed });
+    return autoFillLineup({
+        rosterSlots: lockedSlots,
+        candidates: candidates.filter((player) => !hasPlayed(player.player_id)),
+    });
+}
+
+/**
  * Pure version of `App.clearLineup`. Empties every slot.
  */
 export function clearLineup({ rosterSlots }) {

@@ -160,7 +160,7 @@ const BestAvailable = ({
     if (entries.length === 0) {
         return (
             <p className="text-ink-muted m-0 flex min-h-11 items-center px-4 text-sm">
-                No rank list selected - pick one from the switcher above, or paste a new one.
+                No rank list selected - pick one from the switcher above, or start a new one.
             </p>
         );
     }

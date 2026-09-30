@@ -19,6 +19,7 @@ import {
     fetchDraft,
     fetchLeagueBundle,
     fetchLeagueSeason,
+    fetchTeamsThatHavePlayed,
     fetchPlayerData,
     fetchSleeperUser,
     fetchTradedDraftPicks,
@@ -36,7 +37,7 @@ import {
 } from './lib/sleeperIdentity.js';
 import { insertAtRank, resolvedEntry } from './lib/rankList.js';
 import { leagueMarketSettings } from './lib/marketValues.js';
-import { addPlayerToRoster, autoFillLineup, clearLineup, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
+import { addPlayerToRoster, autoSetLineup, clearLineup, removePlayerFromLineup, toRosterSlots } from './lib/roster.js';
 import { buildLineupSet, memoizeRosterInfo } from './lib/rosterInfo.js';
 import { resolveMyDisplayName } from './lib/sleeper.js';
 import { checkErrors } from './lib/http.js';
@@ -590,8 +591,23 @@ class App extends React.Component {
     };
 
     // `candidates` is the user's own players in rank order - see LineupPanel.
-    autoSetLineup = (candidates) => {
-        this.setState((prevState) => autoFillLineup({ rosterSlots: prevState.rosterSlots, candidates }));
+    // Which games have kicked off is read at the tap, not at league load: on
+    // a Sunday it changes every few hours. If the schedule can't be read the
+    // lineup is still auto-set, just without any locks - a request failing is
+    // no reason to leave every slot empty.
+    autoSetLineup = async (candidates) => {
+        const playedTeams = (await fetchTeamsThatHavePlayed()) ?? new Set();
+        this.setState((prevState) => {
+            const myRoster = prevState.leagueData.rosterData?.find(
+                (roster) => roster.owner_id === prevState.sleeperAccount?.userId,
+            );
+            return autoSetLineup({
+                rosterSlots: prevState.rosterSlots,
+                candidates,
+                sleeperStarters: myRoster?.starters,
+                hasPlayed: (id) => playedTeams.has(prevState.playerInfo[id]?.team),
+            });
+        });
     };
 
     clearLineup = () => {

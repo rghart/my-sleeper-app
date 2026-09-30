@@ -39,6 +39,11 @@ const sleeperProjections = (season) =>
     season +
     '?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF';
 
+// Sleeper's NFL schedule for a season - every game with its week, teams and a
+// live `status` (`pre_game`, then in progress, then `complete`). Same
+// unofficial `api.sleeper.com` host as the projections above.
+const sleeperSchedule = (season) => 'https://api.sleeper.com/schedule/nfl/regular/' + season;
+
 const APP_DB_URLS = {
     APP_DB: appDB,
     LATEST_UPDATE_ATTEMPT: appDB + latestUpdateAttempt + typeParams,
@@ -93,6 +98,7 @@ const SLEEPER_API_URLS = {
     NFL_STATE: sleeperAPI + V1 + STATE,
     DRAFT: sleeperAPI + V1 + DRAFT,
     SEASON_PROJECTIONS: sleeperProjections,
+    SCHEDULE: sleeperSchedule,
     ROSTERS: ROSTERS,
     SLEEPER_USERS: SLEEPER_USERS,
     TRADED_PICKS: TRADED_PICKS,
