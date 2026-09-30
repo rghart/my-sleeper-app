@@ -21,6 +21,7 @@ import { asOfMillis, settingsLabel, toRankList } from '../lib/marketValues.js';
 import { agoLabel } from '../lib/relativeTime.js';
 import { positionClass } from './pickLabels.js';
 import { usePublishRankList } from '../RankList.jsx';
+import { savedDateLabel, sortByMostRecent } from '../lib/savedRankLists.js';
 const { APP_USERS, TYPE_PARAMS, DLF_ADP } = APP_DB_URLS;
 
 const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
@@ -266,6 +267,7 @@ const RanksPanel = ({
             pretty_name: prettyName,
             route_name: routeName,
             rank_list: rankingPlayersIdsList,
+            saved_at: Date.now(),
         });
         if (saved) {
             // The pasted list stops being an unsaved one the moment it has a
@@ -277,8 +279,15 @@ const RanksPanel = ({
         return saved;
     };
 
+    // Re-stamped on update too: replacing a list's rankings is uploading it
+    // again, and that is what the date under its name and the newest-first
+    // order are meant to reflect.
     const updateCurrentRankList = () =>
-        putRankList(currentListVal, { ...savedRankLists[currentListVal], rank_list: rankingPlayersIdsList });
+        putRankList(currentListVal, {
+            ...savedRankLists[currentListVal],
+            rank_list: rankingPlayersIdsList,
+            saved_at: Date.now(),
+        });
 
     const deleteRankList = async () => {
         // Neee to escape backslashes
@@ -431,18 +440,29 @@ const RanksPanel = ({
     // rank-list selector can live in the pill instead of a dropdown buried in
     // this panel. Memoised to avoid rebuilding the array every render;
     // usePublishRankList compares it by value, so this is an optimisation
-    // rather than the thing that keeps it from looping. Order follows
-    // savedRankLists' own key order - `default` first, since App always
-    // spreads it as the base of that map - rather than a separately lifted
-    // list of ids.
-    const rankListOptions = useMemo(
-        () =>
-            Object.keys(savedRankLists).map((list) => ({
-                value: list,
-                label: savedRankLists[list] ? savedRankLists[list].pretty_name : 'dunno',
-            })),
-        [savedRankLists],
-    );
+    // rather than the thing that keeps it from looping. The placeholder comes
+    // first, then the saved lists newest first. The pill is a native <select>,
+    // which has no room for a second line, so the saved date rides on the
+    // label instead of under it.
+    //
+    // The value is the map key, not `route_name`: updateRankList looks the
+    // list up by key, and the two only agree because every save so far wrote
+    // them the same - nothing here should depend on that staying true.
+    const rankListOptions = useMemo(() => {
+        const lists = Object.entries(savedRankLists).map(([key, list]) => ({ ...list, key }));
+        const placeholder = lists.filter((list) => list.key === defaultSelector);
+        const saved = sortByMostRecent(lists.filter((list) => list.key !== defaultSelector));
+        return [...placeholder, ...saved].map((list) => {
+            const date = savedDateLabel(list.saved_at);
+            return { value: list.key, label: date ? `${list.pretty_name} · ${date}` : list.pretty_name };
+        });
+    }, [savedRankLists]);
+    // Only for a saved list that is on screen as saved - a freshly pasted
+    // list has no date yet, and neither does the placeholder.
+    const currentSavedDate =
+        !isNewRankList && currentListVal !== defaultSelector
+            ? savedDateLabel(savedRankLists[currentListVal]?.saved_at)
+            : null;
     usePublishRankList({ options: rankListOptions, currentValue: currentListVal, onChange: updateRankList });
 
     const filteredResults = rankingPlayersIdsList
@@ -500,6 +520,7 @@ const RanksPanel = ({
                             <p className="text-ink-quiet m-0 truncate font-mono text-[11px]">
                                 {filteredResults.length} {filteredResults.length === 1 ? 'player' : 'players'}
                                 {adpTypeLabel ? ` · ${adpTypeLabel} ADP` : ''}
+                                {currentSavedDate ? ` · saved ${currentSavedDate}` : ''}
                             </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">

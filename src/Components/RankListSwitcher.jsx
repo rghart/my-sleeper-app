@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Popover from './Popover';
+import { savedDateLabel, sortByMostRecent } from '../lib/savedRankLists.js';
 
 const DEFAULT_ROUTE_NAME = 'default';
 
@@ -29,7 +30,9 @@ const RankListSwitcher = ({
     // savedRankLists (see App.loadSavedRankLists), so filtering it out here
     // is also what makes "signed out shows only the session list" true
     // without a separate branch for it.
-    const savedEntries = Object.values(savedRankLists || {}).filter((list) => list.route_name !== DEFAULT_ROUTE_NAME);
+    const savedEntries = sortByMostRecent(
+        Object.values(savedRankLists || {}).filter((list) => list.route_name !== DEFAULT_ROUTE_NAME),
+    );
 
     const currentLabel = rankListId ? (savedRankLists?.[rankListId]?.pretty_name ?? sessionLabel) : sessionLabel;
 
@@ -94,24 +97,28 @@ const RankListSwitcher = ({
                     )}
                     {signedIn &&
                         !savedRankListsLoading &&
-                        savedEntries.map((list) => (
-                            <button
-                                key={list.route_name}
-                                type="button"
-                                onClick={() => select(list.route_name)}
-                                className="flex w-full items-center gap-2.5 rounded-lg p-2.5 text-left"
-                            >
-                                <span className={rowDotClass(rankListId === list.route_name)} />
-                                <span className="flex min-w-0 flex-col">
-                                    <span className={rowNameClass(rankListId === list.route_name)}>
-                                        {list.pretty_name}
+                        savedEntries.map((list) => {
+                            const date = savedDateLabel(list.saved_at);
+                            return (
+                                <button
+                                    key={list.route_name}
+                                    type="button"
+                                    onClick={() => select(list.route_name)}
+                                    className="flex w-full items-center gap-2.5 rounded-lg p-2.5 text-left"
+                                >
+                                    <span className={rowDotClass(rankListId === list.route_name)} />
+                                    <span className="flex min-w-0 flex-col">
+                                        <span className={rowNameClass(rankListId === list.route_name)}>
+                                            {list.pretty_name}
+                                        </span>
+                                        <span className="text-ink-quiet font-mono text-[10px]">
+                                            {(list.rank_list || []).length} players
+                                            {date && ` · ${date}`}
+                                        </span>
                                     </span>
-                                    <span className="text-ink-quiet font-mono text-[10px]">
-                                        {(list.rank_list || []).length} players
-                                    </span>
-                                </span>
-                            </button>
-                        ))}
+                                </button>
+                            );
+                        })}
                     <div className="bg-line mx-1.5 my-1 h-px" />
                     <button
                         type="button"
