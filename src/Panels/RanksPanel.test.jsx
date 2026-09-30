@@ -78,10 +78,10 @@ function renderPanel(overrides = {}) {
     return { ...props, container };
 }
 
-// The paste box moved from the page into a sheet opened by the "Paste list"
+// The paste box moved from the page into a sheet opened by the "New list"
 // pill (step 6d) - every test that needs the textarea has to open it first.
 const openPasteSheet = async (user) => {
-    await user.click(screen.getByRole('button', { name: 'Paste list' }));
+    await user.click(screen.getByRole('button', { name: 'New list' }));
 };
 
 // The four flag toggles (Taken/My players/Only rookies/All players) and the
@@ -446,7 +446,7 @@ describe('RanksPanel saving a pasted list', () => {
         writes();
 
         await openPasteSheet(user);
-        const sheet = screen.getByRole('dialog', { name: 'Paste list' });
+        const sheet = screen.getByRole('dialog', { name: 'New list' });
 
         expect(within(sheet).getByPlaceholderText('Copy + Paste rankings here...')).toBeInTheDocument();
         expect(within(sheet).queryByLabelText('LIST NAME')).toBeNull();
@@ -842,7 +842,7 @@ describe('RanksPanel market import', () => {
     };
 
     const openAndImport = async (user) => {
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
         await user.click(screen.getByRole('button', { name: 'Import as a rank list' }));
     };
 
@@ -893,7 +893,7 @@ describe('RanksPanel market import', () => {
         renderPanel();
         stubFetch(marketResponse);
 
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
 
         expect(screen.getByRole('button', { name: 'Import as a rank list' })).toBeTruthy();
     });
@@ -929,7 +929,7 @@ describe('RanksPanel market import', () => {
         renderPanel();
         stubFetch(marketResponse);
 
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
 
         expect(screen.getByText(/FantasyCalc/)).toBeTruthy();
     });
@@ -943,7 +943,7 @@ describe('RanksPanel market import', () => {
 
         await openAndImport(user);
         await vi.waitFor(() => expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull());
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
 
         expect(screen.getByText('Start from the market').closest('div').textContent).not.toMatch(/NaN/);
     });
@@ -951,7 +951,7 @@ describe('RanksPanel market import', () => {
     const importThenReopen = async (user) => {
         await openAndImport(user);
         await vi.waitFor(() => expect(screen.queryByPlaceholderText('Copy + Paste rankings here...')).toBeNull());
-        await user.click(screen.getByRole('button', { name: 'Paste list' }));
+        await user.click(screen.getByRole('button', { name: 'New list' }));
     };
 
     it('shows the settings it read back from the response', async () => {

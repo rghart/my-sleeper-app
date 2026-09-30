@@ -1,6 +1,7 @@
 import { checkErrors } from './http.js';
 import { decorateRosters } from './rosterInfo.js';
 import { resolveLeagueSeason } from './sleeper.js';
+import { teamsThatHavePlayed } from './gameLocks.js';
 import APP_DB_URLS, { SLEEPER_API_URLS } from '../urls.js';
 const {
     ACTIVE_PLAYERS,
@@ -20,6 +21,7 @@ const {
     NFL_STATE,
     DRAFT,
     SEASON_PROJECTIONS,
+    SCHEDULE,
     ROSTERS,
     SLEEPER_USERS,
     TRADED_PICKS,
@@ -71,6 +73,28 @@ export async function fetchLeagueSeason() {
             console.error('Error fetching NFL state, falling back to current calendar year:', error);
             return String(new Date().getFullYear());
         });
+}
+
+/**
+ * The NFL teams whose game this week has kicked off - the ones whose players
+ * Sleeper has locked in place. Read fresh on every call, because the answer
+ * changes by the hour on a Sunday.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchTeamsThatHavePlayed() {
+    try {
+        const nflState = await fetch(NFL_STATE)
+            .then(checkErrors)
+            .then((response) => response.json());
+        const games = await fetch(SCHEDULE(nflState.season))
+            .then(checkErrors)
+            .then((response) => response.json());
+        return teamsThatHavePlayed({ games, nflState });
+    } catch (error) {
+        console.error('Error fetching the NFL schedule:', error);
+        return undefined;
+    }
 }
 
 /**

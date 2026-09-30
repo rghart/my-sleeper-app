@@ -534,7 +534,7 @@ const RanksPanel = ({
                                 }}
                                 className="bg-mine text-ground rounded-full px-3.5 py-2 text-[13px] font-semibold"
                             >
-                                Paste list
+                                New list
                             </button>
                         </div>
                     </div>
@@ -592,7 +592,7 @@ const RanksPanel = ({
 
                     {showPasteSheet && (
                         <Sheet
-                            title="Paste list"
+                            title="New list"
                             subtitle="One player per line."
                             onClose={() => setShowPasteSheet(false)}
                             triggerRef={pasteButtonRef}

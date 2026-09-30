@@ -418,7 +418,7 @@ const DraftPanel = ({
                               ownership,
                               myDisplayName,
                           })} left`
-                        : 'Paste a rank list'
+                        : 'Add a rank list'
                 }
             />
             {isBestAvailableOpen && (

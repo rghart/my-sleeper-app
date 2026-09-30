@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
     addPlayerToRoster,
     autoFillLineup,
+    autoSetLineup,
     clearLineup,
     eligiblePositionsForSlot,
     getEligiblePositions,
+    lockPlayedStarters,
     nextOpenSlotIndex,
     removePlayerFromLineup,
     toRosterSlots,
@@ -322,6 +324,66 @@ describe('nextOpenSlotIndex', () => {
         expect(
             nextOpenSlotIndex({ rosterSlots: [{ label: 'QB', playerId: 'a' }], fromIndex: 0, candidates: [qb] }),
         ).toBeNull();
+    });
+});
+
+describe('lockPlayedStarters', () => {
+    const played = new Set(['thu', 'bench']);
+    const hasPlayed = (id) => played.has(id);
+
+    it("puts a Sleeper starter whose game has kicked off back in Sleeper's slot, over whatever the app had", () => {
+        const rosterSlots = [
+            { label: 'QB', playerId: 'app-qb' },
+            { label: 'RB', playerId: null },
+        ];
+        const { rosterSlots: result } = lockPlayedStarters({ rosterSlots, sleeperStarters: ['thu', 'sun'], hasPlayed });
+        expect(result).toEqual([
+            { label: 'QB', playerId: 'thu' },
+            { label: 'RB', playerId: null },
+        ]);
+    });
+
+    it('moves a locked starter out of any other slot the app had him in', () => {
+        const rosterSlots = [
+            { label: 'FLX', playerId: 'thu' },
+            { label: 'WR', playerId: null },
+        ];
+        const { rosterSlots: result } = lockPlayedStarters({ rosterSlots, sleeperStarters: ['0', 'thu'], hasPlayed });
+        expect(result).toEqual([
+            { label: 'FLX', playerId: null },
+            { label: 'WR', playerId: 'thu' },
+        ]);
+    });
+
+    it('changes nothing when no Sleeper starter has played yet', () => {
+        const rosterSlots = [{ label: 'QB', playerId: 'app-qb' }];
+        const { rosterSlots: result } = lockPlayedStarters({
+            rosterSlots,
+            sleeperStarters: ['sun'],
+            hasPlayed: () => false,
+        });
+        expect(result).toEqual(rosterSlots);
+    });
+});
+
+describe('autoSetLineup', () => {
+    it('locks played starters first, skips a player who played from the bench, and ranks fill the rest', () => {
+        const rosterSlots = toRosterSlots(['RB', 'RB', 'FLEX']);
+        const thu = makePlayer({ player_id: 'thu' });
+        const bench = makePlayer({ player_id: 'bench' });
+        const sun1 = makePlayer({ player_id: 'sun1' });
+        const sun2 = makePlayer({ player_id: 'sun2' });
+        const played = new Set(['thu', 'bench']);
+
+        const { rosterSlots: result } = autoSetLineup({
+            rosterSlots,
+            // Ranked: the bench player first, the locked starter last.
+            candidates: [bench, sun1, sun2, thu],
+            sleeperStarters: ['0', 'thu', '0'],
+            hasPlayed: (id) => played.has(id),
+        });
+
+        expect(result.map((slot) => slot.playerId)).toEqual(['sun1', 'thu', 'sun2']);
     });
 });
 

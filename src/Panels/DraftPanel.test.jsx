@@ -592,7 +592,7 @@ describe('DraftPanel best-available sheet', () => {
         renderPanel({ rankingPlayersIdsList: [] });
 
         const handle = screen.getByRole('button', { name: /Best available/ });
-        expect(handle).toHaveTextContent('Paste a rank list');
+        expect(handle).toHaveTextContent('Add a rank list');
 
         await user.click(handle);
         const dialog = screen.getByRole('dialog', { name: 'Best available' });
