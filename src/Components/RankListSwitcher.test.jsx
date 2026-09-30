@@ -88,3 +88,43 @@ describe('RankListSwitcher', () => {
         expect(screen.queryByRole('dialog', { name: 'Choose rank list' })).toBeNull();
     });
 });
+
+describe('RankListSwitcher saved dates', () => {
+    it('lists the newest save first and shows its date under the name', async () => {
+        const user = userEvent.setup();
+        const thisYear = new Date().getFullYear();
+        renderSwitcher({
+            savedRankLists: {
+                default: savedRankLists.default,
+                older: {
+                    pretty_name: 'Older',
+                    route_name: 'older',
+                    rank_list: [1],
+                    saved_at: new Date(thisYear, 0, 5).getTime(),
+                },
+                undated: { pretty_name: 'Undated', route_name: 'undated', rank_list: [1] },
+                newer: {
+                    pretty_name: 'Newer',
+                    route_name: 'newer',
+                    rank_list: [1, 2],
+                    saved_at: new Date(thisYear, 0, 9).getTime(),
+                },
+            },
+        });
+
+        const dialog = await open(user);
+        const names = within(dialog)
+            .getAllByRole('button')
+            .map((button) => button.textContent);
+
+        expect(names.findIndex((text) => text.startsWith('Newer'))).toBeLessThan(
+            names.findIndex((text) => text.startsWith('Older')),
+        );
+        expect(names.findIndex((text) => text.startsWith('Older'))).toBeLessThan(
+            names.findIndex((text) => text.startsWith('Undated')),
+        );
+        expect(within(dialog).getByText('2 players · Jan 9')).toBeInTheDocument();
+        // An undated list shows its count alone, not a made-up date.
+        expect(names.find((text) => text.startsWith('Undated'))).toBe('Undated1 players');
+    });
+});
