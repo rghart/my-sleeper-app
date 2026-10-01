@@ -824,7 +824,6 @@ class App extends React.Component {
                                 leagueIds={leagueData.leagueIds}
                                 updateLeagueID={this.updateLeagueID}
                                 sleeperUserId={sleeperAccount?.userId}
-                                playerInfo={playerInfo}
                                 // Inside the shell rather than above it: the
                                 // shell owns the top bar now, so a banner
                                 // rendered as a sibling would sit above the bar
@@ -879,10 +878,6 @@ class App extends React.Component {
                                                 rosterData={leagueData.rosterData}
                                                 playerInfo={playerInfo}
                                                 sleeperUserId={sleeperAccount?.userId}
-                                                currentDraftComplete={
-                                                    leagueData.currentLeagueDrafts?.[0]?.status === 'complete'
-                                                }
-                                                draft={leagueData.currentLeagueDrafts?.[0]}
                                             />
                                         );
                                     }

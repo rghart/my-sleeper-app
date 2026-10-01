@@ -9,24 +9,14 @@ const {
     DYNASTY_VALUES,
     FAAB,
     LEAGUE_INTEL,
+    LEAGUE_RANKINGS,
     LEAGUE_TRADES,
     MANAGER_ACTIVITY,
     MARKET_VALUES,
     VALUE_STATUS,
 } = APP_DB_URLS;
-const {
-    LEAGUE,
-    USER_LEAGUES,
-    USER_BY_NAME,
-    NFL_STATE,
-    DRAFT,
-    SEASON_PROJECTIONS,
-    SCHEDULE,
-    ROSTERS,
-    SLEEPER_USERS,
-    TRADED_PICKS,
-    DRAFTS,
-} = SLEEPER_API_URLS;
+const { LEAGUE, USER_LEAGUES, USER_BY_NAME, NFL_STATE, DRAFT, SCHEDULE, ROSTERS, SLEEPER_USERS, TRADED_PICKS, DRAFTS } =
+    SLEEPER_API_URLS;
 
 // Every function here returns its data instead of writing it to state. That is
 // the point of the module, not a stylistic preference: the two bugs in #96 and
@@ -182,29 +172,9 @@ export async function fetchLeagueBundle({ leagueID, season, userId }) {
 }
 
 /**
- * Sleeper's season-long projection for every skill player, kicker and
- * defence: one row per player, `stats` holding raw projected stat totals
- * plus that player's redraft ADP in each format (`adp_ppr`, `adp_2qb`, ...).
- *
- * The stats are raw on purpose - `pts_ppr` and friends are there too, but
- * only for three stock formats, and a league with TE premium or six-point
- * passing touchdowns is none of them. See lib/projections.js.
- *
- * Resolves to `undefined` on failure, per this module's contract.
- */
-export async function fetchSeasonProjections(season) {
-    return await fetch(SEASON_PROJECTIONS(season))
-        .then(checkErrors)
-        .then((response) => response.json())
-        .catch((error) => {
-            console.error('Error fetching projections:', error);
-        });
-}
-
-/**
- * One league's rosters, undecorated - for ranking a league that is not the
- * one on screen, where the full five-request bundle would be four requests
- * too many.
+ * One league's rosters, undecorated - for finding your team in a league that
+ * is not the one on screen, where the full five-request bundle would be four
+ * requests too many.
  *
  * Resolves to `undefined` on failure, per this module's contract.
  */
@@ -214,23 +184,6 @@ export async function fetchLeagueRosters(leagueId) {
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error fetching rosters:', error);
-        });
-}
-
-/**
- * Every rookie pick in the league that has changed hands, across every future
- * season Sleeper tracks - unlike `fetchTradedDraftPicks` below, which only
- * knows the one draft it is asked about. `roster_id` is the pick's original
- * team and `owner_id` its current one; both are roster ids.
- *
- * Resolves to `undefined` on failure, per this module's contract.
- */
-export async function fetchLeagueTradedPicks(leagueId) {
-    return await fetch(LEAGUE + leagueId + '/' + TRADED_PICKS)
-        .then(checkErrors)
-        .then((response) => response.json())
-        .catch((error) => {
-            console.error('Error fetching traded picks:', error);
         });
 }
 
@@ -357,6 +310,24 @@ export async function fetchDynastyValues({ superflex = true, window } = {}) {
         .then((response) => response.json())
         .catch((error) => {
             console.error('Error fetching dynasty values:', error);
+        });
+}
+
+/**
+ * A league's power rankings from the backend (`GET /api/v1/leagues/:id/rankings`):
+ * every team's Now and Future scores, tiers, best lineups and picks, plus
+ * which sources it rests on, which were missing, and the tier thresholds.
+ * Rosters are read live server-side, so this is as fresh as a Sleeper call.
+ *
+ * Resolves to `undefined` on failure, per this module's contract. That
+ * includes the 503 the backend sends when it has no KTC values to rank with.
+ */
+export async function fetchLeagueRankings(leagueId) {
+    return await fetch(LEAGUE_RANKINGS(leagueId))
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching power rankings:', error);
         });
 }
 

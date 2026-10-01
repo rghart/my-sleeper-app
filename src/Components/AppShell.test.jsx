@@ -273,17 +273,15 @@ describe('AppShell', () => {
             });
 
             it('shows your tier beside each league once it is known', async () => {
-                // In the first league you field the better quarterback and
-                // hold the only bench player; the second has not drafted.
+                // The backend ranks the first league and puts you in it as a
+                // Contender; the second has not drafted.
                 global.fetch = vi.fn((url) => {
-                    if (url.includes('dynasty-values'))
+                    if (url.includes(`leagues/${LEAGUE_ID}/rankings`))
                         return json({
-                            values: [
-                                { playerId: 'q1', value: 9000 },
-                                { playerId: 'q2', value: 500 },
-                                { playerId: 'q3', value: 1000 },
+                            teams: [
+                                { rosterId: 1, tiers: { blend: 'contender' } },
+                                { rosterId: 2, tiers: { blend: 'stuck' } },
                             ],
-                            picks: [],
                         });
                     if (url.includes(`league/${LEAGUE_ID}/rosters`))
                         return json([
@@ -300,11 +298,6 @@ describe('AppShell', () => {
                     ],
                     updateLeagueID: vi.fn(),
                     sleeperUserId: 'me',
-                    playerInfo: {
-                        q1: { fantasy_positions: ['QB'] },
-                        q2: { fantasy_positions: ['QB'] },
-                        q3: { fantasy_positions: ['QB'] },
-                    },
                 });
 
                 const first = await within(yourLeagues()).findByRole('button', { name: /Test League.*Contender/ });
@@ -312,9 +305,13 @@ describe('AppShell', () => {
                 // No tier for a league that has not drafted - an empty board
                 // would tie every team at Middle and say nothing.
                 expect(within(yourLeagues()).getByRole('button', { name: '4 QB Madness' })).toBeInTheDocument();
-                expect(global.fetch.mock.calls.some(([url]) => url.includes(`league/${OTHER_LEAGUE_ID}/rosters`))).toBe(
-                    false,
-                );
+                expect(
+                    global.fetch.mock.calls.some(([url]) =>
+                        [`league/${OTHER_LEAGUE_ID}/rosters`, `leagues/${OTHER_LEAGUE_ID}/rankings`].some((path) =>
+                            url.includes(path),
+                        ),
+                    ),
+                ).toBe(false);
             });
         });
     });

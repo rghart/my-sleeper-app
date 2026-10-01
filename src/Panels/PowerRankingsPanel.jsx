@@ -5,16 +5,14 @@ import Sheet from '../Components/Sheet';
 import Spinner from '../Components/Spinner';
 import { TierChip, TierIcon, tierLabel } from '../Components/TierIcon';
 import { agoLabel } from '../lib/relativeTime.js';
-import { asOfMillis } from '../lib/dynastyValues.js';
-import { fetchRankingInputs, isMyRoster, rankLeague } from '../lib/leagueRankings.js';
-import { ranksBy, THRESHOLDS, TIERS } from '../lib/powerRankings.js';
+import { asOfMillis } from '../lib/marketValues.js';
+import { isMyRoster, loadLeagueRankings, teamsFromRankings } from '../lib/leagueRankings.js';
+import { ranksBy } from '../lib/teamComparison.js';
+import { TIERS } from '../lib/tiers.js';
 
 // Where every team in the league stands: now, for the future, and the tier
-// the two put it in. The maths lives in lib/powerRankings.js; this screen
-// fetches the values it needs and shows its working.
-//
-// League-scoped for the same reason as Movers: which value list is true
-// depends on whether this league can start a second quarterback.
+// the two put it in. The backend ranks the league
+// (`GET /api/v1/leagues/:id/rankings`); this screen shows its working.
 
 // Future is always KTC - it is the source that prices picks and discounts
 // age - so KTC is required and every other source is additive. Losing one of
@@ -62,10 +60,12 @@ const ordinal = (n) => {
 // which read as a chart drawn out of alignment - and once bought picks could
 // make a team Rebuilding, the lower one was not even where the cut is. The
 // tier chip in the list is the authority on any one team.
-const TierChart = ({ teams, source, myRosterId, selectedId, onSelect }) => {
+const TierChart = ({ teams, source, thresholds, myRosterId, selectedId, onSelect }) => {
     const y = (now) => 100 - toPercent(now);
-    const bandTop = y(THRESHOLDS.strongNow);
-    const bandBottom = y(THRESHOLDS.weakNow);
+    // The backend's own tier lines, sent with the rankings, so the band is
+    // drawn where the cut really is.
+    const bandTop = y(thresholds.strongNow);
+    const bandBottom = y(thresholds.weakNow);
 
     const labelled = teams.filter((team) => team.rosterId === myRosterId || team.rosterId === selectedId);
 
@@ -197,17 +197,7 @@ const TiersSheet = ({ onClose, triggerRef }) => (
     </Sheet>
 );
 
-// `draft` is the league's own rookie draft. Once its order is set, picks in it
-// are priced at their exact slot rather than estimated - see lib/pickSlots.js.
-const PowerRankingsPanel = ({
-    leagueID,
-    league,
-    rosterData,
-    playerInfo,
-    sleeperUserId,
-    currentDraftComplete,
-    draft,
-}) => {
+const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperUserId }) => {
     const [data, setData] = useState(undefined);
     const [loading, setLoading] = useState(true);
     const [source, setSource] = useState('blend');
@@ -221,44 +211,34 @@ const PowerRankingsPanel = ({
     const tiersButtonRef = useRef(null);
 
     // Keyed on the league OBJECT's id, not the `leagueID` prop. On a league
-    // switch App updates the id first and the league object a beat later, so
-    // an effect keyed on the prop fetched the new league's inputs with the old
-    // league's object - the previous league's traded picks - and never ran
-    // again once the right object arrived. That showed kpresley, holding most
-    // of TBD's 2027 firsts, as Stuck: his picks had been credited from
-    // another league's trades.
-    const inputsLeagueId = league?.league_id;
+    // switch App updates the id first and the league object (and its
+    // rosters) a beat later; the rankings are matched against those rosters
+    // to find your team, so both have to be about the same league. Fresh on
+    // every open, because rosters move; the menu's tier reuses this fetch.
+    const rankingsLeagueId = league?.league_id;
     useEffect(() => {
-        if (!inputsLeagueId) return undefined;
+        if (!rankingsLeagueId) return undefined;
         let cancelled = false;
         setLoading(true);
 
-        fetchRankingInputs(league).then((inputs) => {
+        loadLeagueRankings(rankingsLeagueId, { fresh: true }).then((response) => {
             if (cancelled) return;
-            setData({ ...inputs, leagueId: inputsLeagueId });
+            setData({ response, leagueId: rankingsLeagueId });
             setLoading(false);
         });
 
         return () => {
             cancelled = true;
         };
-        // App rebuilds the league object on every load; refetching on a new
-        // object with the same id would be waste.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [inputsLeagueId, league?.season]);
+    }, [rankingsLeagueId]);
 
     // Everything on screen has to be about one league. Until the fetched
-    // inputs, the league object and the prop all agree, this is mid-switch,
+    // rankings, the league object and the prop all agree, this is mid-switch,
     // and the honest thing to show is the spinner.
-    const inSync = data?.leagueId === inputsLeagueId && inputsLeagueId === leagueID;
+    const inSync = data?.leagueId === rankingsLeagueId && rankingsLeagueId === leagueID;
+    const rankings = inSync ? data.response : undefined;
 
-    const teams = useMemo(
-        () =>
-            inSync
-                ? rankLeague({ league, rosters: rosterData, playerInfo, inputs: data, currentDraftComplete, draft })
-                : null,
-        [inSync, data, rosterData, league, playerInfo, currentDraftComplete, draft],
-    );
+    const teams = useMemo(() => (rankings ? teamsFromRankings(rankings) : null), [rankings]);
 
     if (loading || !inSync) {
         return (
@@ -271,17 +251,23 @@ const PowerRankingsPanel = ({
     if (!teams) {
         return (
             <p className="text-ink-muted m-0 flex min-h-11 items-center px-4 text-sm">
-                Couldn&rsquo;t load KTC values, which the Future score needs. The value service may be unavailable.
+                Couldn&rsquo;t load the rankings. The value service may be unavailable, or it has no KTC values yet,
+                which the Future score needs.
             </p>
         );
     }
 
-    const available = { blend: true, proj: !!data.projections, adp: !!data.projections, ktc: true, fc: !!data.fc };
+    // What the backend ranked with, and what it had to leave out. Projections
+    // feed two Now sources, projected points and ADP.
+    const sourceAsOf = Object.fromEntries((rankings.sources ?? []).map((s) => [s.id, s.asOf]));
+    const missing = new Set((rankings.missing ?? []).map((m) => m.id));
+    const hasProjections = 'projections' in sourceAsOf;
+    const available = { blend: true, proj: hasProjections, adp: hasProjections, ktc: true, fc: 'fc' in sourceAsOf };
     const sourceOptions = SOURCE_ORDER.filter((id) => available[id]).map((value) => ({
         value,
         label: SOURCE_LABELS[value],
     }));
-    const unavailable = [!data.projections && 'projections', !data.fc && 'FantasyCalc'].filter(Boolean);
+    const unavailable = [!available.proj && 'projections', !available.fc && 'FantasyCalc'].filter(Boolean);
     const activeSource = sourceOptions.some((option) => option.value === source) ? source : 'blend';
 
     const myRosterId = rosterData.find((roster) => isMyRoster(roster, sleeperUserId))?.roster_id;
@@ -289,8 +275,8 @@ const PowerRankingsPanel = ({
     const futureRanks = ranksBy(teams, (team) => team.future);
     const ordered = [...teams].sort((a, b) => nowRanks.get(a.rosterId) - nowRanks.get(b.rosterId));
 
-    const ktcAge = agoLabel(asOfMillis(data.ktc));
-    const fcAge = data.fc ? agoLabel(asOfMillis(data.fc)) : null;
+    const ktcAge = agoLabel(asOfMillis(sourceAsOf.ktc));
+    const fcAge = sourceAsOf.fc ? agoLabel(asOfMillis(sourceAsOf.fc)) : null;
 
     const detailTeam = detailId != null ? teams.find((team) => team.rosterId === detailId) : null;
     if (detailTeam) {
@@ -323,7 +309,7 @@ const PowerRankingsPanel = ({
                         {teams.length} teams{ktcAge && ` · KTC ${ktcAge}`}
                         {fcAge && ` · FantasyCalc ${fcAge}`}
                         {unavailable.length > 0 && ` · ${unavailable.join(' and ')} unavailable`}
-                        {!data.tradedPicks && ' · picks not counted'}
+                        {missing.has('picks') && ' · picks not counted'}
                     </p>
                 </div>
                 <button
@@ -356,6 +342,7 @@ const PowerRankingsPanel = ({
                     <TierChart
                         teams={teams}
                         source={activeSource}
+                        thresholds={rankings.thresholds}
                         myRosterId={myRosterId}
                         selectedId={selectedId}
                         onSelect={setSelectedId}

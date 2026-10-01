@@ -4,9 +4,13 @@ import userEvent from '@testing-library/user-event';
 import PowerRankingsPanel from './PowerRankingsPanel';
 import { clearRankingCache } from '../lib/leagueRankings.js';
 
-// The panel owns its fetches, so these drive the real effect through a
+// The panel owns its fetch, so these drive the real effect through a
 // URL-routed fetch rather than passing data in - the wiring is the part a
 // prop-fed test would skip.
+//
+// The ranking maths is the backend's (`GET /api/v1/leagues/:id/rankings`),
+// tested there against this app's former results on real leagues. Here the
+// response is canned, and what is tested is what the screen does with it.
 
 const jsonResponse = (data) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
 const failure = () => Promise.resolve({ ok: false, status: 503, statusText: 'Unavailable', json: () => ({}) });
@@ -34,9 +38,6 @@ const roster = (id, owner, name, players) => ({
     taxi: null,
 });
 
-// Four teams, one per KTC tier: alpha is strong with a bench and its pick,
-// bravo is as strong but sold its pick and has no bench, charlie is weak but
-// bought two firsts, delta is weak with nothing coming.
 const ROSTERS = [
     roster(1, 'uA', 'alpha', ['qa', 'ra', 'ba']),
     roster(2, 'uB', 'bravo', ['qb', 'rb']),
@@ -44,80 +45,152 @@ const ROSTERS = [
     roster(4, 'uD', 'delta', ['qd', 'rd']),
 ];
 
-const LEAGUE = {
-    league_id: 'L1',
-    season: '2026',
-    total_rosters: 4,
-    roster_positions: ['QB', 'RB', 'BN', 'BN'],
-    settings: { type: 2, draft_rounds: 1 },
-    scoring_settings: { rec: 1, pass_td: 4 },
+const LEAGUE = { league_id: 'L1', season: '2026', status: 'in_season' };
+
+const SOURCES = ['proj', 'adp', 'ktc', 'fc'];
+
+// One lineup per source: a QB and an RB, worth what the team's score says.
+const lineups = (players, now) =>
+    Object.fromEntries(
+        SOURCES.map((id) => [
+            id,
+            {
+                total: 2 * now[id],
+                starters: [
+                    { slot: 'QB', playerId: players[0], value: now[id] },
+                    { slot: 'RB', playerId: players[1], value: now[id] },
+                ],
+            },
+        ]),
+    );
+
+const pick = (season, originalRosterId) => ({
+    season,
+    round: 1,
+    originalRosterId,
+    value: 3000,
+    basis: 'mid',
+    tier: 'mid',
+});
+
+// Four teams, one per KTC tier: alpha is strong with its pick, bravo is as
+// strong but sold its pick, charlie is weak but bought two firsts, delta is
+// weak with nothing coming. FantasyCalc disagrees and likes charlie best.
+const team = ({ rosterId, name, players, now, future, netPickValue, tiers, picks }) => {
+    const blend = SOURCES.reduce((sum, id) => sum + now[id], 0) / SOURCES.length;
+    return {
+        rosterId,
+        ownerId: `u${name[0].toUpperCase()}`,
+        name,
+        tier: tiers.blend,
+        rank: {},
+        now: { ...now, blend },
+        future,
+        netPickValue,
+        tiers,
+        lineups: lineups(players, now),
+        futureDetail: {
+            playerValue: 1000,
+            pickValue: picks.length * 3000,
+            netPickValue,
+            total: 1000 + netPickValue,
+            picks,
+        },
+    };
 };
 
-const values = (table) => Object.entries(table).map(([playerId, value]) => ({ playerId, value }));
-
-const KTC = {
-    asOf: '2026-09-20T00:00:00Z',
-    source: 'keeptradecut:1qb',
-    values: values({
-        qa: 9500,
-        ra: 8000,
-        ba: 3000,
-        qb: 8500,
-        rb: 8500,
-        qc: 2000,
-        rc: 1500,
-        bc: 4000,
-        qd: 1500,
-        rd: 1000,
+const TEAMS = [
+    team({
+        rosterId: 1,
+        name: 'alpha',
+        players: ['qa', 'ra'],
+        now: { proj: -0.3, adp: 1.1, ktc: 1.2, fc: 0.2 },
+        future: 0.3,
+        netPickValue: 0,
+        tiers: { proj: 'middle', adp: 'contender', ktc: 'contender', fc: 'middle', blend: 'contender' },
+        picks: [pick(2027, 1)],
     }),
-    picks: [
-        { season: 2026, round: 1, tier: 'mid', value: 9999 },
-        { season: 2027, round: 1, tier: 'mid', value: 3000 },
+    team({
+        rosterId: 2,
+        name: 'bravo',
+        players: ['qb', 'rb'],
+        now: { proj: 0.6, adp: -0.2, ktc: 0.9, fc: 0.1 },
+        future: -0.7,
+        netPickValue: -3000,
+        tiers: { proj: 'all-in', adp: 'middle', ktc: 'all-in', fc: 'middle', blend: 'middle' },
+        picks: [],
+    }),
+    team({
+        rosterId: 3,
+        name: 'charlie',
+        players: ['qc', 'rc'],
+        now: { proj: 1.0, adp: 0.4, ktc: -0.8, fc: 1.5 },
+        future: 1.4,
+        netPickValue: 6000,
+        tiers: { proj: 'contender', adp: 'middle', ktc: 'rebuilding', fc: 'contender', blend: 'middle' },
+        picks: [pick(2027, 3), pick(2027, 2), pick(2027, 4)],
+    }),
+    team({
+        rosterId: 4,
+        name: 'delta',
+        players: ['qd', 'rd'],
+        now: { proj: -1.3, adp: -1.3, ktc: -1.3, fc: -1.8 },
+        future: -1.0,
+        netPickValue: -3000,
+        tiers: { proj: 'stuck', adp: 'stuck', ktc: 'stuck', fc: 'stuck', blend: 'stuck' },
+        picks: [],
+    }),
+];
+
+const RANKINGS = {
+    leagueId: 'L1',
+    sources: [
+        { id: 'ktc', provider: 'keeptradecut:1qb', asOf: '2026-09-20T00:00:00Z' },
+        { id: 'fc', provider: 'fantasycalc', asOf: '2026-09-24T00:00:00Z' },
+        { id: 'projections', provider: 'sleeper', asOf: '2026-09-25T00:00:00Z' },
     ],
+    missing: [],
+    notes: [],
+    thresholds: { strongNow: 0.5, weakNow: -0.5, allInFuture: -0.5, rebuildingFuture: 0, rebuildingPicks: 0 },
+    teams: TEAMS,
 };
 
-// FantasyCalc disagrees: it likes charlie's starters best.
-const FC = {
-    asOf: '2026-09-24T00:00:00Z',
-    settings: { source: 'fantasycalc' },
-    values: values({ qa: 5000, ra: 5000, qb: 5000, rb: 5000, qc: 9000, rc: 9000, qd: 1000, rd: 1000 }),
+// What the backend sends when an input dropped out: that source's Now scores
+// are gone and `missing` says why.
+const without = (id, response = RANKINGS) => {
+    const dropped = id === 'projections' ? ['proj', 'adp'] : id === 'fc' ? ['fc'] : [];
+    const strip = (map) => Object.fromEntries(Object.entries(map).filter(([key]) => !dropped.includes(key)));
+    return {
+        ...response,
+        sources: response.sources.filter((source) => source.id !== id),
+        missing: [...response.missing, { id, reason: `${id} unavailable` }],
+        teams: response.teams.map((t) => ({
+            ...t,
+            now: strip(t.now),
+            tiers: strip(t.tiers),
+            lineups: strip(t.lineups),
+            ...(id === 'picks' ? { netPickValue: null, futureDetail: { ...t.futureDetail, picks: [] } } : {}),
+        })),
+    };
 };
 
-// Sleeper's season projections. `pts_ppr` is deliberately in the opposite
-// order to what this league's own scoring gives, so a test can only pass if
-// the panel scores the raw stats itself.
-const projection = (player_id, stats, ptsPpr) => ({ player_id, stats: { ...stats, pts_ppr: ptsPpr } });
-const PROJECTIONS = [
-    projection('qa', { pass_td: 10, adp_ppr: 10 }, 400),
-    projection('ra', { rec: 50, adp_ppr: 20 }, 400),
-    projection('qb', { pass_td: 30, adp_ppr: 200 }, 100),
-    projection('rb', { rec: 10, adp_ppr: 250 }, 100),
-    projection('qc', { pass_td: 20, adp_ppr: 100 }, 1),
-    projection('rc', { rec: 60, adp_ppr: 90 }, 1),
-    projection('qd', { pass_td: 5, adp_ppr: 280 }, 900),
-    projection('rd', { rec: 5, adp_ppr: 290 }, 900),
-];
+// A second league whose trades went the other way: delta bought the firsts.
+const L2_RANKINGS = {
+    ...RANKINGS,
+    leagueId: 'L2',
+    teams: TEAMS.map((t) =>
+        t.name === 'delta'
+            ? { ...t, future: 1.8, netPickValue: 6000, tiers: { ...t.tiers, ktc: 'rebuilding' } }
+            : t.name === 'charlie'
+              ? { ...t, future: -0.9 }
+              : t,
+    ),
+};
 
-const TRADED = [
-    { season: '2027', round: 1, roster_id: 2, owner_id: 3, previous_owner_id: 2 },
-    { season: '2027', round: 1, roster_id: 4, owner_id: 3, previous_owner_id: 4 },
-    // Last season's draft has run; this must not count.
-    { season: '2026', round: 1, roster_id: 1, owner_id: 4, previous_owner_id: 1 },
-];
-
-const routeFetch = ({ ktc = KTC, fc = FC, traded = TRADED, projections = PROJECTIONS } = {}) =>
+const routeFetch = ({ L1 = RANKINGS } = {}) =>
     vi.fn((url) => {
-        if (url.includes('projections')) return projections ? jsonResponse(projections) : failure();
-        if (url.includes('dynasty-values')) return ktc ? jsonResponse(ktc) : failure();
-        if (url.includes('/values')) return fc ? jsonResponse(fc) : failure();
-        if (url.includes('league/L1/traded_picks')) return traded ? jsonResponse(traded) : failure();
-        // A second league whose trades went the other way: delta bought the
-        // firsts that charlie holds in L1.
-        if (url.includes('league/L2/traded_picks'))
-            return jsonResponse([
-                { season: '2027', round: 1, roster_id: 2, owner_id: 4 },
-                { season: '2027', round: 1, roster_id: 3, owner_id: 4 },
-            ]);
+        if (url.includes('leagues/L1/rankings')) return L1 ? jsonResponse(L1) : failure();
+        if (url.includes('leagues/L2/rankings')) return jsonResponse(L2_RANKINGS);
         return failure();
     });
 
@@ -129,7 +202,6 @@ const renderPanel = () =>
             rosterData={ROSTERS}
             playerInfo={PLAYER_INFO}
             sleeperUserId="uA"
-            currentDraftComplete
         />,
     );
 
@@ -144,8 +216,8 @@ describe('PowerRankingsPanel', () => {
     let originalFetch;
     beforeEach(() => {
         originalFetch = global.fetch;
-        // The value lists are cached per session; a test that fails KTC must
-        // not be handed the previous test's copy.
+        // The rankings are cached per session for the menu; a test that fails
+        // them must not be handed the previous test's copy.
         clearRankingCache();
         vi.spyOn(console, 'error').mockImplementation(() => {});
     });
@@ -154,7 +226,17 @@ describe('PowerRankingsPanel', () => {
         vi.restoreAllMocks();
     });
 
-    it('tiers every team under KTC, counting bench and traded picks as Future', async () => {
+    it("asks the backend for this league's rankings", async () => {
+        global.fetch = routeFetch();
+        renderPanel();
+
+        await screen.findByRole('list', { name: 'Teams by Now score' });
+        expect(global.fetch.mock.calls.map(([url]) => url)).toEqual([
+            expect.stringMatching(/api\/v1\/leagues\/L1\/rankings$/),
+        ]);
+    });
+
+    it("lists every team under KTC with the backend's tiers, ranked by Now and by Future", async () => {
         global.fetch = routeFetch();
         const user = userEvent.setup();
         renderPanel();
@@ -191,32 +273,19 @@ describe('PowerRankingsPanel', () => {
         expect(screen.getAllByRole('button', { name: /^(alpha|bravo|charlie|delta)\b/ })).toHaveLength(8);
     });
 
-    it("ranks by projections scored with this league's settings, not Sleeper's stock points", async () => {
+    it('offers every source the backend ranked with, and says how old the values are', async () => {
         global.fetch = routeFetch();
-        const user = userEvent.setup();
         renderPanel();
 
-        await user.click(await screen.findByRole('button', { name: 'Projections' }));
-
-        // pass_td x4 + rec x1: charlie 140, bravo 130, alpha 90, delta 25.
-        const rows = await rowNames();
-        expect(rows.map((row) => row.split(',')[0])).toEqual(['charlie', 'bravo', 'alpha', 'delta']);
-        expect(screen.getByText(/scored with this league’s settings/)).toBeInTheDocument();
+        await screen.findByRole('list', { name: 'Teams by Now score' });
+        for (const name of ['Blend', 'Projections', 'ADP', 'KTC', 'FantasyCalc']) {
+            expect(screen.getByRole('button', { name })).toBeInTheDocument();
+        }
+        expect(screen.getByText(/4 teams · KTC .* · FantasyCalc /)).toBeInTheDocument();
     });
 
-    it("ranks by the league's redraft ADP column, earliest picks best", async () => {
-        global.fetch = routeFetch();
-        const user = userEvent.setup();
-        renderPanel();
-
-        await user.click(await screen.findByRole('button', { name: 'ADP' }));
-
-        const rows = await rowNames();
-        expect(rows.map((row) => row.split(',')[0])).toEqual(['alpha', 'charlie', 'bravo', 'delta']);
-    });
-
-    it('drops projections and ADP, and says so, when projections fail to load', async () => {
-        global.fetch = routeFetch({ projections: null });
+    it('drops projections and ADP, and says so, when the backend had no projections', async () => {
+        global.fetch = routeFetch({ L1: without('projections') });
         renderPanel();
 
         await screen.findByRole('list', { name: 'Teams by Now score' });
@@ -225,35 +294,8 @@ describe('PowerRankingsPanel', () => {
         expect(screen.getByText(/projections unavailable/)).toBeInTheDocument();
     });
 
-    it("ranks a switched-to league with its own traded picks, not the last league's", async () => {
-        // App updates the league id first and the league object a beat later.
-        // The panel must not fetch with the stale object and then stop.
-        global.fetch = routeFetch();
-        const user = userEvent.setup();
-        const props = {
-            playerInfo: PLAYER_INFO,
-            sleeperUserId: 'uA',
-            currentDraftComplete: true,
-            rosterData: ROSTERS,
-        };
-        const { rerender } = render(<PowerRankingsPanel {...props} leagueID="L1" league={LEAGUE} />);
-        await screen.findByRole('list', { name: 'Teams by Now score' });
-
-        const L2 = { ...LEAGUE, league_id: 'L2' };
-        rerender(<PowerRankingsPanel {...props} leagueID="L2" league={LEAGUE} />);
-        // Mid-switch: nothing about either league should be claimed.
-        expect(screen.queryByRole('list', { name: 'Teams by Now score' })).toBeNull();
-
-        rerender(<PowerRankingsPanel {...props} leagueID="L2" league={L2} />);
-        await user.click(await screen.findByRole('button', { name: 'KTC' }));
-
-        const delta = (await rowNames()).find((row) => row.startsWith('delta'));
-        expect(delta).toMatch(/Rebuilding, 4th for Now, 1st for Future$/);
-        expect(global.fetch.mock.calls.some(([url]) => url.includes('league/L2/traded_picks'))).toBe(true);
-    });
-
-    it('drops FantasyCalc, and says so, when it fails to load', async () => {
-        global.fetch = routeFetch({ fc: null });
+    it('drops FantasyCalc, and says so, when the backend could not get it', async () => {
+        global.fetch = routeFetch({ L1: without('fc') });
         renderPanel();
 
         await screen.findByRole('list', { name: 'Teams by Now score' });
@@ -261,20 +303,52 @@ describe('PowerRankingsPanel', () => {
         expect(screen.getByText(/FantasyCalc unavailable/)).toBeInTheDocument();
     });
 
-    it('leaves picks out, and says so, when the traded picks fail to load', async () => {
-        global.fetch = routeFetch({ traded: null });
+    it('says picks were not counted when the backend could not read them', async () => {
+        global.fetch = routeFetch({ L1: without('picks') });
         renderPanel();
 
         await screen.findByRole('list', { name: 'Teams by Now score' });
         expect(screen.getByText(/picks not counted/)).toBeInTheDocument();
     });
 
-    it('says why there is nothing to show when KTC fails, rather than an empty list', async () => {
-        global.fetch = routeFetch({ ktc: null });
+    it('says why there is nothing to show when the rankings fail, rather than an empty list', async () => {
+        global.fetch = routeFetch({ L1: null });
         renderPanel();
 
-        expect(await screen.findByText(/Couldn.t load KTC values/)).toBeInTheDocument();
+        expect(await screen.findByText(/Couldn.t load the rankings/)).toBeInTheDocument();
         expect(screen.queryByRole('list', { name: 'Teams by Now score' })).toBeNull();
+    });
+
+    it("shows a switched-to league's own rankings, never the last league's", async () => {
+        // App updates the league id first and the league object (and its
+        // rosters) a beat later. Nothing should be claimed until they agree.
+        global.fetch = routeFetch();
+        const user = userEvent.setup();
+        const props = { playerInfo: PLAYER_INFO, sleeperUserId: 'uA', rosterData: ROSTERS };
+        const { rerender } = render(<PowerRankingsPanel {...props} leagueID="L1" league={LEAGUE} />);
+        await screen.findByRole('list', { name: 'Teams by Now score' });
+
+        rerender(<PowerRankingsPanel {...props} leagueID="L2" league={LEAGUE} />);
+        // Mid-switch: nothing about either league should be claimed.
+        expect(screen.queryByRole('list', { name: 'Teams by Now score' })).toBeNull();
+
+        rerender(<PowerRankingsPanel {...props} leagueID="L2" league={{ ...LEAGUE, league_id: 'L2' }} />);
+        await user.click(await screen.findByRole('button', { name: 'KTC' }));
+
+        const delta = (await rowNames()).find((row) => row.startsWith('delta'));
+        expect(delta).toMatch(/Rebuilding, 4th for Now, 1st for Future$/);
+    });
+
+    it('fetches fresh each time it opens, since rosters move', async () => {
+        global.fetch = routeFetch();
+        const first = renderPanel();
+        await screen.findByRole('list', { name: 'Teams by Now score' });
+        first.unmount();
+
+        renderPanel();
+        await screen.findByRole('list', { name: 'Teams by Now score' });
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
     it('explains the tiers on request', async () => {
@@ -288,15 +362,6 @@ describe('PowerRankingsPanel', () => {
         for (const tier of ['Contender', 'All-in', 'Middle', 'Rebuilding', 'Stuck']) {
             expect(within(sheet).getByText(tier)).toBeInTheDocument();
         }
-    });
-
-    it('asks for 1QB values in a league that cannot start a second quarterback', async () => {
-        global.fetch = routeFetch();
-        renderPanel();
-
-        await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-        const ktcUrl = global.fetch.mock.calls.map(([url]) => url).find((url) => url.includes('dynasty-values'));
-        expect(ktcUrl).toContain('superflex=false');
     });
 
     describe('a team, opened', () => {
@@ -361,5 +426,15 @@ describe('PowerRankingsPanel', () => {
             expect(window.location.hash).toBe('#/trades');
             window.location.hash = '';
         });
+    });
+
+    it('waits for the rankings before drawing anything', async () => {
+        let resolve;
+        global.fetch = vi.fn(() => new Promise((r) => (resolve = r)));
+        renderPanel();
+
+        expect(screen.queryByRole('list', { name: 'Teams by Now score' })).toBeNull();
+        resolve({ ok: true, status: 200, json: () => Promise.resolve(RANKINGS) });
+        await waitFor(() => expect(screen.getByRole('list', { name: 'Teams by Now score' })).toBeInTheDocument());
     });
 });

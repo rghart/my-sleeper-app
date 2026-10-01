@@ -71,26 +71,3 @@ export function asOfMillis(response) {
     const millis = Date.parse(asOf);
     return Number.isNaN(millis) ? null : millis;
 }
-
-/**
- * A pick's value, for a Sleeper traded pick that knows only its season and
- * round.
- *
- * **Tier is the caller's guess and this makes it explicitly.** KTC prices
- * early/mid/late separately because they are worth substantially different
- * amounts, but which one a pick becomes depends on where its roster finishes,
- * which is not knowable in advance. `mid` is the honest default; a caller that
- * knows the standings can pass a better one.
- *
- * Returns null rather than falling back to another tier or another season: a
- * 2029 pick nobody prices should read as unpriced, not as a 2028 one.
- */
-export function pickValue(response, { season, round, tier = 'mid' } = {}) {
-    const picks = response?.picks;
-    if (!Array.isArray(picks) || season == null || round == null) return null;
-
-    return (
-        picks.find((pick) => pick.season === Number(season) && pick.round === Number(round) && pick.tier === tier) ??
-        null
-    );
-}

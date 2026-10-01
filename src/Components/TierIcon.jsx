@@ -1,4 +1,4 @@
-import { TIERS } from '../lib/powerRankings.js';
+import { TIERS } from '../lib/tiers.js';
 
 // One stroke glyph per power-rankings tier. Tiers are told apart by shape and
 // by their written label, never by colour: saturation in this app is reserved

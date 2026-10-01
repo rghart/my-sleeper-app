@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asOfMillis, pickValue, usesSuperflexValues, valuesByPlayerId } from './dynastyValues.js';
+import { asOfMillis, usesSuperflexValues, valuesByPlayerId } from './dynastyValues.js';
 
 describe('usesSuperflexValues', () => {
     it('is superflex for any league that can start a second quarterback', () => {
@@ -64,38 +64,5 @@ describe('asOfMillis', () => {
         expect(asOfMillis({})).toBeNull();
         expect(asOfMillis({ asOf: 'soon' })).toBeNull();
         expect(asOfMillis(undefined)).toBeNull();
-    });
-});
-
-describe('pickValue', () => {
-    const response = {
-        picks: [
-            { season: 2027, round: 1, tier: 'mid', value: 5507 },
-            { season: 2027, round: 1, tier: 'early', value: 7071 },
-            { season: 2026, round: 2, tier: 'mid', value: 3000 },
-        ],
-    };
-
-    it('defaults to the mid tier, since a Sleeper pick carries none', () => {
-        expect(pickValue(response, { season: 2027, round: 1 }).value).toBe(5507);
-    });
-
-    it('takes an explicit tier when the caller knows better', () => {
-        expect(pickValue(response, { season: 2027, round: 1, tier: 'early' }).value).toBe(7071);
-    });
-
-    it('accepts season and round as strings, which is how Sleeper sends them', () => {
-        expect(pickValue(response, { season: '2027', round: '1' }).value).toBe(5507);
-    });
-
-    it('is null for a pick nobody prices, rather than falling back to a nearby one', () => {
-        // A 2029 pick must read as unpriced, not as a 2028 one.
-        expect(pickValue(response, { season: 2029, round: 1 })).toBeNull();
-        expect(pickValue(response, { season: 2027, round: 9 })).toBeNull();
-    });
-
-    it('is null when the response carries no picks at all', () => {
-        expect(pickValue({}, { season: 2027, round: 1 })).toBeNull();
-        expect(pickValue(response, {})).toBeNull();
     });
 });

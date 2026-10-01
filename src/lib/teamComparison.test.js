@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { futureFacts, groupStrength, pickLabel, tierAgreement } from './teamComparison.js';
-import { zScores } from './powerRankings.js';
+import { futureFacts, groupStrength, pickLabel, ranksBy, tierAgreement, zScores } from './teamComparison.js';
 
 // Two sources, three teams, a QB / RB / FLEX lineup.
 const lineup = (qb, rb, flex) => ({
@@ -72,5 +71,30 @@ describe('pickLabel', () => {
         [{ season: 2027, round: 4, value: 900 }, '2027 4th · mid'],
     ])('%o reads %s', (pick, label) => {
         expect(pickLabel(pick)).toBe(label);
+    });
+});
+
+describe('zScores', () => {
+    it('centres on zero with unit spread', () => {
+        expect(zScores([1, 2, 3])).toEqual([-Math.sqrt(1.5), 0, Math.sqrt(1.5)]);
+    });
+
+    it('calls everyone average when nobody differs, rather than NaN', () => {
+        expect(zScores([5, 5, 5])).toEqual([0, 0, 0]);
+    });
+});
+
+describe('ranksBy', () => {
+    it('ranks best first and puts a missing score last', () => {
+        const teams = [
+            { rosterId: 1, s: 0.2 },
+            { rosterId: 2, s: null },
+            { rosterId: 3, s: 1.4 },
+        ];
+        expect([...ranksBy(teams, (t) => t.s)]).toEqual([
+            [3, 1],
+            [1, 2],
+            [2, 3],
+        ]);
     });
 });
