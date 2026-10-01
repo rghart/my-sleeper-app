@@ -7,74 +7,12 @@
 // and the chart are drawn from rather than a second calculation.
 
 /**
- * Population z-scores. A league where every team scores the same has no
- * spread to measure, so everyone is average (0) rather than NaN.
- */
-export function zScores(values) {
-    if (values.length === 0) return [];
-    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
-    const sd = Math.sqrt(values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length);
-    return values.map((v) => (sd === 0 ? 0 : (v - mean) / sd));
-}
-
-/**
  * 1-based rank of each team by a score, best first, keyed by roster id. A
  * missing score ranks last.
  */
 export function ranksBy(teams, score) {
     const ordered = [...teams].sort((a, b) => (score(b) ?? -Infinity) - (score(a) ?? -Infinity));
     return new Map(ordered.map((team, i) => [team.rosterId, i + 1]));
-}
-
-// Lineup slots collapse into the groups a person compares by. Every flex
-// variant is "FLEX": what matters there is how good the extra starter is,
-// not which positions the slot would have allowed.
-const GROUP_OF = {
-    QB: 'QB',
-    RB: 'RB',
-    WR: 'WR',
-    TE: 'TE',
-    FLEX: 'FLEX',
-    FLX: 'FLEX',
-    SUPER_FLEX: 'FLEX',
-    SFLX: 'FLEX',
-    WRRB_FLEX: 'FLEX',
-    REC_FLEX: 'FLEX',
-};
-
-export const POSITION_GROUPS = ['QB', 'RB', 'WR', 'TE', 'FLEX'];
-
-/**
- * Each team's strength per position group, as a league z-score: how its
- * starters at that group compare with everyone else's. Under the blend, the
- * mean of the per-source z-scores, same as Now itself.
- *
- * Returns a Map from roster id to `{ QB, RB, ... }`. A group the league has
- * no slot for is left out rather than reported as average.
- */
-export function groupStrength(teams, source) {
-    const sourceIds = Object.keys(teams[0]?.lineups ?? {});
-    const used = source === 'blend' ? sourceIds : sourceIds.filter((id) => id === source);
-
-    const totals = (sourceId, group) =>
-        teams.map((team) =>
-            (team.lineups[sourceId]?.starters ?? [])
-                .filter((starter) => GROUP_OF[starter.slot] === group)
-                .reduce((sum, starter) => sum + starter.value, 0),
-        );
-
-    const groups = POSITION_GROUPS.filter((group) =>
-        (teams[0]?.lineups[used[0]]?.starters ?? []).some((starter) => GROUP_OF[starter.slot] === group),
-    );
-
-    const result = new Map(teams.map((team) => [team.rosterId, {}]));
-    for (const group of groups) {
-        const perSource = used.map((sourceId) => zScores(totals(sourceId, group)));
-        teams.forEach((team, i) => {
-            result.get(team.rosterId)[group] = perSource.reduce((sum, z) => sum + z[i], 0) / perSource.length;
-        });
-    }
-    return result;
 }
 
 /**

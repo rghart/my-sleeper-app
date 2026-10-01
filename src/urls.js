@@ -12,6 +12,7 @@ const ftaValueStatus = 'api/v1/status';
 const ftaLeagueIntel = (leagueId) => `api/v1/leagues/${leagueId}/intel`;
 const ftaLeagueTrades = (leagueId) => `api/v1/leagues/${leagueId}/trades`;
 const ftaLeagueRankings = (leagueId) => `api/v1/leagues/${leagueId}/rankings`;
+const ftaLeagueWeaknesses = (leagueId) => `api/v1/leagues/${leagueId}/weaknesses`;
 const ftaManagerActivity = (userId) => `api/v1/users/${userId}/activity`;
 const latestUpdateAttempt = 'latest_update_attempt/';
 const dlfADP = 'dlf_adp/';
@@ -73,6 +74,9 @@ const APP_DB_URLS = {
     // here in lib/; it moved server-side so the app and an agent share one
     // implementation (sleeper-player-be docs/dynasty-engine.md).
     LEAGUE_RANKINGS: (leagueId) => fta + ftaLeagueRankings(leagueId),
+    // Each team's starting lineup by position group against the rest of the
+    // league - the "Starters vs you" bars - from the same backend snapshot.
+    LEAGUE_WEAKNESSES: (leagueId) => fta + ftaLeagueWeaknesses(leagueId),
     // One leaguemate's recent trades, waivers and free-agent adds, across
     // every league they are in. Not nested under a league on purpose - the
     // data spans all of theirs, so a league in the path would imply a filter

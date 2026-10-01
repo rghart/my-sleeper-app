@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { futureFacts, groupStrength, pickLabel, ranksBy, tierAgreement, zScores } from './teamComparison.js';
+import { futureFacts, pickLabel, ranksBy, tierAgreement } from './teamComparison.js';
 
 // Two sources, three teams, a QB / RB / FLEX lineup.
 const lineup = (qb, rb, flex) => ({
@@ -15,29 +15,6 @@ const team = (rosterId, ktc, proj, extra = {}) => ({
     tiers: { blend: 'contender', ktc: 'contender', proj: 'contender' },
     futureDetail: { picks: [], pickValue: 0 },
     ...extra,
-});
-
-describe('groupStrength', () => {
-    const teams = [
-        team(1, [9000, 1000, 500], [300, 100, 50]),
-        team(2, [5000, 6000, 500], [250, 200, 60]),
-        team(3, [1000, 3000, 4000], [100, 150, 200]),
-    ];
-
-    it('z-scores each group across the league, one source at a time', () => {
-        const byTeam = groupStrength(teams, 'ktc');
-        const qbZ = zScores([9000, 5000, 1000]);
-        expect(byTeam.get(1).QB).toBeCloseTo(qbZ[0]);
-        expect(byTeam.get(3).QB).toBeCloseTo(qbZ[2]);
-        // Superflex reads as FLEX; no WR or TE slot means no WR or TE group.
-        expect(Object.keys(byTeam.get(1))).toEqual(['QB', 'RB', 'FLEX']);
-    });
-
-    it('averages the per-source z-scores under the blend', () => {
-        const blend = groupStrength(teams, 'blend').get(2).RB;
-        const expected = (zScores([1000, 6000, 3000])[1] + zScores([100, 200, 150])[1]) / 2;
-        expect(blend).toBeCloseTo(expected);
-    });
 });
 
 describe('tierAgreement', () => {
@@ -71,16 +48,6 @@ describe('pickLabel', () => {
         [{ season: 2027, round: 4, value: 900 }, '2027 4th · mid'],
     ])('%o reads %s', (pick, label) => {
         expect(pickLabel(pick)).toBe(label);
-    });
-});
-
-describe('zScores', () => {
-    it('centres on zero with unit spread', () => {
-        expect(zScores([1, 2, 3])).toEqual([-Math.sqrt(1.5), 0, Math.sqrt(1.5)]);
-    });
-
-    it('calls everyone average when nobody differs, rather than NaN', () => {
-        expect(zScores([5, 5, 5])).toEqual([0, 0, 0]);
     });
 });
 

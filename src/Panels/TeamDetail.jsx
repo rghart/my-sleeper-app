@@ -1,6 +1,6 @@
 import { TierChip, tierLabel } from '../Components/TierIcon';
 import { avatarInitials } from '../Components/avatarInitials.js';
-import { futureFacts, groupStrength, pickLabel, tierAgreement } from '../lib/teamComparison.js';
+import { futureFacts, pickLabel, tierAgreement } from '../lib/teamComparison.js';
 
 // One team, and how it compares with yours: the drill-down behind a row in
 // Power rankings. Pushed in place with a back control, the same idiom
@@ -32,13 +32,27 @@ const StatCard = ({ label, value, sub }) => (
     </div>
 );
 
-const TeamDetail = ({ team, you, teams, source, rosters, playerInfo, nowRanks, futureRanks, onBack, onOpenTrades }) => {
+// `strength` is every team's position-group z under the current source, from
+// the backend's /weaknesses (see lib/leagueRankings.js), or null when that
+// could not be loaded.
+const TeamDetail = ({
+    team,
+    you,
+    teams,
+    source,
+    strength,
+    rosters,
+    playerInfo,
+    nowRanks,
+    futureRanks,
+    onBack,
+    onOpenTrades,
+}) => {
     const isYou = you && you.rosterId === team.rosterId;
     const other = isYou ? null : you;
 
-    const strength = groupStrength(teams, source);
-    const theirGroups = strength.get(team.rosterId) ?? {};
-    const yourGroups = other ? (strength.get(other.rosterId) ?? {}) : null;
+    const theirGroups = strength?.get(team.rosterId) ?? {};
+    const yourGroups = other ? (strength?.get(other.rosterId) ?? {}) : null;
 
     const rosterOf = (t) => rosters.find((roster) => roster.roster_id === t.rosterId);
     const theirFacts = futureFacts({ team, roster: rosterOf(team), playerInfo });
@@ -169,7 +183,11 @@ const TeamDetail = ({ team, you, teams, source, rosters, playerInfo, nowRanks, f
                         )}
                     </div>
                 ))}
-                <p className="text-ink-quiet m-0 text-xs">Starter strength by position, league average = 0.</p>
+                <p className="text-ink-quiet m-0 text-xs">
+                    {strength
+                        ? 'Starter strength by position, league average = 0.'
+                        : 'Starter strength by position couldn’t be loaded.'}
+                </p>
             </section>
 
             <section className="flex flex-col" aria-labelledby="future-heading">
