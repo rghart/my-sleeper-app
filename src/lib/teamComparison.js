@@ -1,12 +1,30 @@
 // What sets one team apart from yours: the facts behind the team-vs-you
 // screen in Power rankings.
 //
-// Pure. Everything here reads the teams `rankTeams` already produced -
+// Pure. Everything here reads the teams the backend's rankings produced -
 // their lineups per source, their Future detail - plus the player database
 // for ages, so the screen shows the working of the same numbers the list
 // and the chart are drawn from rather than a second calculation.
 
-import { zScores } from './powerRankings.js';
+/**
+ * Population z-scores. A league where every team scores the same has no
+ * spread to measure, so everyone is average (0) rather than NaN.
+ */
+export function zScores(values) {
+    if (values.length === 0) return [];
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const sd = Math.sqrt(values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length);
+    return values.map((v) => (sd === 0 ? 0 : (v - mean) / sd));
+}
+
+/**
+ * 1-based rank of each team by a score, best first, keyed by roster id. A
+ * missing score ranks last.
+ */
+export function ranksBy(teams, score) {
+    const ordered = [...teams].sort((a, b) => (score(b) ?? -Infinity) - (score(a) ?? -Infinity));
+    return new Map(ordered.map((team, i) => [team.rosterId, i + 1]));
+}
 
 // Lineup slots collapse into the groups a person compares by. Every flex
 // variant is "FLEX": what matters there is how good the extra starter is,

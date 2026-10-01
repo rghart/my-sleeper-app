@@ -1,30 +1,22 @@
-// Loading everything a league's power rankings need, and ranking it.
+// A league's power rankings, from the backend.
 //
-// Split out of PowerRankingsPanel because a second caller needs the same
-// thing: the menu shows your tier in every one of your leagues, which means
-// ranking leagues that are not on screen. The value lists are shared across
-// leagues - every superflex league reads the same KTC list, every 2026 league
-// the same projections - so they are cached here, per session, by what they
-// depend on. Only rosters and traded picks are truly per league.
+// The ranking itself - best lineups, z-scores, tiers, pick pricing - used to
+// be computed here from KTC, FantasyCalc, Sleeper's projections and the
+// league's traded picks. It moved to sleeper-player-be
+// (`GET /api/v1/leagues/:id/rankings`, `Intel.LeagueRankings`) so the app and
+// an agent read one implementation, and it was checked there against this
+// app's own results on real leagues before this file stopped computing them.
+//
+// What is left is fetching, sharing a fetch between the panel and the menu,
+// and reading the response into the team shape the screens were built on.
 
-import { pickValue, usesSuperflexValues, valuesByPlayerId } from './dynastyValues.js';
-import { leagueMarketSettings } from './marketValues.js';
-import { pickSeasonsInScope, rankTeams } from './powerRankings.js';
-import { draftSlots, pricePick, projectedFinish, seasonProgress } from './pickSlots.js';
-import { adpValues, projectionValues } from './projections.js';
-import {
-    fetchDynastyValues,
-    fetchLeagueRosters,
-    fetchLeagueTradedPicks,
-    fetchMarketValues,
-    fetchSeasonProjections,
-} from './sleeperApi.js';
+import { fetchLeagueRankings, fetchLeagueRosters } from './sleeperApi.js';
 
 const cache = new Map();
 
-// Caches the promise rather than the result, so two leagues asking for the
-// same list at once share one request. A failure (`undefined`) is evicted
-// once it settles, so the next caller retries instead of inheriting it.
+// Caches the promise rather than the result, so the menu and the panel asking
+// for one league at once share one request. A failure (`undefined`) is
+// evicted once it settles, so the next caller retries instead of inheriting it.
 function cached(key, load) {
     if (!cache.has(key)) {
         const promise = load().then((result) => {
@@ -42,106 +34,33 @@ export function clearRankingCache() {
 }
 
 /**
- * The four inputs a league's rankings rest on. Any of them may come back
- * `undefined` - each has its own consequence, decided by `rankLeague` and
- * said out loud by the screen.
+ * The rankings response for a league, or `undefined` when it could not be
+ * had. `fresh` skips the session cache and replaces it: the panel asks fresh
+ * each time it opens, since rosters move, and the menu reuses what it got.
  */
-export async function fetchRankingInputs(league) {
-    const settings = leagueMarketSettings(league);
-    const superflex = usesSuperflexValues(settings);
-    const [ktc, fc, tradedPicks, projections] = await Promise.all([
-        cached(`ktc:${superflex}`, () => fetchDynastyValues({ superflex })),
-        cached(`fc:${JSON.stringify(settings)}`, () => fetchMarketValues(settings)),
-        fetchLeagueTradedPicks(league.league_id),
-        league.season
-            ? cached(`proj:${league.season}`, () => fetchSeasonProjections(league.season))
-            : Promise.resolve(undefined),
-    ]);
-    // An empty projections list is a failure in all but name - a season with
-    // no projections cannot rank anyone - so it is treated as one.
-    return {
-        ktc,
-        fc,
-        // Anything but a list is not a list of traded picks - an error body
-        // that parsed as JSON, say - and iterating it would crash the ranking.
-        tradedPicks: Array.isArray(tradedPicks) ? tradedPicks : undefined,
-        projections: projections?.length ? projections : undefined,
-    };
+export function loadLeagueRankings(leagueId, { fresh = false } = {}) {
+    const key = `rankings:${leagueId}`;
+    if (fresh) cache.delete(key);
+    return cached(key, () => fetchLeagueRankings(leagueId));
 }
 
 /**
- * Rank one league from its rosters and inputs. `null` without KTC, which the
- * Future score cannot do without; every other input only removes a source
- * (or, for traded picks, the picks) when missing.
+ * The response's teams in the shape the screens read: `now`, `future`,
+ * `tiers` and `lineups` keyed by source id, `picks` for net pick value, and
+ * `futureDetail` with each held pick's price and how it was priced.
  */
-export function rankLeague({ league, rosters, playerInfo, inputs, currentDraftComplete, draft }) {
-    if (!inputs?.ktc || !rosters?.length || !league) return null;
-
-    // The caller may know the draft's own status; failing that, Sleeper's
-    // league status says the same thing a step removed - a dynasty league is
-    // `pre_draft` or `drafting` until this season's rookie draft is done.
-    const draftDone = currentDraftComplete ?? !['pre_draft', 'drafting'].includes(league.status);
-
-    const superflex = usesSuperflexValues(leagueMarketSettings(league));
-    const ktcById = valuesByPlayerId(inputs.ktc);
-    const fcById = valuesByPlayerId(inputs.fc);
-    const ktcValue = (id) => ktcById[id]?.value;
-
-    const sources = {};
-    if (inputs.projections) {
-        const points = projectionValues(inputs.projections, league.scoring_settings);
-        const adp = adpValues(inputs.projections, { superflex, ppr: league.scoring_settings?.rec });
-        sources.proj = { valueOf: (id) => points[id] };
-        sources.adp = { valueOf: (id) => adp[id] };
-    }
-    sources.ktc = { valueOf: ktcValue };
-    if (inputs.fc) sources.fc = { valueOf: (id) => fcById[id]?.value };
-
-    const base = {
-        rosters,
-        rosterPositions: league.roster_positions,
-        playerInfo,
-        sources,
-        future: { valueOf: ktcValue },
-    };
-
-    // Without the traded-picks list every team would be credited with its own
-    // picks - a claim nothing here can back - so picks are left out entirely
-    // instead.
-    if (!inputs.tradedPicks) return rankTeams({ ...base, picks: null });
-
-    const seasons = pickSeasonsInScope({
-        pricedSeasons: (inputs.ktc.picks ?? []).map((pick) => pick.season),
-        leagueSeason: league.season,
-        currentDraftComplete: draftDone,
-    });
-    const picksBase = { seasons, rounds: league.settings?.draft_rounds ?? 0, tradedPicks: inputs.tradedPicks };
-    const priceOf = (pick) => (tier) =>
-        pickValue(inputs.ktc, { season: pick.season, round: pick.round, tier })?.value ?? null;
-
-    // Two passes. A pick's price depends on where its original team finishes,
-    // which depends on that team's Now score - but Now never depends on
-    // picks, so a first pass with every pick at "mid" gets Now exactly, and
-    // the second prices each pick from it. See lib/pickSlots.js.
-    const firstPass = rankTeams({ ...base, picks: { ...picksBase, valueOf: (pick) => priceOf(pick)('mid') } });
-
-    const nextSeason = seasons[0];
-    // A draft order counts only for the draft it belongs to, and only before
-    // that draft has run.
-    const upcoming = draft && Number(draft.season) === nextSeason && draft.status !== 'complete' ? draft : null;
-    const context = {
-        nextSeason,
-        finish: projectedFinish({ teams: firstPass, rosters, league }),
-        teamCount: rosters.length,
-        slots: draftSlots({ draft: upcoming, rosters }),
-        draft: upcoming,
-        seasonOver: seasonProgress({ rosters, league }) >= 1,
-    };
-
-    return rankTeams({
-        ...base,
-        picks: { ...picksBase, valueOf: (pick) => pricePick({ pick, ...context, priceOf: priceOf(pick) }) },
-    });
+export function teamsFromRankings(response) {
+    return (response?.teams ?? []).map((team) => ({
+        rosterId: team.rosterId,
+        ownerId: team.ownerId,
+        name: team.name,
+        now: team.now,
+        future: team.future,
+        picks: team.netPickValue,
+        tiers: team.tiers,
+        lineups: team.lineups,
+        futureDetail: team.futureDetail,
+    }));
 }
 
 /**
@@ -153,30 +72,30 @@ export const isMyRoster = (roster, userId) =>
 /**
  * This user's tier in one league, under the blend - what the menu shows
  * beside the league's name. `null` whenever there is nothing honest to show:
- * no roster of theirs, no KTC, or a league that has not drafted yet (every
- * roster empty, so every team would tie at "Middle" and mean nothing).
+ * no roster of theirs, or a league that has not drafted yet (every roster
+ * empty, so every team would tie at "Middle" and mean nothing).
+ *
+ * Rosters are fetched rather than read off the response because a co-owner
+ * is an owner too, and only Sleeper's roster lists co-owners.
  */
 //
-// Cached per league and user for the session, like the value lists: the menu
-// asks again whenever it re-renders, and a tier does not move between two
-// renders.
-export function myTierIn(league, { userId, playerInfo, rosters }) {
+// Cached per league and user for the session: the menu asks again whenever
+// it re-renders, and a tier does not move between two renders.
+export function myTierIn(league, { userId, rosters }) {
     if (!league || league.status === 'pre_draft') return Promise.resolve(null);
-    return cached(`tier:${league.league_id}:${userId}`, () => loadMyTier(league, { userId, playerInfo, rosters }));
+    return cached(`tier:${league.league_id}:${userId}`, () => loadMyTier(league, { userId, rosters }));
 }
 
-async function loadMyTier(league, { userId, playerInfo, rosters }) {
-    const [roster, inputs] = await Promise.all([
+async function loadMyTier(league, { userId, rosters }) {
+    const [roster, rankings] = await Promise.all([
         rosters ? Promise.resolve(rosters) : fetchLeagueRosters(league.league_id),
-        fetchRankingInputs(league),
+        loadLeagueRankings(league.league_id),
     ]);
-    // `undefined` for "could not work it out" (rosters or KTC failed) so the
-    // cache drops it and the next ask retries; `null` for "worked it out, and
-    // you have no team here", which is worth remembering.
-    if (!roster) return undefined;
+    // `undefined` for "could not work it out" (rosters or rankings failed) so
+    // the cache drops it and the next ask retries; `null` for "worked it out,
+    // and you have no team here", which is worth remembering.
+    if (!roster || !rankings) return undefined;
     const mine = roster.find((candidate) => isMyRoster(candidate, userId));
     if (!mine) return null;
-    const teams = rankLeague({ league, rosters: roster, playerInfo, inputs });
-    if (!teams) return undefined;
-    return teams.find((candidate) => candidate.rosterId === mine.roster_id)?.tiers.blend ?? null;
+    return rankings.teams.find((team) => team.rosterId === mine.roster_id)?.tiers.blend ?? null;
 }

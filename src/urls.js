@@ -11,6 +11,7 @@ const ftaFaab = 'api/v1/faab';
 const ftaValueStatus = 'api/v1/status';
 const ftaLeagueIntel = (leagueId) => `api/v1/leagues/${leagueId}/intel`;
 const ftaLeagueTrades = (leagueId) => `api/v1/leagues/${leagueId}/trades`;
+const ftaLeagueRankings = (leagueId) => `api/v1/leagues/${leagueId}/rankings`;
 const ftaManagerActivity = (userId) => `api/v1/users/${userId}/activity`;
 const latestUpdateAttempt = 'latest_update_attempt/';
 const dlfADP = 'dlf_adp/';
@@ -30,18 +31,10 @@ const PICKS = 'picks/';
 const DRAFTS = 'drafts/';
 const STATE = 'state/nfl';
 
-// Sleeper's own projections service. Unofficial and keyless like the rest of
-// Sleeper's API, but on a different host (`api.sleeper.com`, not `.app`) and
-// not under /v1. Positions are asked for explicitly - without them the
-// response includes every IDP too, several times the size.
-const sleeperProjections = (season) =>
-    'https://api.sleeper.com/projections/nfl/' +
-    season +
-    '?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF';
-
 // Sleeper's NFL schedule for a season - every game with its week, teams and a
-// live `status` (`pre_game`, then in progress, then `complete`). Same
-// unofficial `api.sleeper.com` host as the projections above.
+// live `status` (`pre_game`, then in progress, then `complete`). Unofficial
+// and keyless like the rest of Sleeper's API, but on a different host
+// (`api.sleeper.com`, not `.app`) and not under /v1.
 const sleeperSchedule = (season) => 'https://api.sleeper.com/schedule/nfl/regular/' + season;
 
 const APP_DB_URLS = {
@@ -75,6 +68,11 @@ const APP_DB_URLS = {
     // a suggestion built on last night's roster is about a team that no
     // longer exists.
     LEAGUE_TRADES: (leagueId) => fta + ftaLeagueTrades(leagueId),
+    // A league's power rankings, computed by the backend: every team's Now and
+    // Future scores, tier, lineups and picks. The ranking maths used to live
+    // here in lib/; it moved server-side so the app and an agent share one
+    // implementation (sleeper-player-be docs/dynasty-engine.md).
+    LEAGUE_RANKINGS: (leagueId) => fta + ftaLeagueRankings(leagueId),
     // One leaguemate's recent trades, waivers and free-agent adds, across
     // every league they are in. Not nested under a league on purpose - the
     // data spans all of theirs, so a league in the path would imply a filter
@@ -97,7 +95,6 @@ const SLEEPER_API_URLS = {
     USER_BY_NAME: (username) => sleeperAPI + V1 + USER + encodeURIComponent(username),
     NFL_STATE: sleeperAPI + V1 + STATE,
     DRAFT: sleeperAPI + V1 + DRAFT,
-    SEASON_PROJECTIONS: sleeperProjections,
     SCHEDULE: sleeperSchedule,
     ROSTERS: ROSTERS,
     SLEEPER_USERS: SLEEPER_USERS,

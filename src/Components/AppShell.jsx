@@ -25,7 +25,6 @@ const AppShell = ({
     updateLeagueID,
     defaultSectionId = DEFAULT_SECTION_ID,
     sleeperUserId,
-    playerInfo,
 }) => {
     // Memoised because the hook subscribes to `hashchange` against these: a
     // fresh array every render would tear the listener down and rebuild it on
@@ -53,7 +52,7 @@ const AppShell = ({
     const groupSections = groupSectionsFor(sections, activeId);
     const showTabBar = groupSections.length > 1;
 
-    const leagueTiers = useMyLeagueTiers({ leagues: leagueIds, userId: sleeperUserId, playerInfo });
+    const leagueTiers = useMyLeagueTiers({ leagues: leagueIds, userId: sleeperUserId });
 
     // Stale market values warn on every page: they feed Power rankings,
     // Movers and every value chip, and a refresh once failed silently for 16
