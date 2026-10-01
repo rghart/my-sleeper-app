@@ -187,10 +187,34 @@ const L2_RANKINGS = {
     ),
 };
 
-const routeFetch = ({ L1 = RANKINGS } = {}) =>
+// The backend's /weaknesses: each team's QB and RB strength, by source and
+// blended. Charlie is strong at QB and weak at RB; alpha the reverse.
+const GROUPS = {
+    alpha: { QB: -0.6, RB: 1.3 },
+    bravo: { QB: 0.4, RB: 0.2 },
+    charlie: { QB: 1.1, RB: -0.9 },
+    delta: { QB: -0.9, RB: -0.6 },
+};
+const WEAKNESSES = {
+    leagueId: 'L1',
+    threshold: 0.5,
+    teams: TEAMS.map((t) => ({
+        rosterId: t.rosterId,
+        name: t.name,
+        tier: t.tier,
+        groups: Object.entries(GROUPS[t.name]).map(([group, z]) => ({
+            group,
+            z,
+            bySource: Object.fromEntries(SOURCES.map((id) => [id, z])),
+        })),
+    })),
+};
+
+const routeFetch = ({ L1 = RANKINGS, weaknesses = WEAKNESSES } = {}) =>
     vi.fn((url) => {
         if (url.includes('leagues/L1/rankings')) return L1 ? jsonResponse(L1) : failure();
         if (url.includes('leagues/L2/rankings')) return jsonResponse(L2_RANKINGS);
+        if (url.includes('/weaknesses')) return weaknesses ? jsonResponse(weaknesses) : failure();
         return failure();
     });
 
@@ -226,13 +250,14 @@ describe('PowerRankingsPanel', () => {
         vi.restoreAllMocks();
     });
 
-    it("asks the backend for this league's rankings", async () => {
+    it("asks the backend for this league's rankings and position strengths, together", async () => {
         global.fetch = routeFetch();
         renderPanel();
 
         await screen.findByRole('list', { name: 'Teams by Now score' });
-        expect(global.fetch.mock.calls.map(([url]) => url)).toEqual([
+        expect(global.fetch.mock.calls.map(([url]) => url).sort()).toEqual([
             expect.stringMatching(/api\/v1\/leagues\/L1\/rankings$/),
+            expect.stringMatching(/api\/v1\/leagues\/L1\/weaknesses$/),
         ]);
     });
 
@@ -348,7 +373,8 @@ describe('PowerRankingsPanel', () => {
         renderPanel();
         await screen.findByRole('list', { name: 'Teams by Now score' });
 
-        expect(global.fetch).toHaveBeenCalledTimes(2);
+        // Rankings and strengths, twice.
+        expect(global.fetch).toHaveBeenCalledTimes(4);
     });
 
     it('explains the tiers on request', async () => {
@@ -381,9 +407,9 @@ describe('PowerRankingsPanel', () => {
             expect(screen.getByRole('heading', { name: 'charlie' })).toBeInTheDocument();
             expect(screen.getByText('Rebuilding')).toBeInTheDocument();
             expect(screen.getByRole('heading', { name: 'Starters vs you' })).toBeInTheDocument();
-            // One bar pair per position group the league starts.
-            expect(screen.getByRole('group', { name: /^QB: charlie [+−]\d\.\d, you [+−]\d\.\d$/ })).toBeInTheDocument();
-            expect(screen.getByRole('group', { name: /^RB: / })).toBeInTheDocument();
+            // One bar pair per position group, straight from /weaknesses.
+            expect(screen.getByRole('group', { name: 'QB: charlie +1.1, you −0.6' })).toBeInTheDocument();
+            expect(screen.getByRole('group', { name: 'RB: charlie −0.9, you +1.3' })).toBeInTheDocument();
 
             // Charlie holds their own 2027 first plus bravo's and delta's.
             const picks = within(screen.getByRole('heading', { name: 'Their picks' }).closest('section')).getAllByRole(
@@ -397,6 +423,18 @@ describe('PowerRankingsPanel', () => {
 
             await user.click(screen.getByRole('button', { name: /Power rankings/ }));
             expect(await screen.findByRole('list', { name: 'Teams by Now score' })).toBeInTheDocument();
+        });
+
+        it('says the position bars are unavailable, and shows the rest, when strengths fail', async () => {
+            global.fetch = routeFetch({ weaknesses: null });
+            const user = userEvent.setup();
+            renderPanel();
+
+            await openRow(user, 'charlie');
+
+            expect(screen.queryByRole('group', { name: /^QB: / })).toBeNull();
+            expect(screen.getByText(/couldn’t be loaded/)).toBeInTheDocument();
+            expect(screen.getByRole('heading', { name: 'Their picks' })).toBeInTheDocument();
         });
 
         it('shows your own team without comparing it to itself', async () => {
@@ -429,12 +467,18 @@ describe('PowerRankingsPanel', () => {
     });
 
     it('waits for the rankings before drawing anything', async () => {
-        let resolve;
-        global.fetch = vi.fn(() => new Promise((r) => (resolve = r)));
+        // Both requests held open until released by hand.
+        const pending = [];
+        global.fetch = vi.fn((url) => new Promise((resolve) => pending.push({ url, resolve })));
         renderPanel();
 
+        await waitFor(() => expect(pending).toHaveLength(2));
         expect(screen.queryByRole('list', { name: 'Teams by Now score' })).toBeNull();
-        resolve({ ok: true, status: 200, json: () => Promise.resolve(RANKINGS) });
+
+        for (const { url, resolve } of pending) {
+            const body = url.includes('/weaknesses') ? WEAKNESSES : RANKINGS;
+            resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+        }
         await waitFor(() => expect(screen.getByRole('list', { name: 'Teams by Now score' })).toBeInTheDocument());
     });
 });

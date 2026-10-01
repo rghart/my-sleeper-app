@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearRankingCache, isMyRoster, loadLeagueRankings, myTierIn, teamsFromRankings } from './leagueRankings.js';
+import {
+    clearRankingCache,
+    groupsFromWeaknesses,
+    isMyRoster,
+    loadLeagueRankings,
+    loadLeagueWeaknesses,
+    myTierIn,
+    teamsFromRankings,
+} from './leagueRankings.js';
 
 const jsonResponse = (data) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
 const failure = () => Promise.resolve({ ok: false, status: 503, statusText: 'Unavailable', json: () => ({}) });
@@ -126,5 +134,40 @@ describe('isMyRoster', () => {
     it('counts a co-owner as an owner', () => {
         expect(isMyRoster({ owner_id: 'a', co_owners: ['b'] }, 'b')).toBe(true);
         expect(isMyRoster({ owner_id: 'a' }, undefined)).toBe(false);
+    });
+});
+
+describe('loadLeagueWeaknesses', () => {
+    it('asks the backend for this league, and shares the request like the rankings', async () => {
+        global.fetch = vi.fn(() => jsonResponse({ teams: [] }));
+
+        await Promise.all([loadLeagueWeaknesses('A'), loadLeagueWeaknesses('A')]);
+
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch.mock.calls[0][0]).toMatch(/api\/v1\/leagues\/A\/weaknesses$/);
+    });
+});
+
+describe('groupsFromWeaknesses', () => {
+    const response = {
+        teams: [
+            {
+                rosterId: 1,
+                groups: [
+                    { group: 'QB', z: 1.2, bySource: { ktc: 1.5, proj: 0.9 } },
+                    { group: 'RB', z: -0.4, bySource: { ktc: -0.2, proj: -0.6 } },
+                ],
+            },
+        ],
+    };
+
+    it("reads the blend's z, or one source's, per team and group in the league's order", () => {
+        expect(groupsFromWeaknesses(response, 'blend').get(1)).toEqual({ QB: 1.2, RB: -0.4 });
+        expect(groupsFromWeaknesses(response, 'proj').get(1)).toEqual({ QB: 0.9, RB: -0.6 });
+        expect(Object.keys(groupsFromWeaknesses(response, 'ktc').get(1))).toEqual(['QB', 'RB']);
+    });
+
+    it('is null without a response, so the screen can say so', () => {
+        expect(groupsFromWeaknesses(undefined, 'blend')).toBeNull();
     });
 });

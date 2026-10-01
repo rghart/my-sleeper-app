@@ -10,6 +10,7 @@ const {
     FAAB,
     LEAGUE_INTEL,
     LEAGUE_RANKINGS,
+    LEAGUE_WEAKNESSES,
     LEAGUE_TRADES,
     MANAGER_ACTIVITY,
     MARKET_VALUES,
@@ -342,6 +343,24 @@ export async function fetchLeagueRankings(leagueId) {
  *
  * Resolves to `undefined` on failure, per this module's contract.
  */
+/**
+ * A league's position-group strengths from the backend
+ * (`GET /api/v1/leagues/:id/weaknesses`): per team, each group's z against
+ * the league under the blend and under every source, plus its deficits and
+ * surpluses. Shares the backend's league snapshot with the rankings, so
+ * asking for both costs one set of Sleeper reads.
+ *
+ * Resolves to `undefined` on failure, per this module's contract.
+ */
+export async function fetchLeagueWeaknesses(leagueId) {
+    return await fetch(LEAGUE_WEAKNESSES(leagueId))
+        .then(checkErrors)
+        .then((response) => response.json())
+        .catch((error) => {
+            console.error('Error fetching position strengths:', error);
+        });
+}
+
 export async function fetchLeagueTrades({ leagueId, userId, superflex = true }) {
     const params = new URLSearchParams({ user_id: String(userId) });
     if (!superflex) params.set('superflex', 'false');

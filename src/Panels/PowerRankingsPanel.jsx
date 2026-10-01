@@ -6,7 +6,13 @@ import Spinner from '../Components/Spinner';
 import { TierChip, TierIcon, tierLabel } from '../Components/TierIcon';
 import { agoLabel } from '../lib/relativeTime.js';
 import { asOfMillis } from '../lib/marketValues.js';
-import { isMyRoster, loadLeagueRankings, teamsFromRankings } from '../lib/leagueRankings.js';
+import {
+    groupsFromWeaknesses,
+    isMyRoster,
+    loadLeagueRankings,
+    loadLeagueWeaknesses,
+    teamsFromRankings,
+} from '../lib/leagueRankings.js';
 import { ranksBy } from '../lib/teamComparison.js';
 import { TIERS } from '../lib/tiers.js';
 
@@ -221,9 +227,15 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
         let cancelled = false;
         setLoading(true);
 
-        loadLeagueRankings(rankingsLeagueId, { fresh: true }).then((response) => {
+        // Both at once: the backend serves them from one league snapshot. Only
+        // the rankings are required; without the position strengths a team's
+        // detail says so instead of drawing its bars.
+        Promise.all([
+            loadLeagueRankings(rankingsLeagueId, { fresh: true }),
+            loadLeagueWeaknesses(rankingsLeagueId, { fresh: true }),
+        ]).then(([response, weaknesses]) => {
             if (cancelled) return;
-            setData({ response, leagueId: rankingsLeagueId });
+            setData({ response, weaknesses, leagueId: rankingsLeagueId });
             setLoading(false);
         });
 
@@ -286,6 +298,7 @@ const PowerRankingsPanel = ({ leagueID, league, rosterData, playerInfo, sleeperU
                 you={teams.find((team) => team.rosterId === myRosterId) ?? null}
                 teams={teams}
                 source={activeSource}
+                strength={groupsFromWeaknesses(data.weaknesses, activeSource)}
                 rosters={rosterData}
                 playerInfo={playerInfo}
                 nowRanks={nowRanks}

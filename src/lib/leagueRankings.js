@@ -10,7 +10,7 @@
 // What is left is fetching, sharing a fetch between the panel and the menu,
 // and reading the response into the team shape the screens were built on.
 
-import { fetchLeagueRankings, fetchLeagueRosters } from './sleeperApi.js';
+import { fetchLeagueRankings, fetchLeagueRosters, fetchLeagueWeaknesses } from './sleeperApi.js';
 
 const cache = new Map();
 
@@ -42,6 +42,35 @@ export function loadLeagueRankings(leagueId, { fresh = false } = {}) {
     const key = `rankings:${leagueId}`;
     if (fresh) cache.delete(key);
     return cached(key, () => fetchLeagueRankings(leagueId));
+}
+
+/**
+ * The position-strengths response for a league, or `undefined` when it could
+ * not be had. Cached and refreshed exactly like the rankings.
+ */
+export function loadLeagueWeaknesses(leagueId, { fresh = false } = {}) {
+    const key = `weaknesses:${leagueId}`;
+    if (fresh) cache.delete(key);
+    return cached(key, () => fetchLeagueWeaknesses(leagueId));
+}
+
+/**
+ * Each team's strength in every position group the league starts, under one
+ * source (`'blend'`, `'ktc'`, ...), as a Map from roster id to
+ * `{ group: z }` in the league's group order - the "Starters vs you" bars.
+ * Null without a response, so a screen can say the bars are unavailable
+ * rather than draw a team with no positions.
+ */
+export function groupsFromWeaknesses(response, source) {
+    if (!response?.teams) return null;
+    return new Map(
+        response.teams.map((team) => [
+            team.rosterId,
+            Object.fromEntries(
+                team.groups.map((group) => [group.group, source === 'blend' ? group.z : group.bySource?.[source]]),
+            ),
+        ]),
+    );
 }
 
 /**
